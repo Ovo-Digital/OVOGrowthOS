@@ -1,9 +1,11 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 COPY package*.json ./
 RUN npm ci
 FROM node:22-alpine AS build
 WORKDIR /app
+RUN apk add --no-cache libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
@@ -11,7 +13,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl libc6-compat
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=build /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./
