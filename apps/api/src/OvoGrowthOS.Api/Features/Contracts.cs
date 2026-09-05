@@ -13,6 +13,9 @@ public sealed record EvaluationDraftRequest(Guid BrandId, int CurrentStep, Evalu
     decimal InternalMonthlyCost, decimal SetupInvestment);
 
 public sealed record RuleSetRequest(string Name, string Description);
+public sealed record BrandUpdateRequest(string Name, string LegalName, string Website, string Country, string Currency,
+    string Industry, string SubIndustry, BusinessModel BusinessModel, CommercePlatform Platform, BrandStatus Status,
+    string ContactName, string ContactEmail, string ContactPhone);
 public sealed record RuleRequest(string Name, string Description, RuleCategory Category, RuleField Field,
     RuleOperator Operator, decimal Value, decimal? SecondaryValue, RuleSeverity Severity, decimal Weight,
     bool Enabled, RecommendationEffect RecommendationEffect);
@@ -31,8 +34,16 @@ public sealed record PerformanceRequest(Guid BrandId, Guid DealId, int Year, int
     decimal FulfillmentCosts, decimal ShippingSubsidy, decimal OtherVariableCosts, decimal MetaSpend,
     decimal GoogleSpend, decimal TikTokSpend, decimal InfluencerSpend, decimal OtherAdSpend);
 public sealed record TransitionRequest(string? Reason = null);
+public sealed record ConditionUpdateRequest(ConditionStatus Status, string Reason, string EvidenceUrl);
+public sealed record DealLifecycleRequest(string Reason, DateOnly? EffectiveDate = null);
+public sealed record DealTemplateRequest(string Name, string Description, bool Enabled, int DisplayOrder, DealType DealType,
+    int ContractMonths, decimal MonthlyRetainer, decimal MinimumMonthlyFee, decimal RevenueShareRate,
+    decimal IncrementalRate, decimal ProfitShareRate, List<CommissionTier> CommissionTiers);
 public sealed record RenameRequest(string Name);
 public sealed record AdjustmentRequest(decimal Amount, string Reason);
 public sealed record SettingsRequest(string DefaultCurrency, decimal DefaultVatRate, int DefaultContractMonths,
     decimal DefaultSetupInvestment, decimal TargetOvoGrossMargin, decimal TargetBrandContributionMargin,
-    decimal MinimumFeeMultiplier, decimal ExistingRevenueThreshold, decimal ConcentrationRiskThreshold, Guid? DefaultRuleSetId);
+    decimal MinimumFeeMultiplier, decimal ExistingRevenueThreshold, decimal ConcentrationRiskThreshold,
+    decimal MinimumPartnershipScore, decimal ConditionalPartnershipScore, decimal MinimumDataConfidenceScore,
+    decimal MinimumRecommendedAdSpend, Guid? DefaultRuleSetId);
+public sealed record UserAccountRequest(string Email, string Name, string Role, string? Password, bool IsActive = true);

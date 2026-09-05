@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, services, logger) => logger.ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services).Enrich.FromLogContext().WriteTo.Console());
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<DatabaseExceptionHandler>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -50,11 +51,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
-app.MapPost("/api/auth/login", (LoginRequest request, IConfiguration config, JwtTokenService tokens) =>
+app.MapPost("/api/auth/login", async (LoginRequest request, IConfiguration config, JwtTokenService tokens, AppDbContext db) =>
 {
-    var email = config["DefaultAdmin:Email"]!; var hash = config["DefaultAdmin:PasswordHash"]!;
-    return request.Email.Equals(email, StringComparison.OrdinalIgnoreCase) && JwtTokenService.VerifyPassword(request.Password, hash)
-        ? Results.Ok(new { token = tokens.Create(email, "Admin"), expiresAt = DateTimeOffset.UtcNow.AddHours(8), user = new { email, name = "OVO Admin", role = "Admin" } })
+    var account = await db.UserAccounts.SingleOrDefaultAsync(x => x.Email == request.Email && x.IsActive);
+    var email = account?.Email ?? config["DefaultAdmin:Email"]!; var hash = account?.PasswordHash ?? config["DefaultAdmin:PasswordHash"]!;
+    return JwtTokenService.VerifyPassword(request.Password, hash)
+        ? Results.Ok(new { token = tokens.Create(email, account?.Role ?? "Admin"), expiresAt = DateTimeOffset.UtcNow.AddHours(8), user = new { email, name = account?.Name ?? "OVO Admin", role = account?.Role ?? "Admin" } })
         : Results.Problem(statusCode: 401, title: "E-posta adresi veya şifre hatalı");
 }).AllowAnonymous();
 
@@ -63,7 +65,7 @@ app.MapWorkflowEndpoints();
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
-    await SeedData.InitializeAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    await SeedData.InitializeAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>(), scope.ServiceProvider.GetRequiredService<IConfiguration>());
 }
 app.Run();
 

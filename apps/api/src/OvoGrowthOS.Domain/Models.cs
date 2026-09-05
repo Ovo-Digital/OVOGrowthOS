@@ -20,6 +20,19 @@ public enum ScenarioRiskLevel { Low, Medium, High, Critical }
 public enum MonthlyPerformanceStatus { Draft, UnderReview, Approved, Locked, Invoiced, Paid }
 public enum CommissionStatus { Draft, Approved, Invoiced, Paid }
 
+public sealed class UserAccount
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Email { get; set; }
+    public required string Name { get; set; }
+    public required string Role { get; set; }
+    public required string PasswordHash { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int TokenVersion { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
 public sealed class Brand
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -157,6 +170,10 @@ public sealed class PartnershipCondition
     public string Description { get; set; } = "";
     public bool Required { get; set; } = true;
     public ConditionStatus Status { get; set; } = ConditionStatus.Pending;
+    public string ResolutionReason { get; set; } = "";
+    public string EvidenceUrl { get; set; } = "";
+    public string ResolvedBy { get; set; } = "";
+    public DateTimeOffset? ResolvedAt { get; set; }
 }
 
 public sealed class Scenario
@@ -200,6 +217,8 @@ public sealed class Deal
     public DealType DealType { get; set; }
     public DateOnly? StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+    public Guid? RenewalOfDealId { get; set; }
+    public string StatusReason { get; set; } = "";
     public int ContractMonths { get; set; } = 24;
     public decimal BaselineRevenue { get; set; }
     public DateOnly? BaselinePeriodStart { get; set; }
@@ -275,6 +294,11 @@ public sealed class MonthlyPerformance
     public MonthlyPerformanceStatus Status { get; set; } = MonthlyPerformanceStatus.Draft;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string PreparedBy { get; set; } = "";
+    public DateTimeOffset? SubmittedAt { get; set; }
+    public string ReviewedBy { get; set; } = "";
+    public DateTimeOffset? ApprovedAt { get; set; }
+    public DateTimeOffset? LockedAt { get; set; }
     public List<CommissionAdjustment> Adjustments { get; set; } = [];
 }
 
@@ -300,8 +324,44 @@ public sealed class GeneralSettings
     public decimal MinimumFeeMultiplier { get; set; } = 1.8m;
     public decimal ExistingRevenueThreshold { get; set; } = 2_000_000m;
     public decimal ConcentrationRiskThreshold { get; set; } = .40m;
+    public decimal MinimumPartnershipScore { get; set; } = 40m;
+    public decimal ConditionalPartnershipScore { get; set; } = 55m;
+    public decimal MinimumDataConfidenceScore { get; set; } = 50m;
+    public decimal MinimumRecommendedAdSpend { get; set; } = 150_000m;
     public Guid? DefaultRuleSetId { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class DealTemplate
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string Name { get; set; }
+    public string Description { get; set; } = "";
+    public bool Enabled { get; set; } = true;
+    public int DisplayOrder { get; set; }
+    public DealType DealType { get; set; }
+    public int ContractMonths { get; set; } = 24;
+    public decimal MonthlyRetainer { get; set; }
+    public decimal MinimumMonthlyFee { get; set; }
+    public decimal RevenueShareRate { get; set; }
+    public decimal IncrementalRate { get; set; }
+    public decimal ProfitShareRate { get; set; }
+    public string CommissionTiersJson { get; set; } = "[]";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class DocumentAttachment
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public required string EntityType { get; set; }
+    public required string EntityId { get; set; }
+    public required string FileName { get; set; }
+    public required string ContentType { get; set; }
+    public byte[] Content { get; set; } = [];
+    public string Note { get; set; } = "";
+    public string UploadedBy { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
 public sealed class AuditRecord

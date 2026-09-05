@@ -1,8 +1,12 @@
 # OVO Growth OS Kullanım Rehberi
 
-Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi herhangi bir teknik bilgiye ihtiyaç duymadan anlayabilmesi için hazırlanmıştır.
+Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi herhangi bir teknik bilgiye ihtiyaç duymadan anlayabilmesi için hazırlanmıştır. Uygulamadaki **Kullanım rehberi** sayfası doğrudan bu dosyayı gösterir. Sisteme yeni bir özellik eklendiğinde veya bir iş akışı değiştiğinde bu dosya da aynı geliştirme kapsamında güncellenmelidir.
 
 Rehberde; uygulamanın ne işe yaradığı, hangi ekranda ne yapılması gerektiği, kararların nasıl oluştuğu ve bir markanın ilk görüşmeden aylık hakediş kapanışına kadar nasıl yönetildiği anlatılır.
+
+### Rehber nasıl güncel tutulur?
+
+Projenin geliştirme kuralları Codex, Claude, Cursor ve benzeri kodlama araçlarına; kullanıcıyı etkileyen her değişiklikte bu rehberi de güncelleme zorunluluğu verir. Yeni bir ekran, düğme, rol, hesaplama veya çalışma sırası eklendiğinde ilgili açıklama aynı geliştirme içinde bu dosyaya işlenmelidir. Uygulamadaki rehber sayfası dosyanın güncel hâlini otomatik gösterir.
 
 ---
 
@@ -76,14 +80,14 @@ Listeden **OVO: Full Stack + Chrome** seçeneğini seçip çalıştırın. Siste
 
 Uygulama açıldıktan sonra teknik terminal pencerelerine müdahale etmeniz gerekmez. İşiniz bittiğinde VS Code'daki kırmızı durdurma düğmesine basabilirsiniz.
 
-### Yerel geliştirme hesabı
+### Kullanıcı hesabınızla giriş
 
 Varsayılan yerel giriş bilgileri:
 
 - E-posta: `admin@ovodigital.com`
 - Şifre: `ChangeMe123!`
 
-Bu hesap yalnızca yerel geliştirme kullanımı içindir. Uygulama gerçek kullanıcılarla canlı kullanıma alınmadan önce kişiye özel kullanıcı hesaplarına geçilmelidir.
+Yönetici, **Ayarlar → Kullanıcılar** alanından her çalışan için kişiye özel hesap oluşturabilir. Ortak şifre kullanmayın. Rolünüz hangi ekranlarda değişiklik yapabileceğinizi belirler.
 
 ---
 
@@ -307,15 +311,15 @@ Her kritik bilginin yanında kaynağını belirten bir güven düzeyi seçilir:
 
 ## 8. Yüzde değerleri nasıl girilir?
 
-Sistemde oranlar ondalık biçimde girilir:
+Sistemde yüzde alanları günlük hayatta kullandığımız biçimde girilir:
 
-- `%5` için `0,05`
-- `%18` için `0,18`
-- `%25` için `0,25`
-- `%50` için `0,50`
-- `%65` için `0,65`
+- `%5` için `5`
+- `%18` için `18`
+- `%25` için `25`
+- `%50` için `50`
+- `%65` için `65`
 
-`5` yazmak `%5` anlamına gelmez; beş kat, yani `%500` anlamına gelir. Oran girişlerinde bu konu özellikle kontrol edilmelidir.
+Örneğin ekranda “Gelir payı (%)” yazıyorsa `5` girmek yüzde beş anlamına gelir. Sistem bu değeri hesaplama sırasında güvenli biçimde dönüştürür.
 
 ---
 
@@ -619,9 +623,57 @@ buradan takip edilebilir.
 
 Bir rakam veya durum beklenmedik görünüyorsa ilk kontrol edilmesi gereken yerlerden biri işlem geçmişidir.
 
+### Üst arama ve yapılacak işler
+
+Ekranın üstündeki arama alanından marka, değerlendirme veya anlaşma adı aranabilir. Klavyede `Ctrl + K` veya Mac'te `⌘ + K` kısayolu aramayı hızlıca açar.
+
+Bildirim simgesi, işlem bekleyen kayıtları gösterir. Burada onay bekleyen değerlendirmeler, etkinleştirilecek anlaşmalar, kontrol bekleyen aylık dönemler ve eksik aylık girişler görülebilir.
+
 ---
 
-## 19. Sade finansal terimler sözlüğü
+## 19. Anlaşma koşulları, belgeler ve yaşam döngüsü
+
+### Koşul kontrol listesi
+
+Koşullu kabul edilen bir değerlendirmedeki şartlar, anlaşma kaydına taşınır. Her koşul için:
+
+- **Tamamlandı** işlemiyle şartın yerine getirildiğini kaydedin.
+- **Gerekçeyle feragat et** işlemini yalnızca yetkili kararla kullanın ve açık bir neden yazın.
+- Varsa rapor, onay veya başka bir kanıtın bağlantısını ekleyin.
+
+Sistem işlemi yapan kişiyi ve tarihi otomatik saklar. Bu kayıtlar sessizce değişmez ve işlem geçmişinden izlenebilir.
+
+### Belgeler ve notlar
+
+Anlaşma ekranındaki **Belgeler ve notlar** bölümünden PDF, PNG, JPG, CSV veya Excel dosyası yüklenebilir. Dosya başına üst sınır 10 MB'dır. Dosyanın ne olduğunu açıklayan kısa bir not yazın; örneğin “Mayıs mutabakat raporu” veya “İmzalı ticari şartlar”.
+
+### Anlaşmanın ilerleyişi
+
+Anlaşma; taslak, iç inceleme, markaya önerildi, görüşme, kabul edildi ve etkin durumlarından geçer. Etkin bir anlaşma gerekçesi kaydedilerek yenilenebilir, sonlandırılabilir veya süresi doldu olarak kapatılabilir. Kabul edilmiş ya da kapanmış ticari şartlar geriye dönük değiştirilemez.
+
+### Anlaşma şablonları
+
+Yöneticiler **Ayarlar → Anlaşma şablonları** sayfasından standart ticari seçenekleri yönetir. Şablondaki ücret, oran, süre ve model; değerlendirme sonrası oluşturulan seçeneklerin başlangıç değeridir. Şablon değişikliği eski anlaşmaları değiştirmez.
+
+---
+
+## 20. Kullanıcılar ve roller
+
+Yöneticiler **Ayarlar → Kullanıcılar** sayfasından kişiye özel hesap oluşturabilir.
+
+- **Analist:** Marka ve değerlendirme çalışmalarını görür ve değerlendirme hazırlayabilir.
+- **Partner:** Operasyon, anlaşma ve aylık sonuç işlemlerini yürütebilir.
+- **Yönetici:** Tüm alanlara erişir; kullanıcıları, kuralları, şablonları ve kritik kilit işlemlerini yönetir.
+
+Yeni kullanıcıya en az 10 karakterli geçici şifre verin ve şifreyi güvenli bir kanaldan iletin. Kullanılmayan hesaplar pasife alınmalıdır.
+
+### İki kişili aylık onay
+
+Aylık sonucu hazırlayıp incelemeye gönderen kişi aynı kaydı onaylayamaz. İkinci bir Partner veya Yönetici hesabı kontrol edip onaylamalıdır. Bu ayrım, rakamların tek kişinin kontrolünde sessizce kapanmasını engeller.
+
+---
+
+## 21. Sade finansal terimler sözlüğü
 
 ### Brüt satış
 
@@ -693,7 +745,7 @@ OVO'nun başlangıçta yaptığı yatırımın, aylık OVO brüt kârıyla kaç 
 
 ---
 
-## 20. Örnek bir marka yolculuğu
+## 22. Örnek bir marka yolculuğu
 
 Yeni görüşülen bir moda markası olduğunu düşünelim.
 
@@ -717,7 +769,7 @@ Yeni görüşülen bir moda markası olduğunu düşünelim.
 
 ---
 
-## 21. Önerilen çalışma düzeni
+## 23. Önerilen çalışma düzeni
 
 ### Yeni marka görüşmesinde
 
@@ -754,11 +806,11 @@ Yeni görüşülen bir moda markası olduğunu düşünelim.
 
 ---
 
-## 22. Sık yapılan hatalar
+## 24. Sık yapılan hatalar
 
 ### Yüzdeyi yanlış girmek
 
-`%5` yerine `5` yazılması hesapları tamamen bozar. Doğru giriş `0,05` olmalıdır.
+Yüzde işaretli bir alanda `%5` için `0,05` yazmak değeri yüz kat küçültür. Doğru giriş `5` olmalıdır.
 
 ### Tahmini bilgiyi doğrulanmış göstermek
 
@@ -786,7 +838,7 @@ Sistem “Ek bilgi gerekli” diyorsa önce eksik alanlar tamamlanmalıdır.
 
 ---
 
-## 23. Bir sorun olduğunda ne yapılmalı?
+## 25. Bir sorun olduğunda ne yapılmalı?
 
 ### Uygulama açılmıyor
 
@@ -801,7 +853,7 @@ Sistem “Ek bilgi gerekli” diyorsa önce eksik alanlar tamamlanmalıdır.
 
 ### Sayılar beklenenden farklı
 
-- Oranların ondalık biçimde girildiğini kontrol edin.
+- Yüzde alanlarında `%5` için `5` girildiğini kontrol edin.
 - KDV, iade, iptal ve reklam harcamalarını tekrar gözden geçirin.
 - Doğru ayın ve doğru anlaşmanın seçildiğini kontrol edin.
 - Hakediş dökümündeki her kalemi ayrı ayrı inceleyin.
@@ -816,23 +868,21 @@ Kayıt analiz edilmiş, onaylanmış, arşivlenmiş veya dönem kilitlenmiş ola
 
 ---
 
-## 24. Şu anda sistemin dışında kalan işler
+## 26. Şu anda sistemin dışında kalan işler
 
 OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akışını çalıştırır. Ancak aşağıdaki işler henüz tam otomatik değildir:
 
 - Shopify ve reklam platformlarından otomatik veri çekme
 - Muhasebe veya fatura sistemi entegrasyonu
-- Kişiye özel gelişmiş kullanıcı ve yetki yönetimi
 - Sözleşme belgesi oluşturma ve elektronik imza
-- Koşulların tek tek tamamlanma veya feragat takibi
-- Yenileme ve sözleşme sonlandırma akışları
+- Kurumsal tek oturum açma, şifre sıfırlama ve çok şirketli kullanım
 - Gelişmiş PDF ve yazdırılabilir yönetim raporları
 
 Bu nedenle aylık veriler ilgili kaynaklardan kontrol edilerek sisteme girilmeli; fatura ve sözleşme işlemleri mevcut şirket süreçleriyle birlikte yürütülmelidir.
 
 ---
 
-## 25. Son kontrol listesi
+## 27. Son kontrol listesi
 
 ### Yeni bir anlaşma öncesinde
 
@@ -879,4 +929,3 @@ Doğru kullanımın en önemli üç kuralı şudur:
 1. Bilinmeyen veriyi tahmin ederek kesinmiş gibi girmeyin.
 2. Anlaşma modelini seçerken hem OVO'nun hem markanın kârlılığına bakın.
 3. Aylık dönemleri kaynak verilerle kontrol etmeden kapatmayın.
-

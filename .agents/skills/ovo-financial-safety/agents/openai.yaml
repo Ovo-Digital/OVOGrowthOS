@@ -1,0 +1,4 @@
+interface:
+  display_name: "OVO Finansal Güvenlik"
+  short_description: "Finansal hesap ve kapanış kurallarını korur"
+  default_prompt: "Use $ovo-financial-safety to change this financial behavior without breaking OVO's accounting invariants."

@@ -24,4 +24,11 @@ public sealed class JwtTokenService(IConfiguration configuration)
         var actual = Rfc2898DeriveBytes.Pbkdf2(password, Convert.FromBase64String(parts[0]), 120_000, HashAlgorithmName.SHA256, 32);
         return CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(parts[1]), actual);
     }
+
+    public static string HashPassword(string password)
+    {
+        var salt = RandomNumberGenerator.GetBytes(24);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, 120_000, HashAlgorithmName.SHA256, 32);
+        return Convert.ToBase64String(salt) + "." + Convert.ToBase64String(hash);
+    }
 }

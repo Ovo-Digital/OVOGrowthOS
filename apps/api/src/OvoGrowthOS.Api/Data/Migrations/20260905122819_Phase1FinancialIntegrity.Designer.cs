@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OvoGrowthOS.Api.Data;
@@ -11,9 +12,11 @@ using OvoGrowthOS.Api.Data;
 namespace OvoGrowthOS.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905122819_Phase1FinancialIntegrity")]
+    partial class Phase1FinancialIntegrity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -483,9 +486,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
-                    b.Property<Guid?>("RenewalOfDealId")
-                        .HasColumnType("uuid");
-
                     b.Property<decimal>("RevenueShareRate")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -503,10 +503,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
-
-                    b.Property<string>("StatusReason")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -526,116 +522,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasIndex("BrandId", "Status");
 
                     b.ToTable("PartnershipDeals", "growth");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.DealTemplate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CommissionTiersJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("ContractMonths")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DealType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("IncrementalRate")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<decimal>("MinimumMonthlyFee")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<decimal>("MonthlyRetainer")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
-
-                    b.Property<decimal>("ProfitShareRate")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<decimal>("RevenueShareRate")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Enabled", "DisplayOrder");
-
-                    b.ToTable("DealTemplates", "growth");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.DocumentAttachment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<byte[]>("Content")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EntityId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("Note")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UploadedBy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EntityType", "EntityId", "CreatedAt");
-
-                    b.ToTable("DocumentAttachments", "growth");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.GeneralSettings", b =>
@@ -722,9 +608,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
-                    b.Property<DateTimeOffset?>("ApprovedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<decimal>("BrandContributionProfit")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -805,9 +688,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
-                    b.Property<DateTimeOffset?>("LockedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<decimal>("Mer")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -857,10 +737,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
-                    b.Property<string>("PreparedBy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<decimal>("Refunds")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -872,10 +748,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<int>("ReturningCustomers")
                         .HasColumnType("integer");
 
-                    b.Property<string>("ReviewedBy")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("Sessions")
                         .HasColumnType("integer");
 
@@ -885,9 +757,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("SubmittedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("TikTokSpend")
                         .HasPrecision(18, 4)
@@ -952,23 +821,8 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<Guid?>("EvaluationId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EvidenceUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<bool>("Required")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("ResolutionReason")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ResolvedBy")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -1187,52 +1041,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasIndex("EvaluationId", "Name");
 
                     b.ToTable("Scenarios", "growth");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.UserAccount", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<int>("TokenVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.ToTable("UserAccounts", "growth");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandEconomics", b =>

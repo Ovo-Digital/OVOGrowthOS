@@ -1,0 +1,4 @@
+interface:
+  display_name: "OVO Özellik Geliştirme"
+  short_description: "OVO özelliklerini uçtan uca güvenle geliştirir"
+  default_prompt: "Use $ovo-feature-development to implement this OVO Growth OS feature and verify its acceptance criteria."

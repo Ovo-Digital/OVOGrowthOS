@@ -1,0 +1,4 @@
+interface:
+  display_name: "OVO Supabase Migration"
+  short_description: "EF migrationlarını Supabase'e güvenle uygular"
+  default_prompt: "Use $ovo-supabase-migration to implement and verify this OVO database schema change."

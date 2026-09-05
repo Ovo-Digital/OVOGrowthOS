@@ -11,15 +11,29 @@ public static class SeedData
         ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
     };
 
-    public static async Task InitializeAsync(AppDbContext db)
+    public static async Task InitializeAsync(AppDbContext db, IConfiguration configuration)
     {
         await db.Database.MigrateAsync();
+        if (!await db.UserAccounts.AnyAsync())
+        {
+            var email = configuration["DefaultAdmin:Email"] ?? "admin@ovodigital.com";
+            var hash = configuration["DefaultAdmin:PasswordHash"];
+            if (!string.IsNullOrWhiteSpace(hash)) db.UserAccounts.Add(new UserAccount { Email = email.ToLowerInvariant(), Name = "OVO Admin", Role = "Admin", PasswordHash = hash });
+        }
         var ruleSet = await SeedRulesAsync(db);
         var settings = await db.GeneralSettings.SingleOrDefaultAsync();
         if (settings is null)
         {
             settings = new GeneralSettings { DefaultRuleSetId = ruleSet.Id };
             db.GeneralSettings.Add(settings);
+        }
+        if (!await db.DealTemplates.AnyAsync())
+        {
+            var tiers=JsonSerializer.Serialize(new[]{new CommissionTier(0,500_000,.08m),new CommissionTier(500_000,1_500_000,.06m),new CommissionTier(1_500_000,3_000_000,.045m),new CommissionTier(3_000_000,null,.035m)},Json);
+            db.DealTemplates.AddRange(
+                new DealTemplate{Name="Seçenek A · Asgari ücret + kademeli pay",Description="Asgari aylık güvence ve ciro büyüdükçe azalan kademeli pay.",DisplayOrder=1,DealType=DealType.MinimumFeePlusRevenueShare,MinimumMonthlyFee=45_000,RevenueShareRate=.05m,CommissionTiersJson=tiers},
+                new DealTemplate{Name="Seçenek B · Aylık ücret + sabit pay",Description="Aylık sabit ücret ve düşük oranlı gelir payı.",DisplayOrder=2,DealType=DealType.RetainerPlusRevenueShare,MonthlyRetainer=30_000,RevenueShareRate=.04m},
+                new DealTemplate{Name="Seçenek C · Büyüme farkı",Description="Aylık sabit ücret ve baz cironun üzerindeki büyümeden pay.",DisplayOrder=3,DealType=DealType.RetainerPlusIncrementalRevenueShare,MonthlyRetainer=50_000,IncrementalRate=.10m});
         }
         if (!await db.Brands.AnyAsync()) SeedPortfolio(db, ruleSet, settings);
         await db.SaveChangesAsync();

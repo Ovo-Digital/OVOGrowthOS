@@ -1,0 +1,4 @@
+interface:
+  display_name: "OVO Arayüz ve Rehber"
+  short_description: "Türkçe arayüzü ve kullanıcı rehberini günceller"
+  default_prompt: "Use $ovo-ui-guide to update the OVO interface and keep the usage guide in sync."

@@ -1,0 +1,16 @@
+---
+description: OVO Growth OS için zorunlu mimari, finansal güvenlik, Türkçe UX ve doğrulama kuralları
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# OVO Growth OS proje kuralları
+
+Önce `docs/AI_GELISTIRME_KURALLARI.md` ve `AGENTS.md` dosyalarını oku ve uygula.
+
+- Kullanıcıya görünen metinler sade Türkçe olmalıdır.
+- Finansal hesaplar domain katmanında `decimal` ile yapılır; dönem kilidi ve iki kişili onay kuralları korunur.
+- Veritabanı değişiklikleri EF Core migration ile ve Supabase `growth` şemasında yapılır; sırlar repoya yazılmaz.
+- Kullanıcıya dönük değişiklikte `OVO_GROWTH_OS_KULLANIM_REHBERI.md` güncellenir.
+- Göreve uygun `.cursor/skills/` becerisini kullan ve ilgili build/test kapısını geçir.

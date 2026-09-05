@@ -1,0 +1,3 @@
+# OVO Growth OS
+
+Her görevde önce `docs/AI_GELISTIRME_KURALLARI.md` ve kökteki `AGENTS.md` dosyalarını oku. Göreve uyan `.cursor/skills/*/SKILL.md` becerisini uygula. Kullanıcıya dönük her değişiklikte `OVO_GROWTH_OS_KULLANIM_REHBERI.md` dosyasını güncelle. Finansal iş kurallarını, Supabase `growth` şemasını ve mevcut veriyi koru. İlgili build ve testler geçmeden işi tamamlandı sayma.

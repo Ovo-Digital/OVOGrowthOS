@@ -135,11 +135,18 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
         Assert.Equal(HttpStatusCode.Created, periodResponse.StatusCode);
         var period = await periodResponse.Content.ReadFromJsonAsync<JsonElement>();
         var periodId = period.GetProperty("id").GetGuid();
-        foreach (var transition in new[] { "submit", "approve", "lock" })
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/{transition}", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/performance/{periodId}/adjustments", new { amount = 5_000m, reason = "Approved reconciliation" })).StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("partner@ovo.test", "Partner"));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/submit", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync($"/api/performance/{periodId}/approve", null)).StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/approve", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/lock", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/invoice", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/pay", null)).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/performance/{periodId}/adjustments", new { amount = 1_000m, reason = "Ödeme sonrası değişiklik" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/performance/{periodId}/unlock", new { reason = "Ödeme sonrası açma denemesi" })).StatusCode);
 
         var closed = await client.GetFromJsonAsync<JsonElement>($"/api/performance/{periodId}");
         Assert.Equal("Paid", closed.GetProperty("status").GetString());
@@ -147,6 +154,89 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
         var dashboard = await client.GetFromJsonAsync<JsonElement>("/api/dashboard");
         Assert.True(dashboard.GetProperty("activeBrands").GetInt32() >= 1);
         Assert.True(dashboard.GetProperty("paidCommission").GetDecimal() >= 55_000m);
+    }
+
+    [Fact]
+    public async Task Rejected_evaluation_cannot_be_approved()
+    {
+        var evaluationId = await _factory.SeedRejectedEvaluationAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+
+        var response = await client.PostAsync($"/api/evaluations/{evaluationId}/approve", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Invalid_monthly_performance_is_rejected_before_database_write()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+
+        var response = await client.PostAsJsonAsync("/api/performance", new
+        {
+            brandId = Guid.Empty, dealId = Guid.Empty, year = 2010, month = 13, grossSales = -1m,
+            vat = 0m, refunds = 0m, cancellations = 0m, chargebacks = 0m, customerPaidShipping = 0m,
+            giftCardTopups = 0m, orders = -1, sessions = 0, newCustomers = 0, returningCustomers = 0,
+            cogs = 0m, paymentFees = 0m, fulfillmentCosts = 0m, shippingSubsidy = 0m,
+            otherVariableCosts = 0m, metaSpend = 0m, googleSpend = 0m, tikTokSpend = 0m,
+            influencerSpend = 0m, otherAdSpend = 0m
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Only_one_deal_can_be_active_for_a_brand()
+    {
+        var (firstId, secondId) = await _factory.SeedAcceptedDealsAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/deals/{firstId}/activate", null)).StatusCode);
+        var second = await client.PostAsync($"/api/deals/{secondId}/activate", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task Condition_resolution_and_document_upload_are_auditable()
+    {
+        var brandId = await _factory.SeedAsync();
+        var conditionId = await _factory.SeedConditionAsync(brandId);
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("partner@ovo.test", "Partner"));
+
+        var condition = await client.PutAsJsonAsync($"/api/conditions/{conditionId}", new { status = "Satisfied", reason = "Erişim kontrol edildi", evidenceUrl = "https://example.test/evidence" });
+        Assert.Equal(HttpStatusCode.OK, condition.StatusCode);
+        var conditionJson = await condition.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("partner@ovo.test", conditionJson.GetProperty("resolvedBy").GetString());
+
+        using var content = new MultipartFormDataContent();
+        var file = new ByteArrayContent("%PDF-test"u8.ToArray());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        content.Add(file, "file", "sozlesme.pdf");
+        content.Add(new StringContent("İmzalı sözleşme"), "note");
+        var upload = await client.PostAsync($"/api/documents/Brand/{brandId}", content);
+        Assert.Equal(HttpStatusCode.Created, upload.StatusCode);
+        var uploaded = await upload.Content.ReadFromJsonAsync<JsonElement>();
+        var download = await client.GetAsync($"/api/documents/{uploaded.GetProperty("id").GetGuid()}/download");
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+    }
+
+    [Fact]
+    public async Task Active_deal_can_create_renewal_and_be_terminated_with_reason()
+    {
+        var (firstId, _) = await _factory.SeedAcceptedDealsAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/deals/{firstId}/activate", null)).StatusCode);
+
+        var renewal = await client.PostAsJsonAsync($"/api/deals/{firstId}/renew", new { reason = "Yeni dönem görüşmesi başladı" });
+        Assert.Equal(HttpStatusCode.Created, renewal.StatusCode);
+        var terminate = await client.PostAsJsonAsync($"/api/deals/{firstId}/terminate", new { reason = "Tarafların karşılıklı mutabakatı" });
+        Assert.Equal(HttpStatusCode.OK, terminate.StatusCode);
     }
 }
 
@@ -184,6 +274,54 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
         db.AddRange(rules, settings, brand);
         await db.SaveChangesAsync();
         return brand.Id;
+    }
+
+    public async Task<Guid> SeedRejectedEvaluationAsync()
+    {
+        _ = CreateClient();
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.EnsureCreatedAsync();
+        var evaluation = new BrandEvaluation
+        {
+            BrandId = Guid.NewGuid(),
+            Brand = new Brand { Name = $"Reddedilen Marka {Guid.NewGuid():N}", Economics = new BrandEconomics() },
+            Status = EvaluationStatus.Rejected,
+            Decision = DecisionStatus.Reject,
+            CreatedBy = "test"
+        };
+        evaluation.BrandId = evaluation.Brand.Id;
+        db.Evaluations.Add(evaluation);
+        await db.SaveChangesAsync();
+        return evaluation.Id;
+    }
+
+    public async Task<(Guid FirstId, Guid SecondId)> SeedAcceptedDealsAsync()
+    {
+        _ = CreateClient();
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.EnsureCreatedAsync();
+        var brand = new Brand { Name = $"Tek Anlaşmalı Marka {Guid.NewGuid():N}", Economics = new BrandEconomics() };
+        var evaluation = new BrandEvaluation { BrandId = brand.Id, Brand = brand, Status = EvaluationStatus.Approved, Decision = DecisionStatus.Accept, CreatedBy = "test" };
+        var first = new Deal { BrandId = brand.Id, Brand = brand, EvaluationId = evaluation.Id, Name = "Birinci", Status = DealStatus.Accepted };
+        var second = new Deal { BrandId = brand.Id, Brand = brand, EvaluationId = evaluation.Id, Name = "İkinci", Status = DealStatus.Accepted };
+        db.AddRange(evaluation, first, second);
+        await db.SaveChangesAsync();
+        return (first.Id, second.Id);
+    }
+
+    public async Task<Guid> SeedConditionAsync(Guid brandId)
+    {
+        _ = CreateClient();
+        await using var scope = Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var evaluation = new BrandEvaluation { BrandId = brandId, Status = EvaluationStatus.Approved, Decision = DecisionStatus.Accept, CreatedBy = "test" };
+        var condition = new PartnershipCondition { EvaluationId = evaluation.Id, Code = $"TEST-{Guid.NewGuid():N}", Title = "Test koşulu" };
+        evaluation.Conditions.Add(condition);
+        db.Evaluations.Add(evaluation);
+        await db.SaveChangesAsync();
+        return condition.Id;
     }
 
     public static string Token(string email, string role)

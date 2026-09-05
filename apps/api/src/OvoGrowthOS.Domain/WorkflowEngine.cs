@@ -102,6 +102,8 @@ public static class MonthlyPerformanceCalculator
 public static class MonthlyCloseWorkflow
 {
     public static bool CanEdit(MonthlyPerformanceStatus status) => status < MonthlyPerformanceStatus.Locked;
+    public static bool CanAdjust(MonthlyPerformanceStatus status) => status < MonthlyPerformanceStatus.Locked;
+    public static bool CanUnlock(MonthlyPerformanceStatus status) => status == MonthlyPerformanceStatus.Locked;
     public static bool CanTransition(MonthlyPerformanceStatus from, MonthlyPerformanceStatus to) =>
         (from, to) is (MonthlyPerformanceStatus.Draft, MonthlyPerformanceStatus.UnderReview)
             or (MonthlyPerformanceStatus.UnderReview, MonthlyPerformanceStatus.Approved)

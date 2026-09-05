@@ -63,3 +63,7 @@ Current verification: 26 domain tests and 4 authenticated API integration tests 
 JWT expiration is enforced in API and UI. Policies are `ReadAccess` (Admin/Partner/Analyst), `EvaluationWrite` (all three), `OperationsWrite` (Admin/Partner), and `AdminOnly`. The configuration-backed development admin is intentionally not a production identity store; replace it with OIDC or ASP.NET Core Identity before deployment.
 
 See [architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [monthly close](docs/MONTHLY_CLOSE.md), and [roadmap](docs/ROADMAP.md).
+
+## AI-assisted development
+
+Codex, Claude, Cursor and other coding assistants must read [AGENTS.md](AGENTS.md) and [the shared AI development rules](docs/AI_GELISTIRME_KURALLARI.md) before changing the project. Task-specific skills live under `.agents/skills`; compatible discovery adapters are provided under `.claude/skills` and `.cursor/skills`. User-facing changes must update `OVO_GROWTH_OS_KULLANIM_REHBERI.md` in the same change.

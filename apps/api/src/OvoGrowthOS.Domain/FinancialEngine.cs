@@ -101,17 +101,17 @@ public static class DataConfidenceCalculator
 
 public sealed record RuleContext(decimal GrossMargin, decimal ReturnRate, decimal StockCoverageDays, decimal FounderCooperation,
     decimal OperationalReadiness, decimal ProductMarketFit, decimal CurrentAdSpend, decimal AverageMonthlyRevenue, decimal PartnershipScore);
-public sealed record MatchedRule(Guid RuleId, string Name, RuleSeverity Severity, RecommendationEffect Effect, string Description);
+public sealed record MatchedRule(Guid RuleId, string Name, RuleSeverity Severity, decimal Weight, RecommendationEffect Effect, string Description);
 
 public static class RuleEvaluator
 {
     public static IReadOnlyList<MatchedRule> Evaluate(IEnumerable<Rule> rules, RuleContext context)
     {
         var matches = rules.Where(x => x.Enabled && Match(Value(x.Field, context), x.Operator, x.Value, x.SecondaryValue))
-            .Select(x => new MatchedRule(x.Id, x.Name, x.Severity, x.RecommendationEffect, x.Description)).ToList();
+            .Select(x => new MatchedRule(x.Id, x.Name, x.Severity, x.Weight, x.RecommendationEffect, x.Description)).ToList();
         if (context.GrossMargin < .30m && context.CurrentAdSpend == 0 && context.ProductMarketFit <= 2)
-            matches.Add(new(Guid.Empty, "Düşük marj, reklam harcaması yok ve ürün-pazar uyumu zayıf", RuleSeverity.Critical, RecommendationEffect.Reject, "Birden fazla kritik riski birlikte değerlendiren ret kuralı."));
-        return matches;
+            matches.Add(new(Guid.Empty, "Düşük marj, reklam harcaması yok ve ürün-pazar uyumu zayıf", RuleSeverity.Critical, decimal.MaxValue, RecommendationEffect.Reject, "Birden fazla kritik riski birlikte değerlendiren ret kuralı."));
+        return matches.OrderByDescending(x => x.Severity).ThenByDescending(x => x.Weight).ThenBy(x => x.RuleId).ToList();
     }
     private static decimal Value(RuleField field, RuleContext x) => field switch
     {
@@ -149,9 +149,9 @@ public static class DealRecommendationEngine
         if (e.GrossMarginRate >= .50m) positives.Add("Sağlıklı brüt kâr marjı performansa dayalı fiyatlamayı destekliyor.");
         if (evaluation.ProductMarketFit >= 4) positives.Add("Ürün-pazar uyumu güçlü.");
         if (e.StockCoverageDays >= 60) positives.Add("Stok yeterliliği büyümeyi destekliyor.");
-        var reject = matches.Any(x => x.Effect == RecommendationEffect.Reject) || score < 40;
-        var decision = reject ? DecisionStatus.Reject : confidence < 50 ? DecisionStatus.NeedMoreData : score < 55 || matches.Any(x => x.Severity >= RuleSeverity.High) ? DecisionStatus.ConditionalAccept : DecisionStatus.Accept;
-        var effect = matches.Select(x => x.Effect).LastOrDefault(x => x != RecommendationEffect.None);
+        var reject = matches.Any(x => x.Effect == RecommendationEffect.Reject) || score < settings.MinimumPartnershipScore;
+        var decision = reject ? DecisionStatus.Reject : confidence < settings.MinimumDataConfidenceScore ? DecisionStatus.NeedMoreData : score < settings.ConditionalPartnershipScore || matches.Any(x => x.Severity >= RuleSeverity.High) ? DecisionStatus.ConditionalAccept : DecisionStatus.Accept;
+        var effect = matches.FirstOrDefault(x => x.Effect != RecommendationEffect.None)?.Effect ?? RecommendationEffect.None;
         var deal = effect switch
         {
             RecommendationEffect.PureRevenueShareNotAllowed or RecommendationEffect.PreferRetainerLowShare => DealType.RetainerPlusRevenueShare,
@@ -166,7 +166,7 @@ public static class DealRecommendationEngine
         var conditions = Conditions(e, evaluation);
         return new(decision, score, confidence, deal, settings.DefaultContractMonths, minimumFee,
             evaluation.SetupInvestment == 0 ? settings.DefaultSetupInvestment : evaluation.SetupInvestment,
-            Math.Max(e.CurrentAdSpend, 150_000), targetMer, settings.TargetBrandContributionMargin,
+            Math.Max(e.CurrentAdSpend, settings.MinimumRecommendedAdSpend), targetMer, settings.TargetBrandContributionMargin,
             Describe(deal), conditions, positives, risks, matches.Select(x => x.Description).Where(x => x.Length > 0).ToList(),
             [$"Asgari ücret çarpanı: {settings.MinimumFeeMultiplier}", $"Kural seti: {ruleSet.Name} v{ruleSet.Version}"], missing);
     }
