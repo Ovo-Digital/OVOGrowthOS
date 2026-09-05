@@ -41,7 +41,7 @@ Open `http://localhost:3000`; Swagger is at `http://localhost:8080/swagger` unde
 
 ## Production deployment
 
-The production target is a two-service Coolify deployment: Next.js `web` and ASP.NET Core `api`, with Supabase PostgreSQL remaining external. Use `docker-compose.coolify.yml`; required values are documented in `.env.coolify.example` and [the Coolify deployment guide](docs/COOLIFY_YAYIN.md). The previous Netlify project remains connected but its builds are stopped; [the manual Netlify guide](docs/NETLIFY_YAYIN.md) is retained as an optional frontend-only route.
+The production target is a two-service Coolify deployment: Next.js `web` and ASP.NET Core `api`, with Supabase PostgreSQL remaining external. GitHub Actions builds both container images into GHCR after relevant changes reach `main`; Coolify only pulls those images and deploys them when an operator presses **Deploy**. Use `docker-compose.coolify.yml`; required values are documented in `.env.coolify.example` and [the Coolify deployment guide](docs/COOLIFY_YAYIN.md). The previous Netlify project remains connected but its builds are stopped; [the manual Netlify guide](docs/NETLIFY_YAYIN.md) is retained as an optional frontend-only route.
 
 ## Persistence and seed
 

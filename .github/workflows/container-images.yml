@@ -1,0 +1,116 @@
+name: Üretim imajlarını hazırla
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/api/**
+      - apps/web/**
+      - .github/workflows/container-images.yml
+  workflow_dispatch:
+
+concurrency:
+  group: production-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  API_IMAGE: ghcr.io/ovo-digital/ovogrowthos-api
+  WEB_IMAGE: ghcr.io/ovo-digital/ovogrowthos-web
+
+jobs:
+  ayarlari-dogrula:
+    name: Yayın ayarlarını doğrula
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+    steps:
+      - name: API adresini doğrula
+        shell: bash
+        run: |
+          if [[ -z "$PUBLIC_API_URL" ]]; then
+            echo "::error::GitHub repository variable PUBLIC_API_URL tanımlı değil. Değeri herkese açık HTTPS API adresi olmalıdır."
+            exit 1
+          fi
+
+          if [[ "$PUBLIC_API_URL" != https://* ]]; then
+            echo "::error::PUBLIC_API_URL https:// ile başlamalıdır."
+            exit 1
+          fi
+
+          if [[ "$PUBLIC_API_URL" == */ ]]; then
+            echo "::error::PUBLIC_API_URL sonunda / olmamalıdır."
+            exit 1
+          fi
+
+  api-imaji:
+    name: API imajı
+    needs: ayarlari-dogrula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v7
+
+      - name: Docker Buildx'i hazırla
+        uses: docker/setup-buildx-action@v4
+
+      - name: GitHub Container Registry'ye giriş yap
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: API imajını oluştur ve gönder
+        uses: docker/build-push-action@v7
+        with:
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:latest
+            ${{ env.API_IMAGE }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=ovogrowthos-api
+          cache-to: type=gha,mode=max,scope=ovogrowthos-api
+
+  web-imaji:
+    name: Web imajı
+    needs: ayarlari-dogrula
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v7
+
+      - name: Docker Buildx'i hazırla
+        uses: docker/setup-buildx-action@v4
+
+      - name: GitHub Container Registry'ye giriş yap
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Web imajını oluştur ve gönder
+        uses: docker/build-push-action@v7
+        with:
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.PUBLIC_API_URL }}
+          tags: |
+            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.WEB_IMAGE }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=ovogrowthos-web
+          cache-to: type=gha,mode=max,scope=ovogrowthos-web

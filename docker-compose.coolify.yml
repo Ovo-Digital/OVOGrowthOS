@@ -2,9 +2,8 @@ name: ovo-growth-os
 
 services:
   api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+    image: ${IMAGE_REGISTRY:-ghcr.io/ovo-digital}/ovogrowthos-api:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     mem_limit: 1024m
     memswap_limit: 1024m
@@ -30,11 +29,8 @@ services:
       start_period: 30s
 
   web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:?Herkese açık API adresi zorunludur}
+    image: ${IMAGE_REGISTRY:-ghcr.io/ovo-digital}/ovogrowthos-web:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
     mem_limit: 768m
     memswap_limit: 768m

@@ -82,9 +82,9 @@ Uygulama açıldıktan sonra teknik terminal pencerelerine müdahale etmeniz ger
 
 ### Canlı yayın ortamı
 
-Uygulamanın canlı sürümü OVO'nun Coolify sunucusunda iki parçayla çalışır: kullanıcıların gördüğü web arayüzü ve verileri yöneten API. Veritabanı Supabase'te kalır. Bu parçalar aynı sürüm olarak hazırlanır ve yalnızca yayın sorumlusu Coolify'dan **Deploy** işlemini başlattığında güncellenir.
+Uygulamanın canlı sürümü OVO'nun Coolify sunucusunda iki parçayla çalışır: kullanıcıların gördüğü web arayüzü ve verileri yöneten API. Veritabanı Supabase'te kalır. GitHub Actions, ana dala eklenen uygun değişikliklerden web ve API için hazır çalışma imajları üretir. Coolify sunucusu kaynak kodu derlemez; yalnızca bu hazır imajları indirir. Canlı sistem, yayın sorumlusu Coolify'dan **Deploy** işlemini başlatmadıkça güncellenmez.
 
-GitHub'a kod gönderilmesi tek başına canlı sistemi değiştirmez. Yeni sürüm önce sağlık kontrollerinden geçirilir; web giriş ekranı ve API sağlık adresi çalışıyorsa trafik yeni sürüme yönlendirilir. Yayın sorumlusu için alan adları, güvenli ayarlar ve kontrol sırası `docs/COOLIFY_YAYIN.md` dosyasında anlatılmıştır. Netlify projesi ise otomatik yayın yapmayacak şekilde durdurulmuştur.
+GitHub'a kod gönderilmesi yeni imajları hazırlar fakat tek başına canlı sistemi değiştirmez. Yayın sorumlusu imaj hazırlama işleminin başarıyla tamamlandığını gördükten sonra Coolify'da **Deploy** düğmesine basar. Yeni sürüm sağlık kontrollerinden geçirilir; web giriş ekranı ve API sağlık adresi çalışıyorsa trafik yeni sürüme yönlendirilir. Alan adları, güvenli ayarlar ve kontrol sırası `docs/COOLIFY_YAYIN.md` dosyasında anlatılmıştır. Netlify projesi ise otomatik yayın yapmayacak şekilde durdurulmuştur.
 
 ### Kullanıcı hesabınızla giriş
 
