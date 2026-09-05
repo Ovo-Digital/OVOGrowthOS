@@ -1,0 +1,21 @@
+/* OVO Logo usage */
+.ovo-logo {
+  width: 120px;
+  height: auto;
+  color: #B6FF00; /* Works with logo-currentColor.svg when inlined */
+}
+
+.ovo-logo-glow {
+  filter: drop-shadow(0 0 18px rgba(182, 255, 0, .65));
+}
+
+.ovo-brand-bg {
+  background: #000;
+}
+
+.ovo-gradient-text {
+  background: linear-gradient(135deg, #B6FF00, #00FF88, #00E5FF);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

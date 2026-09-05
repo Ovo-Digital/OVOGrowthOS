@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build: api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/apps/api/src/OvoGrowthOS.Api/OvoGrowthOS.Api.csproj"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "build: web",
+      "type": "process",
+      "command": "npm",
+      "args": ["run", "build"],
+      "options": {
+        "cwd": "${workspaceFolder}/apps/web"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "build: all",
+      "dependsOn": ["build: api", "build: web"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    }
+  ]
+}

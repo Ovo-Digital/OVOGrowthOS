@@ -1,0 +1,6 @@
+@OvoGrowthOS.Api_HostAddress = http://localhost:0
+
+GET {{OvoGrowthOS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
