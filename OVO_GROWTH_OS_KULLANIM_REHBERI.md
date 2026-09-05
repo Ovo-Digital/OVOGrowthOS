@@ -89,6 +89,14 @@ Varsayılan yerel giriş bilgileri:
 
 Yönetici, **Ayarlar → Kullanıcılar** alanından her çalışan için kişiye özel hesap oluşturabilir. Ortak şifre kullanmayın. Rolünüz hangi ekranlarda değişiklik yapabileceğinizi belirler.
 
+### Hazır örnek portföyü kullanma
+
+Sistemi ilk açtığınızda boş ekranlarla karşılaşmamanız için farklı iş durumlarını gösteren gerçekçi bir örnek portföy hazırlanmıştır. Supabase veritabanındaki mevcut kayıtlar korunur; eksik örnekler uygulama açılışında yalnızca bir kez eklenir. Güncel çalışma veritabanında toplam 11 marka bulunur.
+
+Hazır örneklerde aktif iş ortakları, değerlendirme aşamasındaki adaylar, görüşmesi süren markalar, duraklatılmış çalışmalar ve reddedilmiş adaylar birlikte görülebilir. Ciro, brüt kâr marjı, reklam bütçesi, sipariş tutarı, iade oranı, stok yeterliliği ve operasyon puanları her marka için farklıdır. Böylece yalnızca başarılı örnekleri değil; düşük marj, yüksek iade, yetersiz stok, eksik veri ve güçlü büyüme fırsatı gibi farklı durumları da inceleyebilirsiniz.
+
+Analizi tamamlanmış örneklerde **Temkinli**, **Beklenen** ve **Büyüme** senaryoları hazırdır. Ayrıca etkin, önerilmiş ve süresi dolmuş anlaşma örnekleri ile ödenmiş, kilitlenmiş ve incelemede olan aylık sonuçlar bulunur. Bu kayıtlar eğitim ve deneme amacı taşır; örnek marka adları ve iletişim bilgileri gerçek bir şirketi veya kişiyi temsil etmez. Gerçek iş akışına geçerken kendi marka kayıtlarınızı ayrıca oluşturabilirsiniz.
+
 ---
 
 ## 5. Ana sayfa nasıl okunur?

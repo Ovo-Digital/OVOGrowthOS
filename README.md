@@ -41,7 +41,7 @@ Open `http://localhost:3000`; Swagger is at `http://localhost:8080/swagger` unde
 
 ## Persistence and seed
 
-The API applies its migration chain at startup. EF migration history and all application tables live in the private `growth` schema; Supabase's `anon` and `authenticated` Data API roles have no privileges on it. The workflow migration preserves existing brands, evaluations, deals, audit values, and the old unversioned rules as `LegacyRules`; the active engine uses versioned `RuleSets` and `RuleDefinitions`. Seed data creates a published default ruleset, settings, three example brands, one active agreement, and one paid monthly close.
+The API applies its migration chain at startup. EF migration history and all application tables live in the private `growth` schema; Supabase's `anon` and `authenticated` Data API roles have no privileges on it. The workflow migration preserves existing brands, evaluations, deals, audit values, and the old unversioned rules as `LegacyRules`; the active engine uses versioned `RuleSets` and `RuleDefinitions`. Idempotent seed data creates a published default ruleset, settings, and a ten-brand fictional portfolio with varied evaluation decisions, three-scenario forecasts, commercial states, and monthly-close examples. Existing user-created brands are preserved.
 
 Create future migrations with:
 
@@ -56,7 +56,7 @@ dotnet test OvoGrowthOS.sln
 cd apps/web && npm run lint && npm run build
 ```
 
-Current verification: 26 domain tests and 4 authenticated API integration tests pass; frontend lint and production build pass; the complete migration chain generates valid PostgreSQL SQL. The API has also completed a live startup, migration check, and idempotent seed run against the configured Supabase PostgreSQL database.
+Current verification: 37 domain tests and 9 authenticated API integration tests pass; frontend lint and production build pass; the complete migration chain generates valid PostgreSQL SQL. The API has also completed a live startup, migration check, and idempotent seed run against the configured Supabase PostgreSQL database.
 
 ## Security status
 
