@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/bin?Debug/
+**/bin?Release/
+**/node_modules/
+**/.next/
+.git/
+.github/
+.codex/
+.cursor/
+.claude/
+.DS_Store
+TestResults/
+.env*
+!OVO_GROWTH_OS_KULLANIM_REHBERI.md

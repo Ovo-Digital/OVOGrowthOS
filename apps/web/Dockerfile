@@ -7,7 +7,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY apps/web .
+COPY OVO_GROWTH_OS_KULLANIM_REHBERI.md ./OVO_GROWTH_OS_KULLANIM_REHBERI.md
 ARG NEXT_PUBLIC_API_URL=http://localhost:8080
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build

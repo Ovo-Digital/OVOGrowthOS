@@ -1,9 +1,13 @@
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { ReactNode } from 'react';
 import { BookOpen, CheckCircle2, Clock3, Lightbulb } from 'lucide-react';
 
-const guidePath = path.resolve(process.cwd(), '..', '..', 'OVO_GROWTH_OS_KULLANIM_REHBERI.md');
+const guideFileName = 'OVO_GROWTH_OS_KULLANIM_REHBERI.md';
+const guidePath = [
+  path.resolve(process.cwd(), guideFileName),
+  path.resolve(process.cwd(), '..', '..', guideFileName),
+].find(existsSync) ?? path.resolve(process.cwd(), guideFileName);
 
 function slug(value:string){return value.toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function inline(value:string){return value.split(/(\*\*.*?\*\*|`.*?`)/g).filter(Boolean).map((part,i)=>part.startsWith('**')&&part.endsWith('**')?<strong key={i}>{part.slice(2,-2)}</strong>:part.startsWith('`')&&part.endsWith('`')?<code key={i} className="rounded bg-[#eef0f2] px-1.5 py-0.5 text-[.9em] text-[#303030]">{part.slice(1,-1)}</code>:part)}

@@ -25,7 +25,8 @@ services:
       postgres: { condition: service_healthy }
   frontend:
     build:
-      context: ./apps/web
+      context: .
+      dockerfile: apps/web/Dockerfile
       args: { NEXT_PUBLIC_API_URL: "http://localhost:8080" }
     ports: ["3000:3000"]
     depends_on:
