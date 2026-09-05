@@ -1,0 +1,1 @@
+import{EvaluationWizard}from"@/components/evaluation-wizard";export default async function Page({searchParams}:{searchParams:Promise<{brandId?:string}>}){const{brandId}=await searchParams;return <EvaluationWizard brandId={brandId}/>}

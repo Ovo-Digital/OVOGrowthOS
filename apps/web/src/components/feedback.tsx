@@ -1,0 +1,5 @@
+"use client";
+import {useEffect,useState} from "react";
+type Notice={id:number;message:string;tone:"success"|"error"};
+export function notify(message:string,tone:Notice["tone"]="success"){window.dispatchEvent(new CustomEvent("ovo:notice",{detail:{message,tone}}))}
+export function FeedbackHost(){const[items,setItems]=useState<Notice[]>([]);useEffect(()=>{const handler=(event:Event)=>{const detail=(event as CustomEvent<Omit<Notice,"id">>).detail;const id=Date.now();setItems(x=>[...x,{id,...detail}]);window.setTimeout(()=>setItems(x=>x.filter(y=>y.id!==id)),4500)};window.addEventListener("ovo:notice",handler);return()=>window.removeEventListener("ovo:notice",handler)},[]);return <div aria-live="polite" className="fixed bottom-5 right-5 z-[100] space-y-2">{items.map(x=><div key={x.id} className={`max-w-sm rounded-xl border px-4 py-3 text-sm font-medium shadow-lg ${x.tone==="success"?"border-[#95c9b8] bg-[#effcf6] text-[#005e46]":"border-[#f1aaa4] bg-[#fff4f2] text-[#8e1f0b]"}`}>{x.message}</div>)}</div>}

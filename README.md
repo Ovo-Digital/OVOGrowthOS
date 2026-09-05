@@ -39,6 +39,10 @@ data automatically.
 
 Open `http://localhost:3000`; Swagger is at `http://localhost:8080/swagger` under Compose. Development login: `admin@ovodigital.com` / `ChangeMe123!`.
 
+## Netlify deployment
+
+The Next.js frontend is configured for the existing `ovogrowthos` Netlify project through the root `netlify.toml`. Netlify automatic builds are intentionally stopped; production releases are created manually from the current local source. The ASP.NET Core API must be hosted separately over HTTPS and supplied as `NEXT_PUBLIC_API_URL`. See [the manual deployment guide](docs/NETLIFY_YAYIN.md).
+
 ## Persistence and seed
 
 The API applies its migration chain at startup. EF migration history and all application tables live in the private `growth` schema; Supabase's `anon` and `authenticated` Data API roles have no privileges on it. The workflow migration preserves existing brands, evaluations, deals, audit values, and the old unversioned rules as `LegacyRules`; the active engine uses versioned `RuleSets` and `RuleDefinitions`. Idempotent seed data creates a published default ruleset, settings, and a ten-brand fictional portfolio with varied evaluation decisions, three-scenario forecasts, commercial states, and monthly-close examples. Existing user-created brands are preserved.

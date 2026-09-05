@@ -1,0 +1,1 @@
+import{EvaluationWizard}from"@/components/evaluation-wizard";export default async function Page({params}:{params:Promise<{id:string}>}){const{id}=await params;return <EvaluationWizard evaluationId={id}/>}

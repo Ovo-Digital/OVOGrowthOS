@@ -80,6 +80,12 @@ Listeden **OVO: Full Stack + Chrome** seçeneğini seçip çalıştırın. Siste
 
 Uygulama açıldıktan sonra teknik terminal pencerelerine müdahale etmeniz gerekmez. İşiniz bittiğinde VS Code'daki kırmızı durdurma düğmesine basabilirsiniz.
 
+### Netlify'da canlı yayın
+
+Uygulamanın internet üzerindeki arayüzü `https://ovogrowthos.netlify.app` adresinde yayınlanabilir. GitHub'a gönderilen her değişiklik otomatik olarak canlıya alınmaz. Yeni sürüm hazır olduğunda önce Netlify ön izlemesi oluşturulur, ekip temel ekranları kontrol eder ve yalnızca onaylanan sürüm elle canlıya çıkarılır. Böylece tamamlanmamış bir geliştirme yanlışlıkla kullanıcıların karşısına çıkmaz.
+
+Netlify yalnızca kullanıcıların gördüğü arayüzü yayınlar. Giriş, marka kayıtları ve hesaplamalar için kullanılan API'nin ayrıca güvenli bir internet adresinde çalışıyor olması gerekir. Yayın sorumlusu için gerekli komutlar ve kontroller `docs/NETLIFY_YAYIN.md` dosyasında anlatılmıştır.
+
 ### Kullanıcı hesabınızla giriş
 
 Varsayılan yerel giriş bilgileri:
