@@ -1,0 +1,53 @@
+name: ovo-growth-os
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    cpus: "1.0"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_EnableDiagnostics: "0"
+      ConnectionStrings__Database: ${SUPABASE_DATABASE_CONNECTION_STRING:?Supabase bağlantısı zorunludur}
+      Jwt__Key: ${SERVICE_BASE64_64_JWT}
+      Jwt__Issuer: ${JWT_ISSUER:-ovo-growth-os}
+      Jwt__Audience: ${JWT_AUDIENCE:-ovo-growth-os-web}
+      DefaultAdmin__Email: ${DEFAULT_ADMIN_EMAIL:-admin@ovodigital.com}
+      DefaultAdmin__PasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:?Yönetici parola özeti zorunludur}
+      WebOrigin: ${WEB_ORIGIN:?Web adresi zorunludur}
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL:?Herkese açık API adresi zorunludur}
+    restart: unless-stopped
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: "0.5"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3000/login"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s

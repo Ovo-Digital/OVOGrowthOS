@@ -39,9 +39,9 @@ data automatically.
 
 Open `http://localhost:3000`; Swagger is at `http://localhost:8080/swagger` under Compose. Development login: `admin@ovodigital.com` / `ChangeMe123!`.
 
-## Netlify deployment
+## Production deployment
 
-The Next.js frontend is configured for the existing `ovogrowthos` Netlify project through the root `netlify.toml`. Netlify automatic builds are intentionally stopped; production releases are created manually from the current local source. The ASP.NET Core API must be hosted separately over HTTPS and supplied as `NEXT_PUBLIC_API_URL`. See [the manual deployment guide](docs/NETLIFY_YAYIN.md).
+The production target is a two-service Coolify deployment: Next.js `web` and ASP.NET Core `api`, with Supabase PostgreSQL remaining external. Use `docker-compose.coolify.yml`; required values are documented in `.env.coolify.example` and [the Coolify deployment guide](docs/COOLIFY_YAYIN.md). The previous Netlify project remains connected but its builds are stopped; [the manual Netlify guide](docs/NETLIFY_YAYIN.md) is retained as an optional frontend-only route.
 
 ## Persistence and seed
 
