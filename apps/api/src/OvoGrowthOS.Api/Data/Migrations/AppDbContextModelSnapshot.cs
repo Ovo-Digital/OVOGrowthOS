@@ -138,6 +138,37 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("Brands", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ContactOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "ContactOn", "CreatedAt");
+
+                    b.ToTable("BrandContactNotes", "growth");
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandEconomics", b =>
                 {
                     b.Property<Guid>("Id")
@@ -365,6 +396,147 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasIndex("BrandId", "Status", "CreatedAt");
 
                     b.ToTable("Evaluations", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandFollowUp", b =>
+                {
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("NextContactOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("NextStep")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("WaitingReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("BrandId");
+
+                    b.HasIndex("OwnerId", "NextContactOn");
+
+                    b.ToTable("BrandFollowUps", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.CollectionAccount", b =>
+                {
+                    b.Property<Guid>("MonthlyPerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("InvoiceOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("InvoiceReference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("LegacyPaidAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("ReceivableAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("MonthlyPerformanceId");
+
+                    b.HasIndex("DueOn");
+
+                    b.ToTable("CollectionAccounts", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionAccounts_Amounts", "\"ReceivableAmount\" >= 0 AND \"LegacyPaidAmount\" >= 0 AND \"LegacyPaidAmount\" <= \"ReceivableAmount\"");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.CollectionPayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MonthlyPerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("VoidReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VoidedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasFilter("\"VoidedAt\" IS NULL");
+
+                    b.HasIndex("MonthlyPerformanceId", "PaidOn");
+
+                    b.ToTable("CollectionPayments", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_CollectionPayments_Amount", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_CollectionPayments_Reference", "length(btrim(\"Reference\")) > 0");
+
+                            t.HasCheckConstraint("CK_CollectionPayments_Void", "\"VoidedAt\" IS NULL OR (length(btrim(\"VoidReason\")) > 0 AND length(btrim(\"VoidedBy\")) > 0)");
+                        });
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.CommissionAdjustment", b =>
@@ -712,6 +884,86 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("GeneralSettings", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentAccount", b =>
+                {
+                    b.Property<Guid>("DealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("DealId");
+
+                    b.ToTable("InvestmentAccounts", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("VoidReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VoidedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasFilter("\"VoidedAt\" IS NULL");
+
+                    b.HasIndex("DealId", "OccurredOn");
+
+                    b.ToTable("InvestmentEntries", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_InvestmentEntries_Amount", "\"Amount\" > 0 AND \"Kind\" IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_InvestmentEntries_Reference", "length(btrim(\"Reference\")) > 0");
+
+                            t.HasCheckConstraint("CK_InvestmentEntries_Void", "\"VoidedAt\" IS NULL OR (length(btrim(\"VoidReason\")) > 0 AND length(btrim(\"VoidedBy\")) > 0)");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.MonthlyPerformance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -986,6 +1238,137 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("PartnershipConditions", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalAccess", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("BrandId");
+
+                    b.ToTable("PortalAccesses", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalDocumentShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("SharedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId");
+
+                    b.HasIndex("DocumentId")
+                        .IsUnique()
+                        .HasFilter("\"RevokedAt\" IS NULL");
+
+                    b.ToTable("PortalDocumentShares", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalQuestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset?>("AnsweredAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "CreatedAt");
+
+                    b.HasIndex("ReportId", "BrandId");
+
+                    b.HasIndex("UserId", "BrandId");
+
+                    b.ToTable("PortalQuestions", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerformanceId");
+
+                    b.HasIndex("BrandId", "Year", "Month", "Version")
+                        .IsUnique();
+
+                    b.ToTable("PortalReports", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_PortalReports_Period", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Version\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.Rule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1189,6 +1572,139 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("Scenarios", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>
+                {
+                    b.Property<Guid>("MonthlyPerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfirmedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastReviewReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("MonthlyPerformanceId");
+
+                    b.ToTable("ServiceCostAccounts", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal?>("HourlyCost")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("Hours")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateOnly>("IncurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("MonthlyPerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("VoidReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VoidedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasFilter("\"VoidedAt\" IS NULL");
+
+                    b.HasIndex("MonthlyPerformanceId", "IncurredOn");
+
+                    b.ToTable("ServiceCostEntries", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_ServiceCostEntries_Amount", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_ServiceCostEntries_Kind", "(\"Kind\" = 0 AND \"Hours\" IS NULL AND \"HourlyCost\" IS NULL) OR (\"Kind\" = 1 AND \"Hours\" IS NOT NULL AND \"HourlyCost\" IS NOT NULL AND \"Hours\" > 0 AND \"HourlyCost\" > 0 AND \"Amount\" = round(\"Hours\" * \"HourlyCost\", 4))");
+
+                            t.HasCheckConstraint("CK_ServiceCostEntries_Reference", "length(btrim(\"Reference\")) > 0");
+
+                            t.HasCheckConstraint("CK_ServiceCostEntries_Void", "\"VoidedAt\" IS NULL OR (length(btrim(\"VoidReason\")) > 0 AND length(btrim(\"VoidedBy\")) > 0)");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Complete")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MonthlyPerformanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MonthlyPerformanceId", "CreatedAt");
+
+                    b.ToTable("ServiceCostReviews", "growth");
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1235,6 +1751,93 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("UserAccounts", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssigneeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CompletedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("DealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateOnly>("DueOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DealId")
+                        .IsUnique()
+                        .HasFilter("\"Kind\" = 2");
+
+                    b.HasIndex("AssigneeId", "CompletedAt", "DueOn");
+
+                    b.HasIndex("BrandId", "CompletedAt", "DueOn");
+
+                    b.HasIndex("BrandId", "Year", "Month")
+                        .IsUnique()
+                        .HasFilter("\"Kind\" = 1");
+
+                    b.ToTable("WorkTasks", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkTasks_Target", "(\"Kind\" = 0 AND \"DealId\" IS NULL AND \"Year\" IS NULL AND \"Month\" IS NULL) OR (\"Kind\" = 1 AND \"DealId\" IS NOT NULL AND \"Year\" IS NOT NULL AND \"Month\" IS NOT NULL AND \"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12) OR (\"Kind\" = 2 AND \"DealId\" IS NOT NULL AND \"Year\" IS NULL AND \"Month\" IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandEconomics", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.Brand", null)
@@ -1255,6 +1858,38 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Navigation("Brand");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandFollowUp", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.BrandFollowUp", "BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.CollectionAccount", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
+                        .WithOne("Collection")
+                        .HasForeignKey("OvoGrowthOS.Domain.CollectionAccount", "MonthlyPerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.CollectionPayment", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.CollectionAccount", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("MonthlyPerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.CommissionAdjustment", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
@@ -1273,6 +1908,24 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Brand");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentAccount", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Deal", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.InvestmentAccount", "DealId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentEntry", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.InvestmentAccount", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.MonthlyPerformance", b =>
@@ -1307,6 +1960,72 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalAccess", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.UserAccount", "User")
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.PortalAccess", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalDocumentShare", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.DocumentAttachment", "Document")
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Document");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalQuestion", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.PortalReport", null)
+                        .WithMany()
+                        .HasForeignKey("ReportId", "BrandId")
+                        .HasPrincipalKey("Id", "BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.PortalAccess", null)
+                        .WithMany()
+                        .HasForeignKey("UserId", "BrandId")
+                        .HasPrincipalKey("UserId", "BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalReport", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
+                        .WithMany()
+                        .HasForeignKey("PerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.Rule", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.RuleSet", "RuleSet")
@@ -1327,6 +2046,57 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.ServiceCostAccount", "MonthlyPerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostEntry", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.ServiceCostAccount", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("MonthlyPerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostReview", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.ServiceCostAccount", null)
+                        .WithMany("Reviews")
+                        .HasForeignKey("MonthlyPerformanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTask", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.UserAccount", "Assignee")
+                        .WithMany()
+                        .HasForeignKey("AssigneeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.Deal", null)
+                        .WithMany()
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Assignee");
+
+                    b.Navigation("Brand");
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.Brand", b =>
                 {
                     b.Navigation("Deals");
@@ -1345,19 +2115,38 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Navigation("Scenarios");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.CollectionAccount", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.Deal", b =>
                 {
                     b.Navigation("Conditions");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentAccount", b =>
+                {
+                    b.Navigation("Entries");
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.MonthlyPerformance", b =>
                 {
                     b.Navigation("Adjustments");
+
+                    b.Navigation("Collection");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.RuleSet", b =>
                 {
                     b.Navigation("Rules");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>
+                {
+                    b.Navigation("Entries");
+
+                    b.Navigation("Reviews");
                 });
 #pragma warning restore 612, 618
         }

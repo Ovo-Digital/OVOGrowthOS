@@ -8,34 +8,56 @@ using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Features;
 
-public static class WorkflowEndpoints
+public static partial class WorkflowEndpoints
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles };
 
     public static WebApplication MapWorkflowEndpoints(this WebApplication app)
     {
         MapBrands(app); MapEvaluations(app); MapRules(app); MapScenarios(app); MapDeals(app); MapConditions(app); MapUsers(app);
-        MapDealTemplates(app); MapDocuments(app); MapPerformance(app); MapDashboard(app); MapSearchAndTasks(app); MapSettingsAndAudit(app);
+        MapDealTemplates(app); MapDocuments(app); MapPerformance(app); MapDashboard(app); MapSearchAndTasks(app); MapSettingsAndAudit(app); MapTeamWork(app); MapCollections(app); MapOperatingCosts(app); MapBrandReports(app); MapPerformanceImports(app);
+        MapCustomerPortal(app);
         return app;
     }
 
     private static void MapUsers(WebApplication app)
     {
         var group = app.MapGroup("/api/users").RequireAuthorization("AdminOnly");
-        group.MapGet("/", async (AppDbContext db) => Results.Ok(await db.UserAccounts.AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Email, x.Name, x.Role, x.IsActive, x.CreatedAt }).ToListAsync()));
+        group.MapGet("/", async (AppDbContext db) => Results.Ok(await db.UserAccounts.AsNoTracking().Where(x => x.Role != "BrandClient").OrderBy(x => x.Name).Select(x => new { x.Id, x.Email, x.Name, x.Role, x.IsActive, x.CreatedAt }).ToListAsync()));
         group.MapPost("/", async (UserAccountRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
             if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 10) return Results.ValidationProblem(new Dictionary<string,string[]> { ["password"] = ["Şifre en az 10 karakter olmalıdır."] });
-            if (await db.UserAccounts.AnyAsync(x => x.Email == request.Email)) return Results.Conflict(new { error = "Bu e-posta ile kayıtlı bir kullanıcı zaten var." });
+            var email = request.Email.Trim().ToLowerInvariant();
+            if (await db.UserAccounts.AnyAsync(x => x.Email == email)) return Results.Conflict(new { error = "Bu e-posta ile kayıtlı bir kullanıcı zaten var." });
             var account = new UserAccount { Email = request.Email.Trim().ToLowerInvariant(), Name = request.Name.Trim(), Role = request.Role, PasswordHash = JwtTokenService.HashPassword(request.Password), IsActive = request.IsActive };
             db.Add(account); Audit(db, user, "UserCreated", "UserAccount", account.Id, null, new { account.Email, account.Name, account.Role, account.IsActive }); await db.SaveChangesAsync();
             return Results.Created($"/api/users/{account.Id}", new { account.Id, account.Email, account.Name, account.Role, account.IsActive });
-        });
+        }).AddEndpointFilter<ValidationFilter<UserAccountRequest>>();
         group.MapPut("/{id:guid}", async (Guid id, UserAccountRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
+            // Serialize account changes across API instances so two managers cannot remove the last admin concurrently.
+            await using var transaction = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
+            if (transaction is not null) await db.Database.ExecuteSqlRawAsync("LOCK TABLE growth.\"UserAccounts\" IN SHARE ROW EXCLUSIVE MODE");
+            var actorId = Guid.Parse(user.FindFirstValue("uid")!);
+            var actorVersion = int.Parse(user.FindFirstValue("session_version")!, System.Globalization.CultureInfo.InvariantCulture);
+            if (!await db.UserAccounts.AnyAsync(x => x.Id == actorId && x.IsActive && x.Role == "Admin" && x.TokenVersion == actorVersion))
+                return Results.Unauthorized();
             var account = await db.UserAccounts.FindAsync(id); if (account is null) return Results.NotFound();
-            var old = JsonSerializer.Serialize(new { account.Email, account.Name, account.Role, account.IsActive }, Json); account.Email = request.Email.Trim().ToLowerInvariant(); account.Name = request.Name.Trim(); account.Role = request.Role; account.IsActive = request.IsActive; if (!string.IsNullOrWhiteSpace(request.Password)) account.PasswordHash = JwtTokenService.HashPassword(request.Password); account.TokenVersion++; account.UpdatedAt = DateTimeOffset.UtcNow; Audit(db, user, "UserChanged", "UserAccount", id, old, new { account.Email, account.Name, account.Role, account.IsActive }); await db.SaveChangesAsync(); return Results.Ok(new { account.Id, account.Email, account.Name, account.Role, account.IsActive });
-        });
+            if (account.Role == "BrandClient") return Results.Conflict(new { error = "Müşteri hesaplarını müşteri portalı yönetiminden düzenleyin." });
+            var email = request.Email.Trim().ToLowerInvariant();
+            if (await db.UserAccounts.AnyAsync(x => x.Email == email && x.Id != id)) return Results.Conflict(new { error = "Bu e-posta ile kayıtlı bir kullanıcı zaten var." });
+            if (account.IsActive && account.Role == "Admin" && (!request.IsActive || request.Role != "Admin") &&
+                !await db.UserAccounts.AnyAsync(x => x.Id != id && x.IsActive && x.Role == "Admin"))
+                return Results.Conflict(new { error = "Son etkin yöneticinin hesabı kapatılamaz veya rolü değiştirilemez. Önce başka bir yönetici oluşturun." });
+            var old = JsonSerializer.Serialize(new { account.Email, account.Name, account.Role, account.IsActive }, Json);
+            account.Email = email; account.Name = request.Name.Trim(); account.Role = request.Role; account.IsActive = request.IsActive;
+            if (!string.IsNullOrEmpty(request.Password)) account.PasswordHash = JwtTokenService.HashPassword(request.Password);
+            account.TokenVersion++; account.UpdatedAt = DateTimeOffset.UtcNow;
+            Audit(db, user, "UserChanged", "UserAccount", id, old, new { account.Email, account.Name, account.Role, account.IsActive });
+            await db.SaveChangesAsync();
+            if (transaction is not null) await transaction.CommitAsync();
+            return Results.Ok(new { account.Id, account.Email, account.Name, account.Role, account.IsActive });
+        }).AddEndpointFilter<ValidationFilter<UserAccountRequest>>();
     }
 
     private static void MapBrands(WebApplication app)
@@ -250,7 +272,7 @@ public static class WorkflowEndpoints
     private static void MapPerformance(WebApplication app)
     {
         var group = app.MapGroup("/api/performance").RequireAuthorization("ReadAccess");
-        group.MapGet("/", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,MonthlyPerformanceStatus? status=null,int? year=null,int? month=null,string sort="recent") => {var q=db.MonthlyPerformances.AsNoTracking().Include(x=>x.Brand).Include(x=>x.Adjustments).AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);if(year.HasValue)q=q.Where(x=>x.Year==year);if(month.HasValue)q=q.Where(x=>x.Month==month);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.Year).ThenBy(x=>x.Month),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.Year).ThenByDescending(x=>x.Month)};return Results.Ok(await Page(ordered,page,pageSize));}).RequireAuthorization("ReadAccess");
+        group.MapGet("/", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,MonthlyPerformanceStatus? status=null,int? year=null,int? month=null,string sort="recent") => {var q=db.MonthlyPerformances.AsNoTracking().Include(x=>x.Brand).Include(x=>x.Deal).Include(x=>x.Adjustments).AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);if(year.HasValue)q=q.Where(x=>x.Year==year);if(month.HasValue)q=q.Where(x=>x.Month==month);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.Year).ThenBy(x=>x.Month),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.Year).ThenByDescending(x=>x.Month)};return Results.Ok(await Page(ordered,page,pageSize));}).RequireAuthorization("ReadAccess");
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) => await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).Include(x => x.Adjustments).FirstOrDefaultAsync(x => x.Id == id) is { } x ? Results.Ok(x) : Results.NotFound()).RequireAuthorization("ReadAccess");
         group.MapPost("/calculate", async (PerformanceRequest request, AppDbContext db) => { var deal = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active); if (deal is null) return Results.Conflict(new { error = "Etkin bir anlaşma gereklidir." }); if(deal.BrandId!=request.BrandId)return Results.Conflict(new{error="Seçilen anlaşma bu markaya ait değildir."}); var p = ToPerformance(request); MonthlyPerformanceCalculator.Calculate(p, deal); return Results.Ok(p); }).AddEndpointFilter<ValidationFilter<PerformanceRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/", async (PerformanceRequest request, AppDbContext db, ClaimsPrincipal user) => { var deal = await db.Deals.SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active); if (deal is null) return Results.Conflict(new { error = "Etkin bir anlaşma gereklidir." }); if(deal.BrandId!=request.BrandId)return Results.Conflict(new{error="Seçilen anlaşma bu markaya ait değildir."});if(await db.MonthlyPerformances.AnyAsync(x=>x.BrandId==request.BrandId&&x.Year==request.Year&&x.Month==request.Month))return Results.Conflict(new{error="Bu marka ve dönem için daha önce kayıt oluşturulmuş."}); var p = ToPerformance(request); MonthlyPerformanceCalculator.Calculate(p, deal); db.Add(p); Audit(db, user, "MonthlyPerformanceCreated", "MonthlyPerformance", p.Id, null, p); await db.SaveChangesAsync(); return Results.Created($"/api/performance/{p.Id}", p); }).AddEndpointFilter<ValidationFilter<PerformanceRequest>>().RequireAuthorization("OperationsWrite");
@@ -260,40 +282,19 @@ public static class WorkflowEndpoints
         group.MapPost("/{id:guid}/lock", async (Guid id, AppDbContext db, ClaimsPrincipal user) => await LockPerformance(id,db,user)).RequireAuthorization("OperationsWrite");
         group.MapPost("/{id:guid}/unlock", async (Guid id, TransitionRequest request, AppDbContext db, ClaimsPrincipal user) => { if (string.IsNullOrWhiteSpace(request.Reason)) return Results.ValidationProblem(new Dictionary<string,string[]>{{"reason",["Kilidi açma nedeni zorunludur."]}}); var p = await db.MonthlyPerformances.FindAsync(id); if (p is null) return Results.NotFound(); if (!MonthlyCloseWorkflow.CanUnlock(p.Status)) return Results.Conflict(new{error="Yalnızca henüz faturalanmamış kilitli dönemlerin kilidi açılabilir."}); var old = p.Status; p.Status = MonthlyPerformanceStatus.Approved; Audit(db, user, "MonthlyCloseUnlocked", "MonthlyPerformance", id, old, p.Status, request.Reason); await db.SaveChangesAsync(); return Results.Ok(p); }).RequireAuthorization("AdminOnly");
         group.MapPost("/{id:guid}/adjustments", async (Guid id, AdjustmentRequest request, AppDbContext db, ClaimsPrincipal user) => { var p = await db.MonthlyPerformances.Include(x => x.Deal).Include(x => x.Adjustments).SingleOrDefaultAsync(x => x.Id == id); if (p is null) return Results.NotFound();if(!MonthlyCloseWorkflow.CanAdjust(p.Status))return Results.Conflict(new{error="Kilitlenmiş, faturalanmış veya ödenmiş dönemlere düzeltme eklenemez. Faturalanmamış kilitli dönem için önce yönetici kilidi açmalıdır."}); var a = new CommissionAdjustment { MonthlyPerformanceId = id, Amount = request.Amount, Reason = request.Reason.Trim(), CreatedBy = User(user) }; p.Adjustments.Add(a); db.CommissionAdjustments.Add(a); MonthlyPerformanceCalculator.Calculate(p, p.Deal!); Audit(db, user, "CommissionAdjusted", "MonthlyPerformance", id, null, a, request.Reason); await db.SaveChangesAsync(); return Results.Ok(new { adjustment = a, p.OvoFee, p.CommissionBreakdownJson }); }).AddEndpointFilter<ValidationFilter<AdjustmentRequest>>().RequireAuthorization("OperationsWrite");
-        group.MapPost("/{id:guid}/invoice", async (Guid id, AppDbContext db, ClaimsPrincipal user) => await CommissionTransition(id, CommissionStatus.Invoiced, MonthlyPerformanceStatus.Invoiced, "CommissionInvoiced", db, user)).RequireAuthorization("OperationsWrite");
-        group.MapPost("/{id:guid}/pay", async (Guid id, AppDbContext db, ClaimsPrincipal user) => await CommissionTransition(id, CommissionStatus.Paid, MonthlyPerformanceStatus.Paid, "CommissionPaid", db, user)).RequireAuthorization("OperationsWrite");
-        app.MapGet("/api/commissions", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,CommissionStatus? status=null,string sort="recent") => {var q=db.MonthlyPerformances.AsNoTracking().Include(x=>x.Brand).Include(x=>x.Deal).Include(x=>x.Adjustments).AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.CommissionStatus==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.Year).ThenBy(x=>x.Month),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.Year).ThenByDescending(x=>x.Month)};var projected=ordered.Select(x=>new{x.Id,x.Year,x.Month,brand=x.Brand!.Name,x.CommissionableRevenue,dealType=x.Deal!.DealType,x.Deal.MonthlyRetainer,x.Deal.MinimumMonthlyFee,x.OvoFee,effectiveRate=x.CommissionableRevenue==0?0:x.OvoFee/x.CommissionableRevenue,x.CommissionStatus});return Results.Ok(await Page(projected,page,pageSize));}).RequireAuthorization("ReadAccess");
+        group.MapPost("/{id:guid}/invoice", () => Results.Conflict(new { error = "Hakediş dökümündeki fatura ve tahsilat formunu kullanın." })).RequireAuthorization("OperationsWrite");
+        group.MapPost("/{id:guid}/pay", () => Results.Conflict(new { error = "Hakediş dökümünden ödeme tutarı, tarihi ve referansı ile tahsilat kaydedin." })).RequireAuthorization("OperationsWrite");
+        app.MapGet("/api/commissions", ListCommissions).RequireAuthorization("ReadAccess");
     }
     private static MonthlyPerformance ToPerformance(PerformanceRequest r) { var p = new MonthlyPerformance { BrandId = r.BrandId, DealId = r.DealId, Year = r.Year, Month = r.Month }; Copy(p, r); return p; }
     private static void Copy(MonthlyPerformance p, PerformanceRequest r) { p.GrossSales=r.GrossSales;p.Vat=r.Vat;p.Refunds=r.Refunds;p.Cancellations=r.Cancellations;p.Chargebacks=r.Chargebacks;p.CustomerPaidShipping=r.CustomerPaidShipping;p.GiftCardTopups=r.GiftCardTopups;p.Orders=r.Orders;p.Sessions=r.Sessions;p.NewCustomers=r.NewCustomers;p.ReturningCustomers=r.ReturningCustomers;p.Cogs=r.Cogs;p.PaymentFees=r.PaymentFees;p.FulfillmentCosts=r.FulfillmentCosts;p.ShippingSubsidy=r.ShippingSubsidy;p.OtherVariableCosts=r.OtherVariableCosts;p.MetaSpend=r.MetaSpend;p.GoogleSpend=r.GoogleSpend;p.TikTokSpend=r.TikTokSpend;p.InfluencerSpend=r.InfluencerSpend;p.OtherAdSpend=r.OtherAdSpend; }
     private static async Task<IResult> SubmitPerformance(Guid id,AppDbContext db,ClaimsPrincipal user){var p=await db.MonthlyPerformances.FindAsync(id);if(p is null)return Results.NotFound();if(!MonthlyCloseWorkflow.CanTransition(p.Status,MonthlyPerformanceStatus.UnderReview))return Results.Conflict(new{error="Yalnızca taslak dönem kontrole gönderilebilir."});p.Status=MonthlyPerformanceStatus.UnderReview;p.PreparedBy=User(user);p.SubmittedAt=DateTimeOffset.UtcNow;Audit(db,user,"MonthlyPerformanceSubmitted","MonthlyPerformance",id,MonthlyPerformanceStatus.Draft,p.Status);await db.SaveChangesAsync();return Results.Ok(p);}
     private static async Task<IResult> ApprovePerformance(Guid id,AppDbContext db,ClaimsPrincipal user){var p=await db.MonthlyPerformances.FindAsync(id);if(p is null)return Results.NotFound();if(!MonthlyCloseWorkflow.CanTransition(p.Status,MonthlyPerformanceStatus.Approved))return Results.Conflict(new{error="Yalnızca kontrol bekleyen dönem onaylanabilir."});var reviewer=User(user);if(string.Equals(p.PreparedBy,reviewer,StringComparison.OrdinalIgnoreCase))return Results.Conflict(new{error="Aylık sonucu hazırlayan kişi aynı kaydı onaylayamaz. Başka bir yetkili onaylamalıdır."});p.Status=MonthlyPerformanceStatus.Approved;p.ReviewedBy=reviewer;p.ApprovedAt=DateTimeOffset.UtcNow;Audit(db,user,"MonthlyPerformanceApproved","MonthlyPerformance",id,MonthlyPerformanceStatus.UnderReview,p.Status);await db.SaveChangesAsync();return Results.Ok(p);}
     private static async Task<IResult> LockPerformance(Guid id,AppDbContext db,ClaimsPrincipal user){var p=await db.MonthlyPerformances.FindAsync(id);if(p is null)return Results.NotFound();if(!MonthlyCloseWorkflow.CanTransition(p.Status,MonthlyPerformanceStatus.Locked))return Results.Conflict(new{error="Yalnızca onaylanmış dönem kilitlenebilir."});p.Status=MonthlyPerformanceStatus.Locked;p.LockedAt=DateTimeOffset.UtcNow;Audit(db,user,"MonthlyCloseLocked","MonthlyPerformance",id,MonthlyPerformanceStatus.Approved,p.Status);await db.SaveChangesAsync();return Results.Ok(p);}
-    private static async Task<IResult> CommissionTransition(Guid id, CommissionStatus commission, MonthlyPerformanceStatus period, string action, AppDbContext db, ClaimsPrincipal user) { var p=await db.MonthlyPerformances.FindAsync(id);if(p is null)return Results.NotFound();if(!MonthlyCloseWorkflow.CanTransition(p.Status,period))return Results.Conflict(new{error=$"Dönem {p.Status} durumundan {period} durumuna geçirilemez."});p.Status=period;p.CommissionStatus=commission;Audit(db,user,action,"MonthlyPerformance",id,null,p);await db.SaveChangesAsync();return Results.Ok(p); }
 
     private static void MapDashboard(WebApplication app)
     {
-        app.MapGet("/api/dashboard", async (AppDbContext db) =>
-        {
-            var latestPeriod = await db.MonthlyPerformances.AsNoTracking().OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).Select(x => new { x.Year, x.Month }).FirstOrDefaultAsync();
-            var performance = latestPeriod is null ? [] : await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand)!.ThenInclude(x => x!.Economics).Include(x => x.Deal)!.ThenInclude(x => x!.Conditions).Where(x => x.Year == latestPeriod.Year && x.Month == latestPeriod.Month).ToListAsync();
-            var activeBrands = await db.Brands.CountAsync(x => x.Status == BrandStatus.Active); var netRevenue=performance.Sum(x=>x.NetRevenue);var ovoRevenue=performance.Sum(x=>x.OvoFee);var ovoProfit=performance.Sum(x=>x.OvoGrossProfit);
-            var outstanding=performance.Where(x=>x.CommissionStatus!=CommissionStatus.Paid).Sum(x=>x.OvoFee);var paid=performance.Where(x=>x.CommissionStatus==CommissionStatus.Paid).Sum(x=>x.OvoFee);
-            var scores=await db.Evaluations.Where(x=>x.Status==EvaluationStatus.Approved||x.Status==EvaluationStatus.Analyzed).Select(x=>x.PartnershipScore).ToListAsync();
-            var history=await db.MonthlyPerformances.AsNoTracking().ToListAsync();
-            var trends=history.GroupBy(x=>new{x.Year,x.Month}).OrderBy(x=>x.Key.Year).ThenBy(x=>x.Key.Month).TakeLast(12)
-                .Select(x=>new{x.Key.Year,x.Key.Month,netRevenue=x.Sum(y=>y.NetRevenue),ovoRevenue=x.Sum(y=>y.OvoFee),ovoGrossProfit=x.Sum(y=>y.OvoGrossProfit),ovoMargin=FinancialCalculator.Ratio(x.Sum(y=>y.OvoGrossProfit),x.Sum(y=>y.OvoFee)),mer=FinancialCalculator.Ratio(x.Sum(y=>y.NetRevenue),x.Sum(y=>y.TotalAdSpend))}).ToList();
-            var dealModelDistribution=(await db.Deals.AsNoTracking().Where(x=>x.Status==DealStatus.Active).Select(x=>x.DealType).ToListAsync()).GroupBy(x=>x).Select(x=>new{dealType=x.Key,count=x.Count()}).ToList();
-            var settings=await db.GeneralSettings.AsNoTracking().SingleAsync(); var largestFee=PortfolioRiskCalculator.LargestShare(performance.Select(x=>x.OvoFee));
-            return Results.Ok(new { activeBrands, portfolioNetRevenue=netRevenue, ovoMonthlyRevenue=ovoRevenue, ovoGrossProfit=ovoProfit,
-                ovoGrossMargin=FinancialCalculator.Ratio(ovoProfit,ovoRevenue),outstandingCommission=outstanding,paidCommission=paid,
-                setupInvestmentOutstanding=await db.Deals.Where(x=>x.Status==DealStatus.Active).SumAsync(x=>x.SetupInvestment),
-                averagePartnershipScore=scores.Count==0?0:scores.Average(),portfolioMer=FinancialCalculator.Ratio(netRevenue,performance.Sum(x=>x.TotalAdSpend)),
-                largestClientRevenueShare=PortfolioRiskCalculator.LargestShare(performance.Select(x=>x.NetRevenue)),largestClientOvoFeeShare=largestFee,
-                top3RevenueConcentration=PortfolioRiskCalculator.TopThreeShare(performance.Select(x=>x.NetRevenue)),top3OvoRevenueConcentration=PortfolioRiskCalculator.TopThreeShare(performance.Select(x=>x.OvoFee)),
-                concentrationRisk=largestFee>settings.ConcentrationRiskThreshold?"High":"Normal", period=latestPeriod,trends,dealModelDistribution,
-                brands=performance.Select(x=>new{x.BrandId,name=x.Brand!.Name,x.NetRevenue,x.OvoFee,x.Mer,contributionMargin=FinancialCalculator.Ratio(x.BrandContributionProfit,x.NetRevenue),health=BrandHealth(x,history)}) });
-        }).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/dashboard", PortfolioReport).RequireAuthorization("ReadAccess");
     }
 
     private static string BrandHealth(MonthlyPerformance current, IReadOnlyCollection<MonthlyPerformance> history)
@@ -319,20 +320,7 @@ public static class WorkflowEndpoints
             return Results.Ok(brands.Cast<object>().Concat(evaluations).Concat(deals));
         }).RequireAuthorization("ReadAccess");
 
-        app.MapGet("/api/tasks", async (AppDbContext db) =>
-        {
-            var tasks=new List<object>();
-            var evaluations=await db.Evaluations.AsNoTracking().Include(x=>x.Brand).Where(x=>x.Status==EvaluationStatus.Draft||x.Status==EvaluationStatus.InProgress||x.Status==EvaluationStatus.ReadyForAnalysis).OrderBy(x=>x.UpdatedAt).Take(10).ToListAsync();
-            tasks.AddRange(evaluations.Select(x=>(object)new{kind="Değerlendirme",title=$"{x.Brand!.Name} değerlendirmesi bekliyor",detail=x.Status==EvaluationStatus.ReadyForAnalysis?"Eksik bilgileri tamamlayın":"Kaldığınız adımdan devam edin",href=$"/evaluations/{x.Id}",priority=x.Status==EvaluationStatus.ReadyForAnalysis?"Yüksek":"Normal"}));
-            var accepted=await db.Deals.AsNoTracking().Include(x=>x.Brand).Where(x=>x.Status==DealStatus.Accepted).OrderBy(x=>x.UpdatedAt).Take(10).ToListAsync();
-            tasks.AddRange(accepted.Select(x=>(object)new{kind="Anlaşma",title=$"{x.Brand!.Name} anlaşması etkinleştirilmeyi bekliyor",detail=x.Name,href="/deals",priority="Yüksek"}));
-            var reviews=await db.MonthlyPerformances.AsNoTracking().Include(x=>x.Brand).Where(x=>x.Status==MonthlyPerformanceStatus.UnderReview).OrderBy(x=>x.Year).ThenBy(x=>x.Month).Take(10).ToListAsync();
-            tasks.AddRange(reviews.Select(x=>(object)new{kind="Aylık sonuç",title=$"{x.Brand!.Name} için {x.Month}/{x.Year} onay bekliyor",detail="Kontrol edip onaylayın",href=$"/performance/{x.Id}",priority="Yüksek"}));
-            var now=DateTime.UtcNow;var reported=await db.MonthlyPerformances.AsNoTracking().Where(x=>x.Year==now.Year&&x.Month==now.Month).Select(x=>x.BrandId).ToListAsync();
-            var missing=await db.Brands.AsNoTracking().Where(x=>x.Status==BrandStatus.Active&&!reported.Contains(x.Id)).OrderBy(x=>x.Name).Take(10).ToListAsync();
-            tasks.AddRange(missing.Select(x=>(object)new{kind="Eksik dönem",title=$"{x.Name} için {now.Month}/{now.Year} sonucu girilmedi",detail="Aylık sonuç kaydı oluşturun",href="/performance/new",priority="Yüksek"}));
-            return Results.Ok(tasks.Take(30));
-        }).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/tasks", TeamReminders).RequireAuthorization("ReadAccess");
     }
 
     private static void MapSettingsAndAudit(WebApplication app)

@@ -11,8 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using OvoGrowthOS.Api.Data;
+using OvoGrowthOS.Api.Auth;
 using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Tests;
@@ -142,8 +145,9 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/approve", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/lock", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/invoice", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/pay", null)).StatusCode);
+        var today = TeamWork.Today(DateTimeOffset.UtcNow);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/performance/{periodId}/collection/invoice", new { reference = "TEST-FATURA", invoiceOn = today, dueOn = today, reason = "", revision = 0 })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/performance/{periodId}/collection/payments", new { id = Guid.NewGuid(), amount = 55_000m, paidOn = today, reference = "TEST-ODEME", note = "", revision = 1 })).StatusCode);
 
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/performance/{periodId}/adjustments", new { amount = 1_000m, reason = "Ödeme sonrası değişiklik" })).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync($"/api/performance/{periodId}/unlock", new { reason = "Ödeme sonrası açma denemesi" })).StatusCode);
@@ -248,6 +252,11 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:Key"] = JwtKey, ["Jwt:Issuer"] = "ovo-growth-os", ["Jwt:Audience"] = "ovo-growth-os-web",
+            ["DefaultAdmin:Email"] = "admin@ovo.test", ["DefaultAdmin:PasswordHash"] = JwtTokenService.HashPassword(TestPassword)
+        }));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
@@ -255,6 +264,32 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_databaseName));
         });
     }
+
+    public const string TestPassword = "Test-only-password-2026!";
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+        using var scope = host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+        foreach (var role in new[] { "Admin", "Partner", "Analyst" })
+        {
+            var email = $"{role.ToLowerInvariant()}@ovo.test";
+            db.UserAccounts.Add(new UserAccount { Id = AccountId(email), Email = email, Name = role,
+                Role = role, PasswordHash = JwtTokenService.HashPassword(TestPassword) });
+        }
+        db.SaveChanges();
+        return host;
+    }
+
+    public static Guid AccountId(string email) => email switch
+    {
+        "admin@ovo.test" => Guid.Parse("11111111-1111-1111-1111-111111111111"),
+        "partner@ovo.test" => Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        "analyst@ovo.test" => Guid.Parse("33333333-3333-3333-3333-333333333333"),
+        _ => throw new ArgumentOutOfRangeException(nameof(email))
+    };
 
     public async Task<Guid> SeedAsync()
     {
@@ -324,9 +359,10 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
         return condition.Id;
     }
 
-    public static string Token(string email, string role)
+    public static string Token(string email, string role, bool includeSession = true)
     {
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, email), new Claim(JwtRegisteredClaimNames.Email, email), new Claim(ClaimTypes.Role, role) };
+        var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, email), new(JwtRegisteredClaimNames.Email, email), new(ClaimTypes.Role, role) };
+        if (includeSession) claims.AddRange([new("uid", AccountId(email).ToString()), new("session_version", "0")]);
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtKey)), SecurityAlgorithms.HmacSha256);
         return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("ovo-growth-os", "ovo-growth-os-web", claims,
             expires: DateTime.UtcNow.AddMinutes(10), signingCredentials: credentials));

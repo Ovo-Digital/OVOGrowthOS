@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OvoGrowthOS.Domain\OvoGrowthOS.Domain.csproj" />
+    <InternalsVisibleTo Include="OvoGrowthOS.Api.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,4 +26,9 @@
     <UserSecretsId>ovo-growth-os-api</UserSecretsId>
   </PropertyGroup>
 
+  <!-- Do not recursively publish generated files as web content on Unix. -->
+  <ItemGroup>
+    <Content Remove="bin/**;obj/**" />
+    <None Remove="bin/**;obj/**" />
+  </ItemGroup>
 </Project>

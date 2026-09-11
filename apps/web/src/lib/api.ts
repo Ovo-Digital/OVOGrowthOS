@@ -1,4 +1,5 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+export type SessionUser = { id: string; email: string; name: string; role: string };
 
 export function token() { return typeof window === "undefined" ? null : localStorage.getItem("ovo_token"); }
 export function isSessionValid() {
@@ -18,5 +19,6 @@ export async function api<T>(path:string, init:RequestInit = {}):Promise<T> {
   if (response.status === 204) return undefined as T;
   return response.json();
 }
-export const money = (v:number) => new Intl.NumberFormat("tr-TR",{style:"currency",currency:"TRY",maximumFractionDigits:0}).format(v);
+export const money = (v:number, currency = "TRY") => new Intl.NumberFormat("tr-TR",{style:"currency",currency,maximumFractionDigits:0}).format(v);
+export const moneyPrecise = (v:number, currency = "TRY") => new Intl.NumberFormat("tr-TR",{style:"currency",currency,minimumFractionDigits:2,maximumFractionDigits:4}).format(v);
 export const percent = (v:number) => new Intl.NumberFormat("tr-TR",{style:"percent",maximumFractionDigits:2}).format(v);

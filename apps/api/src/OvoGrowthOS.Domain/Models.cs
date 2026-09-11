@@ -300,6 +300,7 @@ public sealed class MonthlyPerformance
     public DateTimeOffset? ApprovedAt { get; set; }
     public DateTimeOffset? LockedAt { get; set; }
     public List<CommissionAdjustment> Adjustments { get; set; } = [];
+    public CollectionAccount? Collection { get; set; }
 }
 
 public sealed class CommissionAdjustment

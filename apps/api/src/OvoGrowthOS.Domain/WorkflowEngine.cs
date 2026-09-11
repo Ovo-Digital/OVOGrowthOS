@@ -72,6 +72,15 @@ public static class DealComparisonEngine
 
 public static class MonthlyPerformanceCalculator
 {
+    // The import preview must show the same money values PostgreSQL numeric(18,4) will store.
+    public static void CalculateForImport(MonthlyPerformance p, Deal deal)
+    {
+        Calculate(p, deal);
+        p.OvoFee = decimal.Round(p.OvoFee, 4, MidpointRounding.AwayFromZero);
+        p.BrandContributionProfit = decimal.Round(p.BrandContributionProfit, 4, MidpointRounding.AwayFromZero);
+        p.OvoGrossProfit = decimal.Round(p.OvoGrossProfit, 4, MidpointRounding.AwayFromZero);
+    }
+
     public static CommissionResult Calculate(MonthlyPerformance p, Deal deal)
     {
         p.NetRevenue = p.GrossSales - p.Vat - p.Refunds - p.Cancellations - p.Chargebacks;

@@ -126,12 +126,14 @@ type Document = {
 export function DocumentsPanel({
     entityType,
     entityId,
+    canUpload = true,
 }: {
     entityType: string;
     entityId: string;
+    canUpload?: boolean;
 }) {
     const qc = useQueryClient();
-    const { data = [] } = useQuery({
+    const { data = [], isPending, error } = useQuery({
         queryKey: ['documents', entityType, entityId],
         queryFn: () =>
             api<Document[]>('/api/documents/' + entityType + '/' + entityId),
@@ -173,7 +175,7 @@ export function DocumentsPanel({
                 PDF, görsel, CSV veya Excel dosyası ekleyebilirsiniz. En fazla
                 10 MB.
             </p>
-            <form
+            {canUpload && <form
                 onSubmit={upload}
                 className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
             >
@@ -192,7 +194,7 @@ export function DocumentsPanel({
                 <button className="rounded-lg bg-[#303030] px-4 py-2 text-sm font-semibold text-white">
                     Belge ekle
                 </button>
-            </form>
+            </form>}
             <div className="mt-4 space-y-2">
                 {data.map((x) => (
                     <div
@@ -216,7 +218,9 @@ export function DocumentsPanel({
                         </span>
                     </div>
                 ))}
-                {!data.length && (
+                {isPending && <p role="status">Belgeler yükleniyor…</p>}
+                {error && <p role="alert">{error.message}</p>}
+                {!isPending && !error && !data.length && (
                     <p className="text-sm text-[#6d7175]">
                         Henüz belge eklenmedi.
                     </p>

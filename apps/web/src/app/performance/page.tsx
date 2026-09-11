@@ -17,6 +17,7 @@ type P = {
     year: number;
     month: number;
     brand: { name: string };
+    deal: { currency: string };
     netRevenue: number;
     ovoFee: number;
     mer: number;
@@ -41,9 +42,9 @@ export default function Page() {
                 title="Aylık sonuçlar"
                 description="Onay ve ödeme sürecindeki aylık finansal sonuçlar."
                 action={
-                    <PrimaryLink href="/performance/new">
+                    <div className="flex flex-wrap gap-2"><PrimaryLink href="/performance/import">Dosyadan aktar</PrimaryLink><PrimaryLink href="/performance/new">
                         Aylık sonuç gir
-                    </PrimaryLink>
+                    </PrimaryLink></div>
                 }
             />
             <Card className="overflow-hidden">
@@ -108,10 +109,10 @@ export default function Page() {
                                             {x.brand?.name}
                                         </td>
                                         <td className="px-5">
-                                            {money(x.netRevenue)}
+                                            {money(x.netRevenue, x.deal.currency)}
                                         </td>
                                         <td className="px-5">
-                                            {money(x.ovoFee)}
+                                            {money(x.ovoFee, x.deal.currency)}
                                         </td>
                                         <td className="px-5">
                                             {x.mer.toFixed(2)}x

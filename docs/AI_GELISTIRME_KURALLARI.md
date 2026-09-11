@@ -11,7 +11,7 @@ OVO Growth OS; marka değerlendirmesi, finansal senaryo, anlaşma, aylık perfor
 - Backend: ASP.NET Core Minimal API ve .NET; iş hesapları `OvoGrowthOS.Domain` içinde tutulur.
 - Veri: EF Core ve Supabase PostgreSQL; uygulama tabloları `growth` şemasındadır.
 - Web: Next.js App Router, React, TypeScript ve mevcut UI bileşenleri.
-- Kimlik: JWT ve `UserAccounts`; roller `Admin`, `Partner`, `Analyst`.
+- Kimlik: JWT ve `UserAccounts`; iç ekip rolleri `Admin`, `Partner`, `Analyst`. Dış müşteri rolü `BrandClient`, `PortalAccesses` ile tek markaya bağlıdır; iç ekip izinlerine dahil edilmez.
 - Yeni microservice, event bus, generic repository veya gereksiz soyutlama ekleme.
 - Finansal hesapları tarayıcıya taşıma; sunucu/domain sonucu tek doğruluk kaynağıdır.
 
@@ -32,8 +32,11 @@ OVO Growth OS; marka değerlendirmesi, finansal senaryo, anlaşma, aylık perfor
 - Kabul edilmiş, etkin veya kapanmış anlaşmanın ticari koşulları geriye dönük değiştirilemez.
 - Kilitli, faturalanmış ve ödenmiş dönemler normal akışta değiştirilemez.
 - Faturalanmış veya ödenmiş dönem kilidi açılamaz.
+- Tahsilat defterinde gerekçeli hatalı ödeme iptali yalnız yönetici tarafından yapılır. Ödeme durumu yeniden faturalanmış olabilir; bu finansal kilidi açmaz, hakedişi/ciroyu/kârı veya ticari snapshot'ı değiştirmez. Ödeme geçmişi silinmez.
 - Aylık sonucu hazırlayan kişi aynı dönemi onaylayamaz.
 - Marka, değerlendirme, anlaşma ve aylık performans ilişkileri API sınırında doğrulanır.
+- Müşteri portalında marka kimliğini istekten değil oturumun veritabanındaki erişim kaydından al. Liste, rapor, CSV, belge ve sorularda marka sınırını koru; iç ekip API'lerini müşteri rolüne açma. Müşteri yalnız kendi sorularını görür.
+- Müşteriye yalnız açıkça yayımlanmış, kapalı dönem raporunun izinli alanlarını ve seçilmiş marka belgelerini göster. İç not, iç maliyet, OVO kârı ve tam veritabanı nesnesi paylaşma. Rapor sürümlerini değiştirme; erişimi kaldır, yeni sürüm yayımla. Hesap kapatma veya şifre değişikliğinde eski oturumları geçersiz kıl.
 - Para hesaplarında `decimal` kullan; `float` veya `double` kullanma.
 - Oranlar domain ve veritabanında `0–1`, kullanıcı arayüzünde `0–100` biçimindedir.
 - Finansal sonuçlar açıklanabilir ve deterministik olmalıdır; gizli/AI tabanlı karar üretme.
