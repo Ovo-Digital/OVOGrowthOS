@@ -117,13 +117,15 @@ public sealed class PerformanceRequestValidator : AbstractValidator<PerformanceR
         RuleFor(x => x.DealId).NotEmpty().WithMessage("Anlaşma seçimi zorunludur.");
         RuleFor(x => x.Year).InclusiveBetween(2020, 2100).WithMessage("Yıl 2020 ile 2100 arasında olmalıdır.");
         RuleFor(x => x.Month).InclusiveBetween(1, 12).WithMessage("Ay 1 ile 12 arasında olmalıdır.");
-        foreach (var field in DecimalFields()) RuleFor(x => Value(x, field)).GreaterThanOrEqualTo(0).WithMessage("Finansal tutarlar negatif olamaz.");
+        foreach (var field in DecimalFields()) RuleFor(x => Value(x, field)).GreaterThanOrEqualTo(0).WithMessage("Finansal tutarlar negatif olamaz.")
+            .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
         RuleFor(x => x.Orders).GreaterThanOrEqualTo(0).WithMessage("Sipariş sayısı negatif olamaz.");
         RuleFor(x => x.Sessions).GreaterThanOrEqualTo(0).WithMessage("Oturum sayısı negatif olamaz.");
         RuleFor(x => x.NewCustomers).GreaterThanOrEqualTo(0).WithMessage("Yeni müşteri sayısı negatif olamaz.");
         RuleFor(x => x.ReturningCustomers).GreaterThanOrEqualTo(0).WithMessage("Tekrar gelen müşteri sayısı negatif olamaz.");
-        RuleFor(x => x).Must(x => x.NewCustomers + x.ReturningCustomers <= x.Orders).WithMessage("Yeni ve tekrar gelen müşteri toplamı sipariş sayısını geçemez.");
-        RuleFor(x => x).Must(x => x.Vat + x.Refunds + x.Cancellations + x.Chargebacks + x.CustomerPaidShipping + x.GiftCardTopups <= x.GrossSales)
+        RuleFor(x => x).Must(x => (long)x.NewCustomers + x.ReturningCustomers <= x.Orders).WithMessage("Yeni ve tekrar gelen müşteri toplamı sipariş sayısını geçemez.");
+        RuleFor(x => x).Must(x => DecimalFields().All(f => Value(x, f) is >= 0 and < 100000000000000m)
+            && x.Vat + x.Refunds + x.Cancellations + x.Chargebacks + x.CustomerPaidShipping + x.GiftCardTopups <= x.GrossSales)
             .WithMessage("Cirodan düşülen tutarların toplamı brüt satışı geçemez.");
     }
 
@@ -161,7 +163,8 @@ public sealed class AdjustmentRequestValidator : AbstractValidator<AdjustmentReq
 {
     public AdjustmentRequestValidator()
     {
-        RuleFor(x => x.Amount).NotEqual(0).WithMessage("Düzeltme tutarı sıfır olamaz.");
+        RuleFor(x => x.Amount).NotEqual(0).WithMessage("Düzeltme tutarı sıfır olamaz.")
+            .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
         RuleFor(x => x.Reason).NotEmpty().MinimumLength(5).MaximumLength(500).WithMessage("Düzeltme nedeni 5 ile 500 karakter arasında olmalıdır.");
     }
 }

@@ -64,6 +64,8 @@ function ActivityPage() {
                     placeholder="İşlem veya çalışan ara…"
                     statuses={[
                         ['WorkTask', 'Ekip görevi'],
+                        ['WeeklyCapacity', 'Haftalık kapasite'],
+                        ['TaskHourPlan', 'Görev saat planı'],
                         ['Brand', 'Marka'],
                         ['Evaluation', 'Değerlendirme'],
                         ['Deal', 'Anlaşma'],

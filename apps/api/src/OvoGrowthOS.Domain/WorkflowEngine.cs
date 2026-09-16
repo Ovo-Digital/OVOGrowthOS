@@ -110,8 +110,9 @@ public static class MonthlyPerformanceCalculator
 
 public static class MonthlyCloseWorkflow
 {
-    public static bool CanEdit(MonthlyPerformanceStatus status) => status < MonthlyPerformanceStatus.Locked;
-    public static bool CanAdjust(MonthlyPerformanceStatus status) => status < MonthlyPerformanceStatus.Locked;
+    public static bool CanEdit(MonthlyPerformanceStatus status) => status == MonthlyPerformanceStatus.Draft;
+    public static bool CanAdjust(MonthlyPerformanceStatus status) => status == MonthlyPerformanceStatus.Draft;
+    public static bool CanReturn(MonthlyPerformanceStatus status) => status is MonthlyPerformanceStatus.UnderReview or MonthlyPerformanceStatus.Approved;
     public static bool CanUnlock(MonthlyPerformanceStatus status) => status == MonthlyPerformanceStatus.Locked;
     public static bool CanTransition(MonthlyPerformanceStatus from, MonthlyPerformanceStatus to) =>
         (from, to) is (MonthlyPerformanceStatus.Draft, MonthlyPerformanceStatus.UnderReview)
@@ -119,6 +120,17 @@ public static class MonthlyCloseWorkflow
             or (MonthlyPerformanceStatus.Approved, MonthlyPerformanceStatus.Locked)
             or (MonthlyPerformanceStatus.Locked, MonthlyPerformanceStatus.Invoiced)
             or (MonthlyPerformanceStatus.Invoiced, MonthlyPerformanceStatus.Paid);
+
+    public static void ClearReview(MonthlyPerformance period)
+    {
+        period.Status = MonthlyPerformanceStatus.Draft;
+        period.CommissionStatus = CommissionStatus.Draft;
+        period.PreparedBy = "";
+        period.SubmittedAt = null;
+        period.ReviewedBy = "";
+        period.ApprovedAt = null;
+        period.LockedAt = null;
+    }
 }
 
 public static class PortfolioRiskCalculator

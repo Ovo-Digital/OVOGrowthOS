@@ -12,6 +12,10 @@ public sealed class DatabaseExceptionHandler : IExceptionHandler
         {
             DbUpdateConcurrencyException => "Kayıt başka bir kullanıcı tarafından değiştirildi. Sayfayı yenileyip tekrar deneyin.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
+                when postgres.TableName is "WorkTemplateRuns" or "WorkTemplateTasks" or "WeeklyCapacities" or "TaskHourPlans" => "Bu şablon veya haftalık plan zaten kaydedilmiş. Sayfayı yenileyin; ikinci bir kayıt oluşturulmadı.",
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
+                when postgres.TableName is "MonthlyTargets" or "TargetActions" => "Bu hedef veya takip işi zaten kaydedilmiş. Sayfayı yenileyin; ikinci bir kayıt oluşturulmadı.",
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.TableName is "PortalAccesses" or "PortalReports" or "PortalDocumentShares" => "Portal kaydı zaten oluşturulmuş veya başka bir işlemle değişmiş. Sayfayı yenileyip kontrol edin.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.TableName is "ServiceCostAccounts" or "ServiceCostEntries" or "InvestmentAccounts" or "InvestmentEntries" => "Maliyet veya yatırım referansı zaten kayıtlı. Sayfayı yenileyip kontrol edin; ikinci kez eklenmedi.",

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, money } from '@/lib/api';
+import { api, money, type SessionUser } from '@/lib/api';
 import { Badge, Card, PageHeader, PrimaryLink } from '@/components/ui/core';
 import {
     EmptyState,
@@ -24,6 +24,8 @@ type P = {
     status: string;
 };
 export default function Page() {
+    const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
+    const canWrite = me.data?.role === 'Admin' || me.data?.role === 'Partner';
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const [sort, setSort] = useState('recent');
@@ -42,9 +44,9 @@ export default function Page() {
                 title="Aylık sonuçlar"
                 description="Onay ve ödeme sürecindeki aylık finansal sonuçlar."
                 action={
-                    <div className="flex flex-wrap gap-2"><PrimaryLink href="/performance/import">Dosyadan aktar</PrimaryLink><PrimaryLink href="/performance/new">
+                    canWrite ? <div className="flex flex-wrap gap-2"><PrimaryLink href="/performance/import">Dosyadan aktar</PrimaryLink><PrimaryLink href="/performance/new">
                         Aylık sonuç gir
-                    </PrimaryLink></div>
+                    </PrimaryLink></div> : undefined
                 }
             />
             <Card className="overflow-hidden">

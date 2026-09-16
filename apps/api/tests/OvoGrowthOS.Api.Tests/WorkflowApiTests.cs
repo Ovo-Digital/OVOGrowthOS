@@ -138,12 +138,16 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
         Assert.Equal(HttpStatusCode.Created, periodResponse.StatusCode);
         var period = await periodResponse.Content.ReadFromJsonAsync<JsonElement>();
         var periodId = period.GetProperty("id").GetGuid();
+        await PeriodEditingTests.SetVersion(client, periodId);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/performance/{periodId}/adjustments", new { amount = 5_000m, reason = "Approved reconciliation" })).StatusCode);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("partner@ovo.test", "Partner"));
+        await PeriodEditingTests.SetVersion(client, periodId);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/submit", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsync($"/api/performance/{periodId}/approve", null)).StatusCode);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        await PeriodEditingTests.SetVersion(client, periodId);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/approve", null)).StatusCode);
+        await PeriodEditingTests.SetVersion(client, periodId);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/performance/{periodId}/lock", null)).StatusCode);
         var today = TeamWork.Today(DateTimeOffset.UtcNow);
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/performance/{periodId}/collection/invoice", new { reference = "TEST-FATURA", invoiceOn = today, dueOn = today, reason = "", revision = 0 })).StatusCode);

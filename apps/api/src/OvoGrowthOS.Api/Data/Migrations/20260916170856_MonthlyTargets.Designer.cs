@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OvoGrowthOS.Api.Data;
@@ -11,9 +12,11 @@ using OvoGrowthOS.Api.Data;
 namespace OvoGrowthOS.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916170856_MonthlyTargets")]
+    partial class MonthlyTargets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1810,39 +1813,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.TaskHourPlan", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Hours")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("WeekStart")
-                        .HasColumnType("date");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WeekStart");
-
-                    b.HasIndex("TaskId", "WeekStart")
-                        .IsUnique();
-
-                    b.ToTable("TaskHourPlans", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_TaskHourPlans_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"Hours\" BETWEEN 0 AND 168 AND \"Revision\" > 0");
-                        });
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1887,43 +1857,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("UserAccounts", "growth");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WeeklyCapacity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("UnavailableHours")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("WeekStart")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("WorkingHours")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WeekStart");
-
-                    b.HasIndex("UserId", "WeekStart")
-                        .IsUnique();
-
-                    b.ToTable("WeeklyCapacities", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_WeeklyCapacities_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"WorkingHours\" BETWEEN 0 AND 168 AND \"UnavailableHours\" BETWEEN 0 AND \"WorkingHours\" AND \"Revision\" > 0");
-                        });
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.WorkTask", b =>
@@ -2002,63 +1935,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_WorkTasks_Target", "(\"Kind\" = 0 AND \"DealId\" IS NULL AND \"Year\" IS NULL AND \"Month\" IS NULL) OR (\"Kind\" = 1 AND \"DealId\" IS NOT NULL AND \"Year\" IS NOT NULL AND \"Month\" IS NOT NULL AND \"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12) OR (\"Kind\" = 2 AND \"DealId\" IS NOT NULL AND \"Year\" IS NULL AND \"Month\" IS NULL)");
                         });
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTemplateRun", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BrandId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("DealId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DealId");
-
-                    b.HasIndex("BrandId", "Kind", "Year", "Month")
-                        .IsUnique();
-
-                    b.ToTable("WorkTemplateRuns", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_WorkTemplateRuns_Scope", "(\"Kind\" = 0 AND \"Year\" = 0 AND \"Month\" = 0 AND \"DealId\" IS NULL) OR (\"Kind\" = 1 AND \"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"DealId\" IS NOT NULL)");
-                        });
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTemplateTask", b =>
-                {
-                    b.Property<Guid>("RunId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Step")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<Guid>("TaskId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RunId", "Step");
-
-                    b.HasIndex("TaskId")
-                        .IsUnique();
-
-                    b.ToTable("WorkTemplateTasks", "growth");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
@@ -2341,24 +2217,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.TaskHourPlan", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.WorkTask", null)
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WeeklyCapacity", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.WorkTask", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.UserAccount", "Assignee")
@@ -2381,35 +2239,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Navigation("Assignee");
 
                     b.Navigation("Brand");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTemplateRun", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
-                        .WithMany()
-                        .HasForeignKey("BrandId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OvoGrowthOS.Domain.Deal", null)
-                        .WithMany()
-                        .HasForeignKey("DealId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.WorkTemplateTask", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.WorkTemplateRun", null)
-                        .WithMany()
-                        .HasForeignKey("RunId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OvoGrowthOS.Domain.WorkTask", null)
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.Brand", b =>

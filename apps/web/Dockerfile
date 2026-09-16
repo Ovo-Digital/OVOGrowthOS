@@ -17,6 +17,7 @@ WORKDIR /app
 RUN apk add --no-cache curl libc6-compat
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=build /app/public ./public
+COPY --from=build --chown=node:node /app/OVO_GROWTH_OS_KULLANIM_REHBERI.md ./OVO_GROWTH_OS_KULLANIM_REHBERI.md
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 USER node

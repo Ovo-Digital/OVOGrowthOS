@@ -35,10 +35,70 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PortalReport> PortalReports => Set<PortalReport>();
     public DbSet<PortalDocumentShare> PortalDocumentShares => Set<PortalDocumentShare>();
     public DbSet<PortalQuestion> PortalQuestions => Set<PortalQuestion>();
+    public DbSet<MonthlyTarget> MonthlyTargets => Set<MonthlyTarget>();
+    public DbSet<TargetAction> TargetActions => Set<TargetAction>();
+    public DbSet<WorkTemplateRun> WorkTemplateRuns => Set<WorkTemplateRun>();
+    public DbSet<WorkTemplateTask> WorkTemplateTasks => Set<WorkTemplateTask>();
+    public DbSet<WeeklyCapacity> WeeklyCapacities => Set<WeeklyCapacity>();
+    public DbSet<TaskHourPlan> TaskHourPlans => Set<TaskHourPlan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("growth");
+        modelBuilder.Entity<WorkTemplateRun>(r =>
+        {
+            r.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            r.HasOne<Deal>().WithMany().HasForeignKey(x => x.DealId).OnDelete(DeleteBehavior.Restrict);
+            r.HasIndex(x => new { x.BrandId, x.Kind, x.Year, x.Month }).IsUnique();
+            r.ToTable(t => t.HasCheckConstraint("CK_WorkTemplateRuns_Scope", "(\"Kind\" = 0 AND \"Year\" = 0 AND \"Month\" = 0 AND \"DealId\" IS NULL) OR (\"Kind\" = 1 AND \"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"DealId\" IS NOT NULL)"));
+        });
+        modelBuilder.Entity<WorkTemplateTask>(t =>
+        {
+            t.HasKey(x => new { x.RunId, x.Step });
+            t.Property(x => x.Step).HasMaxLength(30);
+            t.HasOne<WorkTemplateRun>().WithMany().HasForeignKey(x => x.RunId).OnDelete(DeleteBehavior.Restrict);
+            t.HasOne<WorkTask>().WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Restrict);
+            t.HasIndex(x => x.TaskId).IsUnique();
+        });
+        modelBuilder.Entity<WeeklyCapacity>(c =>
+        {
+            c.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            c.HasIndex(x => new { x.UserId, x.WeekStart }).IsUnique();
+            c.HasIndex(x => x.WeekStart);
+            c.Property(x => x.Revision).IsConcurrencyToken();
+            c.ToTable(t => t.HasCheckConstraint("CK_WeeklyCapacities_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"WorkingHours\" BETWEEN 0 AND 168 AND \"UnavailableHours\" BETWEEN 0 AND \"WorkingHours\" AND \"Revision\" > 0"));
+        });
+        modelBuilder.Entity<TaskHourPlan>(p =>
+        {
+            p.HasOne<WorkTask>().WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Restrict);
+            p.HasIndex(x => new { x.TaskId, x.WeekStart }).IsUnique();
+            p.HasIndex(x => x.WeekStart);
+            p.Property(x => x.Revision).IsConcurrencyToken();
+            p.ToTable(t => t.HasCheckConstraint("CK_TaskHourPlans_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"Hours\" BETWEEN 0 AND 168 AND \"Revision\" > 0"));
+        });
+        modelBuilder.Entity<MonthlyTarget>(t =>
+        {
+            t.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            t.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            t.Property(x => x.Currency).HasMaxLength(3);
+            t.Property(x => x.Revision).IsConcurrencyToken();
+            t.HasIndex(x => new { x.BrandId, x.Year, x.Month, x.Currency }).IsUnique();
+            t.ToTable(c =>
+            {
+                c.HasCheckConstraint("CK_MonthlyTargets_Period", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Revision\" > 0");
+                c.HasCheckConstraint("CK_MonthlyTargets_Money", "\"NetRevenueGoal\" >= 0 AND \"AdBudget\" >= 0 AND \"ContributionMarginGoal\" BETWEEN 0 AND 1");
+                c.HasCheckConstraint("CK_MonthlyTargets_Currency", "\"Currency\" ~ '^[A-Z]{3}$'");
+            });
+        });
+        modelBuilder.Entity<TargetAction>(a =>
+        {
+            a.HasOne<MonthlyTarget>().WithMany().HasForeignKey(x => x.TargetId).OnDelete(DeleteBehavior.Restrict);
+            a.HasOne<WorkTask>().WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Restrict);
+            a.HasOne<MonthlyPerformance>().WithMany().HasForeignKey(x => x.PerformanceId).OnDelete(DeleteBehavior.Restrict);
+            a.HasIndex(x => new { x.TargetId, x.Metric }).IsUnique();
+            a.HasIndex(x => x.TaskId).IsUnique();
+            a.ToTable(c => c.HasCheckConstraint("CK_TargetActions_Metric", "\"Metric\" BETWEEN 0 AND 2 AND \"TargetRevision\" > 0"));
+        });
         modelBuilder.Entity<PortalAccess>(a =>
         {
             a.HasKey(x => x.UserId);

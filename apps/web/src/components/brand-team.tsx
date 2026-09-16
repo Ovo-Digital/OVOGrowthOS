@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { WorkTemplates } from '@/components/work-templates';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type SessionUser } from '@/lib/api';
 import { Card } from '@/components/ui/core';
@@ -36,6 +37,7 @@ export function BrandTeam({ brandId }: { brandId: string }) {
       </>}
       {message && <p className="mt-3 text-sm" role="status">{message}</p>}
     </Card>
+    <WorkTemplates brandId={brandId} />
     <WorkTasks brandId={brandId} />
     <div className="mt-5"><DocumentsPanel entityType="Brand" entityId={brandId} canUpload={canManage} /></div>
     <Card className="mt-5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Görüşme notları</h2>{canManage && <button className="underline" onClick={() => { setNote({ id: crypto.randomUUID(), text: '', contactOn: todayText() }); saveNote.reset(); }}>Görüşme notu ekle</button>}</div>

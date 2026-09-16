@@ -1375,7 +1375,7 @@ Bu yalnız denemedir: kapasiteyi değiştirmez, görev oluşturmaz, marka kabul 
 
 ### Değişiklik ve güvenlik sınırları
 
-Kapasite ve saat planı değişiklikleri açıklamayla kaydedilir; ilgili **Değişiklik geçmişi / Plan geçmişi** bağlantılarından kim, ne zaman, hangi kayıt için hangi açıklamayla işlem yapmış inceleyebilirsiniz. Bu liste önceki ve sonraki saatleri yan yana gösteren bir karşılaştırma ekranı değildir. Siz formdayken başka biri kaydı değiştirmişse eski form yeni kaydın üstüne yazamaz. Girişinizi not edip formdan çıkın, güncel durumu yenileyin ve yeniden değerlendirin.
+Kapasite ve saat planı değişiklikleri açıklamayla kaydedilir; ilgili **Değişiklik geçmişi / Plan geçmişi** bağlantılarından kim, ne zaman, neyi değiştirdiğini inceleyebilirsiniz. Siz formdayken başka biri kaydı değiştirmişse eski form yeni kaydın üstüne yazamaz. Girişinizi not edip formdan çıkın, güncel durumu yenileyin ve yeniden değerlendirin.
 
 Bu ekran bordro, mesai çizelgesi, çalışan puanı veya otomatik maliyet hesabı değildir. Eski aylık toplam hizmet saatleri çalışanlara tahminen dağıtılmaz. Çalışan ve görevle doğrulanmış gerçek süre kaydı olmadığı için “planlanan–gerçekleşen çalışan saati” karşılaştırması sunulmaz. Gerçekleşen hizmet maliyetini kendi bölümünden izlemeye devam edin.
 

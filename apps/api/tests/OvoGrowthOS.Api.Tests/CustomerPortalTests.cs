@@ -62,7 +62,7 @@ public sealed class CustomerPortalTests
         var checkedCount = 0;
         foreach (var endpoint in endpoints)
         {
-            var path = Regex.Replace(endpoint.RoutePattern.RawText!, @"\{[^}]+\}", m => m.Value.Contains(":guid") ? s.BrandId.ToString() : "test");
+            var path = Regex.Replace(endpoint.RoutePattern.RawText!, @"\{[^}]+\}", m => m.Value.Contains(":guid") ? s.BrandId.ToString() : m.Value.Contains(":int") ? "1" : "test");
             foreach (var method in endpoint.Metadata.GetMetadata<HttpMethodMetadata>()!.HttpMethods)
             {
                 using var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = JsonContent.Create(new { }) };
