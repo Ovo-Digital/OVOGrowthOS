@@ -70,6 +70,7 @@ function ActivityPage() {
                         ['Evaluation', 'Değerlendirme'],
                         ['Deal', 'Anlaşma'],
                         ['MonthlyPerformance', 'Aylık sonuç'],
+                        ['CollectionPromise', 'Ödeme sözü'],
                         ['RuleSet', 'Kural seti'],
                         ['Settings', 'Ayarlar'],
                     ]}

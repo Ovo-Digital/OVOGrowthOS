@@ -11,6 +11,7 @@ public sealed class CollectionAccount
     public DateOnly? DueOn { get; set; }
     public int Revision { get; set; }
     public List<CollectionPayment> Payments { get; set; } = [];
+    public CollectionPromise? Promise { get; set; }
 }
 
 public sealed class CollectionPayment

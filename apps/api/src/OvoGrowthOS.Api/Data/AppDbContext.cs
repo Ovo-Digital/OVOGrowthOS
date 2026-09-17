@@ -26,6 +26,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<BrandContactNote> BrandContactNotes => Set<BrandContactNote>();
     public DbSet<CollectionAccount> CollectionAccounts => Set<CollectionAccount>();
     public DbSet<CollectionPayment> CollectionPayments => Set<CollectionPayment>();
+    public DbSet<CollectionPromise> CollectionPromises => Set<CollectionPromise>();
     public DbSet<ServiceCostAccount> ServiceCostAccounts => Set<ServiceCostAccount>();
     public DbSet<ServiceCostEntry> ServiceCostEntries => Set<ServiceCostEntry>();
     public DbSet<ServiceCostReview> ServiceCostReviews => Set<ServiceCostReview>();
@@ -45,6 +46,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("growth");
+        modelBuilder.Entity<CollectionPromise>(p =>
+        {
+            p.HasOne<CollectionAccount>().WithOne(x => x.Promise).HasForeignKey<CollectionPromise>(x => x.MonthlyPerformanceId).OnDelete(DeleteBehavior.Restrict);
+            p.HasOne<BrandContactNote>().WithMany().HasForeignKey(x => x.ContactNoteId).OnDelete(DeleteBehavior.Restrict);
+            p.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            p.HasOne<WorkTask>().WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Restrict);
+            p.HasIndex(x => x.TaskId).IsUnique();
+            p.Property(x => x.Revision).IsConcurrencyToken();
+            p.ToTable(t => t.HasCheckConstraint("CK_CollectionPromises_Values", "\"Amount\" > 0 AND \"Revision\" > 0 AND EXTRACT(YEAR FROM \"PromisedOn\") BETWEEN 2020 AND 2100"));
+        });
         modelBuilder.Entity<WorkTemplateRun>(r =>
         {
             r.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);

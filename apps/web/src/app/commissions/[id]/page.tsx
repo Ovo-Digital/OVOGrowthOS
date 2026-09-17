@@ -6,6 +6,7 @@ import { api, money, percent } from '@/lib/api';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
 import { turkce } from '@/lib/turkish';
 import { CollectionPanel } from '@/components/collection-panel';
+import { CollectionPromisePanel } from '@/components/collection-promise-panel';
 
 type Performance = { brand: { name: string }; deal: { currency: string }; year: number; month: number; status: string; commissionableRevenue: number; ovoFee: number; commissionBreakdownJson: string };
 type Breakdown = { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number; tiers: { revenueAmount: number; rate: number; fee: number }[] };
@@ -34,6 +35,7 @@ export default function Page() {
       <Link href={`/performance/${id}`} className="mt-5 inline-block rounded-lg border px-4 py-2 text-sm font-semibold">Aylık sonucu aç</Link>
     </Card>
     <CollectionPanel id={id} />
+    <CollectionPromisePanel id={id} />
   </>;
 }
 

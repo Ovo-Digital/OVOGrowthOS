@@ -18,7 +18,7 @@ export function CollectionPanel({ id }: { id: string }) {
   const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
   const saved = async () => {
     setMessage('Tahsilat kaydı güncellendi. Kapalı dönemin hakediş ve kâr hesabı değişmedi.');
-    await Promise.all(['collection', 'performance', 'commissions', 'dashboard'].map(key => cache.invalidateQueries({ queryKey: [key] })));
+    await Promise.all(['collection', 'collection-promise', 'collection-planning', 'performance', 'commissions', 'dashboard'].map(key => cache.invalidateQueries({ queryKey: [key] })));
   };
   if (query.isPending) return <Card className="mt-5 p-5">Tahsilat bilgileri yükleniyor…</Card>;
   if (query.isError) return <Card className="mt-5 p-5"><p role="alert">{query.error.message}</p><button className="underline" onClick={() => query.refetch()}>Yeniden dene</button></Card>;

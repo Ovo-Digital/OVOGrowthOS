@@ -55,6 +55,7 @@ export default function Page() {
                 title="Hakedişler"
                 description="Hakediş, parçalı ödeme ve kalan alacağı ayrı takip edin. Fatura ve ödeme eklemek için ilgili ayı açın. Tutarlar KDV hariçtir."
             />
+            <Link href="/commissions/planning" className="mb-4 inline-block text-sm font-semibold underline">Alacak yaşı ve vade takvimini aç</Link>
             <Card className="mb-4 p-4">
                 <div className="flex flex-wrap items-end gap-3">
                     <label><span className="label">Dönem (boşsa tüm aylar)</span><input type="month" className="input mt-1.5" min="2020-01" max="2100-12" value={period} onChange={e => { setPeriod(e.target.value); setPage(1); }} /></label>

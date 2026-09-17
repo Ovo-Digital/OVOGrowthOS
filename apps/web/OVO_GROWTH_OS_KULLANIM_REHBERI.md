@@ -27,6 +27,7 @@ Rehberi baştan sona ezberlemeniz gerekmez. Sol menüden **Kullanım rehberi** s
 - **Bu ay hedefin neresindeyiz?** Markayı açıp **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
 - **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın ekip alanındaki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
 - **Ekibin bu hafta yeni işe zamanı var mı?** **İşlerim → Haftalık ekip kapasitesi** ekranını açın. Önce kapasite ve görev saatlerinin girildiğini kontrol edin; **Yeni marka veya ek iş ön izlemesi** ile ek yükü kaydetmeden deneyin.
+- **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir.
 - **Kimden ne kadar alacağımız var?** **Hakedişler** ekranında ayı, para birimini ve ödeme filtresini seçin. İlgili dökümde fatura ve gerçek ödeme kayıtlarını yönetin.
 - **Bu markaya gerçekten ne kadar emek ve para harcadık?** Kapalı aylık sonucun **OVO gerçekleşen hizmet maliyeti** bölümünü açın. Başlangıç yatırımını ise ilgili anlaşmanın **Yatırım ve geri kazanım defteri** bölümünde izleyin.
 - **Yönetime veya markaya sonuç anlatacağım:** **Raporlar** ve markanın **Açıklamalı marka raporu** görünümünü kullanın. İç yönetim çıktısını markayla paylaşmayın.
@@ -1375,9 +1376,93 @@ Bu yalnız denemedir: kapasiteyi değiştirmez, görev oluşturmaz, marka kabul 
 
 ### Değişiklik ve güvenlik sınırları
 
-Kapasite ve saat planı değişiklikleri açıklamayla kaydedilir; ilgili **Değişiklik geçmişi / Plan geçmişi** bağlantılarından kim, ne zaman, neyi değiştirdiğini inceleyebilirsiniz. Siz formdayken başka biri kaydı değiştirmişse eski form yeni kaydın üstüne yazamaz. Girişinizi not edip formdan çıkın, güncel durumu yenileyin ve yeniden değerlendirin.
+Kapasite ve saat planı değişiklikleri açıklamayla kaydedilir; ilgili **Değişiklik geçmişi / Plan geçmişi** bağlantılarından kim, ne zaman, hangi kayıt için hangi açıklamayla işlem yapmış inceleyebilirsiniz. Bu liste önceki ve sonraki saatleri yan yana gösteren bir karşılaştırma ekranı değildir. Siz formdayken başka biri kaydı değiştirmişse eski form yeni kaydın üstüne yazamaz. Girişinizi not edip formdan çıkın, güncel durumu yenileyin ve yeniden değerlendirin.
 
 Bu ekran bordro, mesai çizelgesi, çalışan puanı veya otomatik maliyet hesabı değildir. Eski aylık toplam hizmet saatleri çalışanlara tahminen dağıtılmaz. Çalışan ve görevle doğrulanmış gerçek süre kaydı olmadığı için “planlanan–gerçekleşen çalışan saati” karşılaştırması sunulmaz. Gerçekleşen hizmet maliyetini kendi bölümünden izlemeye devam edin.
+
+## Alacak yaşı ve vade takvimi
+
+Bu ekran “Ne kadar alacağımız kaldı, ne zamandır bekliyor ve kayıtlı vadelere göre hangi haftaya denk geliyor?” sorularını cevaplar. Bir muhasebe veya banka ekranı değildir. Markanın gerçekten ne zaman ödeyeceğini garanti etmez; şirketin bütün giderlerini de kapsamaz.
+
+### Nereden açılır ve hangi kayıtları kapsar?
+
+**Hakedişler → Alacak yaşı ve vade takvimini aç** yolunu izleyin. Yönetici, iş ortağı ve analist görüntüleyebilir. Müşteri hesapları bu iç ekip ekranına erişemez.
+
+1. **Para birimi** seçin. TL ile dolar birbirine eklenmez, kur çevrimi yapılmaz.
+2. **Takvim uzunluğu** alanından **4, 8 veya 12 hafta** seçin.
+3. Önce toplam kalan alacağı ve gecikme gruplarını, sonra vade ve geçmiş ödeme takvimlerini inceleyin.
+4. Bir kaydı kontrol etmek için alacak listesindeki **marka ve ay bağlantısını** açın. Buradan mevcut fatura, vade ve gerçek ödeme kayıtlarını yönetebilirsiniz.
+5. Başka biri ödeme veya vade girdiyse **Takvimi yenile** ile son durumu görün.
+
+Bu ekran Hakedişler listesindeki ay, marka veya diğer filtreleri devralmaz: seçili para birimindeki **bütün kilitli, faturalanmış ve ödenmiş ayları** inceler. Taslaklar ve onaylanmış olsa bile henüz kilitlenmemiş dönemler dahil değildir. Ekrandaki hesap tarihi Türkiye'nin bugünkü tarihidir; geçmiş tarihli bir bilanço sunmaz.
+
+### Gecikme grupları ne anlatır?
+
+Her kalan alacak yalnız bir grupta görünür:
+
+- **Vadesi bilinmiyor:** Kalan alacak var ama güvenilir son ödeme tarihi girilmemiş. Buna “gecikmiş” veya “henüz vadesi gelmemiş” denilmez.
+- **Vadesi bugün veya ileride:** Vade henüz geçmemiştir. Bugün ödenmesi gereken bir kayıt yarın ödenmemiş kalırsa bir gün gecikmiş olur.
+- **1–30, 31–60, 61–90 gün gecikmiş:** Bugünle kayıtlı vade arasındaki gün sayısına göre ayrılır.
+- **90 günden fazla gecikmiş:** 91. gün ve sonrası bu gruptadır.
+
+Kısmi ödeme varsa yalnız **kalan tutar** yaşlandırılır; faturanın tamamı hâlâ borçmuş gibi gösterilmez. **Gecikme grubuna göre listele** seçimi yalnız alttaki dönem listesini süzer. Üstteki toplamlar ve takvimler bu seçimle değişmez.
+
+### Önümüzdeki haftaların vade takvimi
+
+**Önümüzdeki 4/8/12 hafta: vadelere göre beklenen** bölümünde bugünden başlayan yedi günlük aralıkları görürsünüz. Bunlar pazartesi–pazar olmak zorunda değildir; her satırın başlangıç ve bitiş tarihini okuyun. Her kalan alacak yalnız vadesinin denk geldiği aralığa bir kez girer.
+
+Gecikmiş alacakların ne zaman ödeneceği bilinmediği için sistem bunları bugüne veya önümüzdeki haftaya taşımaz. **Vadesi geçmiş kalan**, **Vadesi bilinmeyen kalan** ve **Seçili takvimden sonraki vadeler** üstte ayrı gösterilir. Bu üç tutarla takvimdeki haftaları topladığınızda incelenebilir kayıtların toplam kalan alacağına ulaşırsınız. “Vadesi bugün veya ileride” kartını bunların üstüne bir daha eklemeyin; o kart aynı kayıtları farklı açıdan özetler.
+
+Öğretici örnek: 100.000 TL hakedişin 40.000 TL'si ödenmişse, vadesinin olduğu haftada **60.000 TL** görünür. 10.000 TL daha gerçek ödeme kaydedildiğinde beklenti **50.000 TL** olur. O 10.000 TL'lik kayıt hatalı olduğu için iptal edilirse kalan tekrar **60.000 TL** olur. Bu işlemler kapanmış hakedişi yeniden hesaplamaz.
+
+### Geçmişte gerçekten alınan ödemeler
+
+**Son 4/8/12 hafta: gerçekleşmiş ödemeler** bölümü, bugün dahil geriye doğru aynı uzunlukta bir süreyi gösterir. Gelecek vade takvimiyle aynı tarih aralığı değildir. Tarihi girilmiş ve iptal edilmemiş ödeme kayıtlarını toplar; hakedişin hangi aya ait olduğu değil, **gerçek ödeme tarihi** esas alınır.
+
+Eski “ödendi” bilgisi nedeniyle ödenmiş sayılan ancak ödeme tarihi bilinmeyen tutarlar bu takvime dağıtılmaz. Bunların toplamı ayrıca yazılır; tamamının seçili son haftalarda alındığını varsaymayın ve tekrar ödeme olarak girmeyin.
+
+### Boş görünüm ve inceleme uyarısı
+
+- **Kapanmış dönem kaydı yok** mesajı, uygulamada bu para biriminde uygun kaynak olmadığı anlamına gelir; işletmenin hiç alacağı olmadığını kanıtlamaz.
+- Bir haftada **0** görünmesi, o tarihlere denk gelen kayıtlı vade veya ödeme bulunmadığı anlamına gelebilir. Eksik kayıtları ayrıca kontrol edin.
+- Negatif hakediş veya hakedişi aşan ödeme olan dönemler **İnceleme gereken kayıtlar** altında ayrılır; üst toplamlar ve haftalık takvimler bu dönemleri içermez. Uyarı varsa toplamlar eksik olabilir. Kaynak dönemi yöneticiyle kontrol edin.
+
+### Ödeme sözlerini ayrı takvimde görmek
+
+**Beklenti takviminin kaynağı → Bildirilen ödeme sözleri** seçin. Bu görünüm yalnız kaynağı kaydedilmiş güncel sözlerin kalan kısmını, söz verilen tarihin haftasında gösterir. **Kayıtlı vadeler** görünümündeki aynı alacakları yeniden toplamayın; iki takvim birbirine alternatif bakışlardır. Üstteki gecikme grupları her zaman belgedeki vadeye göre kalır.
+
+- **Tarihi geçmiş sözlerden kalan:** Sözü verilen gün geçtiği hâlde bekleyen tutar. Bugüne taşınmaz.
+- **Takvim sonrasındaki sözlerden kalan:** Söz tarihi seçtiğiniz 4/8/12 haftanın dışında.
+- **Güncel sözle karşılanmayan alacak:** Hiç söz verilmeyen veya güncel söz tutarını aşan kalan alacak. İptal edilmiş sözler de beklenti yaratmaz.
+
+Bu üç tutarla söz takviminin haftalarını topladığınızda incelenebilir kayıtların toplam kalan alacağına ulaşırsınız. Söz kaydı olmayan hafta sıfır görünebilir; bu bir ödeme yapılmayacağı tahmini değildir.
+
+<a id="odeme-sozu-ve-takip"></a>
+
+### Ödeme sözü ve takip
+
+**Nereden açılır?** **Hakedişler → ilgili ay → Ödeme sözü ve takip**. Takvim listesindeki **Sözü ve takibi aç** bağlantısı da aynı yere götürür. Yönetici ve ortak kaydedebilir; analist okuyabilir. İç notlar, ödeme sözleri ve takip işleri müşteri portalında paylaşılmaz.
+
+1. Önce markanın **görüşmeler** alanına kimin ne söylediğini ve gerçek görüşme tarihini yazın. Tahmini veya uydurma bir görüşme eklemeyin.
+2. İlgili hakedişte fatura takibinin başlamış ve kalan alacağın bulunuyor olması gerekir. İnceleme gereken kayıtta önce yöneticiyle sorunu çözün.
+3. **Ödeme sözü kaydet** düğmesine basın. KDV hariç, şu andan itibaren beklenen tutarı ve markanın söylediği ödeme tarihini yazın. Tutar kalan alacağı aşamaz; `1.234,5678` gibi en fazla dört ondalıkla girilebilir.
+4. Aynı markanın kaynak görüşmesini ve etkin bir çalışanı takip sorumlusu seçin. Not listesindeki önceki/sonraki sayfaları kullanabilirsiniz; seçilen kaynak ayrıca tam metniyle gösterilir. Görüşme günü söz verilen ödeme gününden sonra olamaz. Geçmişte verilmiş gerçek bir sözü geç kaydetmek mümkündür; tarihi geçmişse gecikmiş görünür.
+5. Kayıt nedenini yazın, bilgileri kontrol edin ve **Sözü kaydet** deyin. Bu işlem ödeme oluşturmaz, vadeyi değiştirmez, hakedişi/kârı yeniden hesaplamaz ve dönemi **ödendi** yapmaz.
+6. Yapılacak işi takip etmek için **Ödeme sözü için takip işi oluştur** düğmesini kullanın. İş sözün sorumlusuna atanır; son günü ayrıca seçersiniz. Görevde kaynak dönem, söz tutarı/tarihi ve görüşmeden alıntı bulunur. Tam kaynak metni ve güncel söz hakedişte kalır.
+
+**Bir dönem için tek güncel söz vardır.** Marka planını değiştirirse **Ödeme sözünü gerekçeyle güncelle** ile şu andan itibaren beklenen yeni tutarı kaydedin. Eski sözü veya daha önce alınmış parayı bu tutara eklemeyin. Önceki ve sonraki tutar, tarih, sorumlu, kaynak metin, işlemi yapan kişi ve gerekçe **Ödeme sözü değişiklik geçmişi** bölümünde görülebilir. Bu ilk sürüm çok taksitli ödeme planı değildir; birden fazla gelecek taksit için ayrı ayrı söz satırı oluşturmaz.
+
+**Kısmi ödeme nasıl etkiler?** Öğretici örnek: Dönemin kalan alacağı 100.000 TL iken 60.000 TL söz kaydedildi. Bundan sonra 20.000 TL gerçek ödeme eklendiğinde toplam alacak 80.000 TL, sözden beklenen 40.000 TL olur. Ödeme yanlış girildiği için yönetici tarafından iptal edilirse toplam alacak 100.000 TL, sözden beklenen 60.000 TL'ye döner. Söz kaydından önce sistemde bulunan ödemeler yeni sözden tekrar düşülmez; sonradan kaydedilen gerçek ödeme, ödeme tarihi geçmişte olsa da bekleyeni azaltır. Tutar her zaman dönemin kalan alacağıyla sınırlıdır.
+
+**“Söz tutarı için bekleyen kalmadı”** bütün alacağın bittiğini veya markanın tam söz gününde ödeme yaptığını kanıtlamaz. Gerçek ödeme tarihini ödeme geçmişinden, toplam kalan alacağı ayrıca kontrol edin. Sözden önceki hatalı bir ödeme iptal edildiğinde toplam alacak artabilir; mevcut söz tutarı kendiliğinden büyütülmez. Gerekirse markayla yeni planı görüşün.
+
+**Sözü kaldırmak:** Marka sözünü geri çekerse **Sözü takipten kaldır** ile nedenini yazın. Beklenti takviminden çıkar; borç, gerçek ödeme, görüşme geçmişi veya görev silinmez. Daha sonra yeni görüşmeye dayanarak gerekçeli yeni söz kaydedilebilir.
+
+**Görevi çoğaltmamak:** Aynı dönemin söz takibi için yalnız bir bağlı iş açılır. İş bitmiş olsa veya söz değiştirilse/kaldırılsa bile otomatik ikinci iş oluşturulmaz. **Markanın mevcut işlerini aç** bağlantısından gerekirse eski işi yeniden açın, çalışanını ve son tarihini güncelleyin. Sözün sorumlusunu değiştirmek mevcut görevi başka kişiye kendiliğinden atamaz; ödeme kaydetmek de görevi tamamlamaz.
+
+**“Kayıt değişmiş” uyarısı:** Siz formdayken başka biri ödeme, fatura veya söz kaydetmiş olabilir. Yazdıklarınızı kontrol edin, formu kapatıp **Ödeme sözü bilgilerini yenile** deyin ve güncel tutarla yeniden deneyin. Eski ekran yeni kaydı sessizce ezmez. Kaydetmeden ayrılırken değişiklik uyarısını dikkate alın.
+
+Ödeme sözü geldi diye **Gerçekleşmiş ödeme ekle** formuna kayıt girmeyin veya sırf takvim değişsin diye belgede yazılı vadeyi değiştirmeyin.
 
 ## 27. Şu anda sistemin dışında kalan işler
 
