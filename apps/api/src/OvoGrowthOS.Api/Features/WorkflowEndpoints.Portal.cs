@@ -31,6 +31,7 @@ public static partial class WorkflowEndpoints
     private static void MapCustomerPortal(WebApplication app)
     {
         var portal = app.MapGroup("/api/portal").RequireAuthorization("PortalAccess");
+        portal.MapGet("/trend", ReadPortalTrend);
         portal.MapGet("/", async (AppDbContext db, ClaimsPrincipal user) =>
         {
             var brandId = await PortalBrand(db, user); var actor = Guid.Parse(user.FindFirstValue("uid")!);
@@ -80,6 +81,7 @@ public static partial class WorkflowEndpoints
         });
 
         var management = app.MapGroup("/api/portal-management/brands/{brandId:guid}").RequireAuthorization("OperationsWrite");
+        MapPortalCollaboration(portal, management);
         management.MapGet("/accounts", async (Guid brandId, AppDbContext db) => Results.Ok(await db.PortalAccesses.AsNoTracking().Where(x => x.BrandId == brandId)
             .Select(x => new { id = x.UserId, x.User.Name, x.User.Email, x.User.IsActive }).ToListAsync())).RequireAuthorization("AdminOnly");
         management.MapPost("/accounts", async (Guid brandId, PortalAccountRequest r, AppDbContext db, ClaimsPrincipal user) =>
@@ -146,10 +148,14 @@ public static partial class WorkflowEndpoints
         management.MapPost("/questions/{id:guid}/answer", async (Guid brandId, Guid id, PortalAnswerRequest r, AppDbContext db, ClaimsPrincipal user) =>
         {
             if (string.IsNullOrWhiteSpace(r.Answer) || r.Answer.Length > 4000) return Results.BadRequest(new { error = "Yanıtınızı 1–4000 karakter arasında yazın." });
+            await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
+            if (tx is not null) await LockPortalQuestion(db, id, brandId);
             var q = await db.PortalQuestions.SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId); if (q is null) return Results.NotFound();
-            if (q.AnsweredAt is not null) return Results.Conflict(new { error = "Bu soru zaten yanıtlandı. Yayımlanan yanıt değiştirilmez." });
-            q.Answer = r.Answer.Trim(); q.AnsweredAt = DateTimeOffset.UtcNow;
-            Audit(db, user, "PortalQuestionAnswered", "Brand", brandId, null, new { id }); await db.SaveChangesAsync(); return Results.NoContent();
+            if (q.AnsweredAt is not null || q.Revision != 1) return Results.Conflict(new { error = "Bu konu ilerlemiş. Sayfayı yenileyip konuşmaya yeni mesaj ekleyin; gönderilmiş yanıt değiştirilemez." });
+            if (!await db.PortalReports.AnyAsync(x => x.Id == q.ReportId && x.RevokedAt == null)) return Results.Conflict(new { error = "Raporun paylaşımı geri çekildi; yeni mesaj gönderilemez." });
+            q.Answer = r.Answer.Trim(); q.AnsweredAt = DateTimeOffset.UtcNow; q.Status = PortalConversationStatus.AwaitingCustomer; q.Revision++;
+            Audit(db, user, "PortalQuestionAnswered", "Brand", brandId, null, new { id }); await db.SaveChangesAsync();
+            if (tx is not null) await tx.CommitAsync(); return Results.NoContent();
         });
     }
 
@@ -159,6 +165,21 @@ public static partial class WorkflowEndpoints
         return db.PortalAccesses.Where(x => x.UserId == id).Select(x => x.BrandId).SingleAsync();
     }
     private static PortalReportSnapshot ReadPortalSnapshot(PortalReport report) => JsonSerializer.Deserialize<PortalReportSnapshot>(report.SnapshotJson, Json)!;
+
+    private static async Task<IResult> ReadPortalTrend(AppDbContext db, ClaimsPrincipal user, int endYear, int endMonth, int months = 3, string? currency = null)
+    {
+        if (endYear is < 2020 or > 2100 || endMonth is < 1 or > 12 || months is not (3 or 6 or 12)
+            || currency is not null && (currency.Length != 3 || !currency.All(c => c is >= 'A' and <= 'Z')))
+            return Results.BadRequest(new { error = "Geçerli bir son ay, 3/6/12 aylık süre ve TRY gibi üç harfli para birimi seçin." });
+        var brandId = await PortalBrand(db, user); var from = new DateOnly(endYear, endMonth, 1).AddMonths(1 - months);
+        var fromKey = from.Year * 12 + from.Month; var throughKey = endYear * 12 + endMonth;
+        var reports = await db.PortalReports.AsNoTracking().Where(x => x.BrandId == brandId && x.RevokedAt == null
+            && x.Year * 12 + x.Month >= fromKey && x.Year * 12 + x.Month <= throughKey).ToListAsync();
+        var source = reports.Select(x => new PublishedPortalPeriod(x.Id, x.Year, x.Month, x.Version, x.PublishedAt, ReadPortalSnapshot(x))).ToArray();
+        var currencies = PortalTrends.Latest(source).Select(x => x.Snapshot.Currency).Distinct().Order().ToArray();
+        var selected = currency ?? (currencies.Contains("TRY") || currencies.Length == 0 ? "TRY" : currencies[0]);
+        return Results.Ok(new { currencies, trend = PortalTrends.Build(source, endYear, endMonth, months, selected) });
+    }
 
     private static async Task<IResult> PublishPortalReport(Guid brandId, PortalPublishRequest r, AppDbContext db, ClaimsPrincipal user)
     {

@@ -36,6 +36,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PortalReport> PortalReports => Set<PortalReport>();
     public DbSet<PortalDocumentShare> PortalDocumentShares => Set<PortalDocumentShare>();
     public DbSet<PortalQuestion> PortalQuestions => Set<PortalQuestion>();
+    public DbSet<PortalMessage> PortalMessages => Set<PortalMessage>();
+    public DbSet<PortalReportReading> PortalReportReadings => Set<PortalReportReading>();
+    public DbSet<PortalDataRequest> PortalDataRequests => Set<PortalDataRequest>();
     public DbSet<MonthlyTarget> MonthlyTargets => Set<MonthlyTarget>();
     public DbSet<TargetAction> TargetActions => Set<TargetAction>();
     public DbSet<WorkTemplateRun> WorkTemplateRuns => Set<WorkTemplateRun>();
@@ -139,7 +142,34 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             q.HasOne<PortalAccess>().WithMany().HasForeignKey(x => new { x.UserId, x.BrandId }).HasPrincipalKey(x => new { x.UserId, x.BrandId }).OnDelete(DeleteBehavior.Restrict);
             q.Property(x => x.Question).HasMaxLength(2000); q.Property(x => x.Answer).HasMaxLength(4000);
             q.Property(x => x.AnsweredAt).IsConcurrencyToken();
+            q.Property(x => x.Revision).HasDefaultValue(1).IsConcurrencyToken();
+            q.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            q.ToTable(t => t.HasCheckConstraint("CK_PortalQuestions_Tracking", "\"Revision\" > 0 AND (\"Status\" IS NULL OR \"Status\" BETWEEN 0 AND 2)"));
             q.HasIndex(x => new { x.BrandId, x.CreatedAt });
+        });
+        modelBuilder.Entity<PortalMessage>(m =>
+        {
+            m.HasOne<PortalQuestion>().WithMany(x => x.Messages).HasForeignKey(x => x.QuestionId).OnDelete(DeleteBehavior.Restrict);
+            m.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            m.Property(x => x.Text).HasMaxLength(4000);
+            m.HasIndex(x => new { x.QuestionId, x.Sequence }).IsUnique();
+            m.ToTable(t => t.HasCheckConstraint("CK_PortalMessages_Content", "length(btrim(\"Text\")) BETWEEN 1 AND 4000 AND \"Sequence\" > 1"));
+        });
+        modelBuilder.Entity<PortalReportReading>(r =>
+        {
+            r.HasKey(x => new { x.ReportId, x.UserId });
+            r.HasOne<PortalReport>().WithMany().HasForeignKey(x => new { x.ReportId, x.BrandId }).HasPrincipalKey(x => new { x.Id, x.BrandId }).OnDelete(DeleteBehavior.Restrict);
+            r.HasOne<PortalAccess>().WithMany().HasForeignKey(x => new { x.UserId, x.BrandId }).HasPrincipalKey(x => new { x.UserId, x.BrandId }).OnDelete(DeleteBehavior.Restrict);
+            r.HasIndex(x => x.BrandId);
+            r.ToTable(t => t.HasCheckConstraint("CK_PortalReportReadings_Dates", "\"LastViewedAt\" >= \"FirstViewedAt\" AND (\"ReviewedAt\" IS NULL OR \"ReviewedAt\" >= \"FirstViewedAt\")"));
+        });
+        modelBuilder.Entity<PortalDataRequest>(r =>
+        {
+            r.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            r.Property(x => x.Title).HasMaxLength(200); r.Property(x => x.Instructions).HasMaxLength(2000);
+            r.Property(x => x.Revision).IsConcurrencyToken();
+            r.HasIndex(x => new { x.BrandId, x.CreatedAt });
+            r.ToTable(t => t.HasCheckConstraint("CK_PortalDataRequests_Values", "\"Revision\" > 0 AND \"Status\" BETWEEN 0 AND 2 AND length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Instructions\")) BETWEEN 1 AND 2000 AND (\"DueOn\" IS NULL OR EXTRACT(YEAR FROM \"DueOn\") BETWEEN 2020 AND 2100)"));
         });
         modelBuilder.Entity<ServiceCostAccount>(a =>
         {

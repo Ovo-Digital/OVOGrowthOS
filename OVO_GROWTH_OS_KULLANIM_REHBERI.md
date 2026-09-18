@@ -833,7 +833,7 @@ Hesap açma, kapatma ve şifre değiştirme yalnız yöneticidedir. Yönetici ve
 
 Yayımlanan rapor, yayımlandığı andaki fotoğraftır; canlı olarak değişmez. Örneğin sürüm 1 yayımlandıktan sonra ödeme kaydı girilirse eski rapordaki kalan alacak kendiliğinden düşmez. Yeni bilgiyi müşteriye göstermek için dönemi yeniden paylaşın; sürüm 2 oluşur. Gerekirse eski sürümün **Paylaşımı geri çek** düğmesini kullanın. Eski sürümler siz geri çekmedikçe erişilebilir; hiçbir sürümün içeriği üzerine yazılmaz.
 
-Portal raporu yalnız seçili ayı kapsar. Önceki ayla karşılaştırma gösterilmemesi, o ayın kaydı bulunmadığı veya cironun sıfır olduğu anlamına gelmez. Karşılaştırma gerekiyorsa OVO ekibinden açıklama isteyin.
+Tek rapor sürümü yalnız seçili ayı kapsar. Birden fazla ayı görmek için aşağıda anlatılan **Paylaşılan aylara toplu bakış** alanını kullanın. Önceki aya ait açık rapor yoksa karşılaştırma hesaplanmaz; bu, cironun sıfır olduğu anlamına gelmez. Eksik paylaşım için OVO ekibinden açıklama isteyin.
 
 **Paylaşımı veya hesabı nasıl kapatırım?**
 
@@ -842,6 +842,23 @@ Rapor için **Paylaşımı geri çek**, belge için **Belge paylaşımını kapa
 Kişinin erişimi tamamen bitecekse hesap ayrıntısını açıp **Portal erişimi açık** işaretini kaldırın ve **Hesabı güncelle** deyin. Mevcut oturumu da sonraki istekte geçersiz olur. Şifre veya hesap bilgisi değişikliğinde yeniden giriş gerekir; şifreyi değiştirmeyecekseniz yeni şifre alanını boş bırakın. Hesabı kapatmak rapor ve soru geçmişini silmez.
 
 **Müşteriden soru geldiyse:** İlgili markanın portal yönetimindeki **Müşteri soruları** bölümünü açın. Açık ve müşteriye uygun bir cevap yazıp **Yanıtı gönder** ile onaylayın. Yanıt doğrudan müşteriye görünür ve sonradan değiştirilemez; özel not veya iç maliyet yazmayın. Bu sürümde soru veya yanıt için e-posta bildirimi yoktur; ekip bu ekranı, müşteri kendi portalını kontrol eder.
+
+### Müşteri 3, 6 veya 12 ayı birlikte nasıl inceler?
+
+Portal girişinde **Paylaşılan aylara toplu bakış** alanı bulunur. **Son ay**, **Görünüm (3/6/12 ay)** ve **Karşılaştırma para birimi** seçilir. Son ay süreye dahildir: örneğin Ağustos 2026 için üç ay seçilirse Haziran, Temmuz ve Ağustos gösterilir. **Toplu görünümü yenile** son paylaşım durumunu getirir; açık sayfa da yaklaşık 30 saniyede bir yenilenir.
+
+- Yalnız bu müşterinin markasına açıkça yayımlanmış, paylaşımı geri çekilmemiş raporlar alınır. İç kayıtlar veya sırf ay kapanmış olması yeterli değildir.
+- Aynı ayın birden fazla sürümü varsa **paylaşımı açık en yüksek sürüm** yalnız bir kez kullanılır. Kullanılan sürüm ve yayımlanma tarihi ay kartında yazılıdır.
+- Yeni sürüm geri çekilmiş ama eski sürüm açık bırakılmışsa eski sürüm görünümde kullanılabilir. Bir ayın hiç görünmemesi isteniyorsa o aya ait açık sürümlerin tamamının paylaşımı kontrol edilmelidir; geçmiş kayıtlar silinmez.
+- Açık son sürümün para birimi esas alınır. Kur çevrimi yapılmaz, para birimleri toplanmaz; farklı para birimindeki eski bir sürüm sırf bu seçim yüzünden yeniden seçilmez.
+- Raporsuz ay **“Bu ay ve para biriminde paylaşılmış rapor yok”** diye görünür; geliri sıfır sayılmaz. Kaç ayın gerçekten paylaşıldığı belirtilir. Hiç kaynak yoksa toplam hesaplanmış gibi `0` gösterilmez.
+- Toplamlar yalnız seçilen raporlardaki tutarlardır. **Ödenen ve kalan**, farklı tarihlerde yayımlanan dönem raporlarının kaydını gösterir; bugünkü borç, seçili aylarda bankaya giren para veya banka bakiyesi değildir. Sonradan gelen ödeme ancak yeni rapor sürümü paylaşılınca görünür.
+- Net ciro değişimi yalnız hemen önceki takvim ayı aynı görünümde ve aynı para biriminde mevcutsa, ayrıca önceki net ciro pozitifse hesaplanır. Eksik ay atlanıp daha eski ayla karşılaştırılmaz. Yüzde değişim nedenini tek başına açıklamaz.
+- Toplu reklam verimliliği **toplam net ciro / toplam reklam gideri** olarak hesaplanır. Aylık oranların basit ortalaması alınmaz. Reklam gideri sıfırsa oran hesaplanamaz. İade oranları toplanmaz; kendi kaynak raporunda incelenir.
+
+**Bu ayın kaynak raporunu aç** bağlantısı ilgili sürümü altta açar. Buradan mevcut tablo indirme, yalnız seçili raporu PDF kaydetme ve açıklama isteme akışı kullanılabilir. Toplu görünüm bu tek raporun PDF'sine eklenmez. Özel OVO maliyetleri, kârı, iç görüşme notları ve ödeme sözleri müşteriye açılmaz. Daha önce indirilmiş bir dosyanın sonradan cihazdan silinemeyeceği kuralı değişmez.
+
+Bu geliştirme müşteri iş birliği fazının ilk adımıdır. Devam eden mesaj dizileri, “inceledim” kaydı ve belge talep listeleri henüz mevcut değildir; aşağıdaki soru/tek yanıt düzeni kullanılmaya devam eder.
 
 ### Müşteriye ilk kullanımda ne anlatmalıyım?
 
