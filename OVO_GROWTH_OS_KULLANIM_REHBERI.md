@@ -841,7 +841,7 @@ Rapor için **Paylaşımı geri çek**, belge için **Belge paylaşımını kapa
 
 Kişinin erişimi tamamen bitecekse hesap ayrıntısını açıp **Portal erişimi açık** işaretini kaldırın ve **Hesabı güncelle** deyin. Mevcut oturumu da sonraki istekte geçersiz olur. Şifre veya hesap bilgisi değişikliğinde yeniden giriş gerekir; şifreyi değiştirmeyecekseniz yeni şifre alanını boş bırakın. Hesabı kapatmak rapor ve soru geçmişini silmez.
 
-**Müşteriden soru geldiyse:** İlgili markanın portal yönetimindeki **Müşteri soruları** bölümünü açın. Açık ve müşteriye uygun bir cevap yazıp **Yanıtı gönder** ile onaylayın. Yanıt doğrudan müşteriye görünür ve sonradan değiştirilemez; özel not veya iç maliyet yazmayın. Bu sürümde soru veya yanıt için e-posta bildirimi yoktur; ekip bu ekranı, müşteri kendi portalını kontrol eder.
+**Müşteriden soru geldiyse:** İlgili markanın portal yönetimindeki **Müşteri konuşmaları** bölümünü açın. Konuyu ve önceki mesajları okuyup **Mesaj veya takip bilgisi ekle** düğmesini kullanın. Açık ve müşteriye uygun bir cevap yazıp **Mesajı gönder** ile onaylayın. Yanıt yalnız konuyu açan müşteriye görünür ve sonradan değiştirilemez; özel not veya iç maliyet yazmayın. Soru veya yanıt için e-posta bildirimi yoktur; ekip bu ekranı, müşteri kendi portalını kontrol eder.
 
 ### Müşteri 3, 6 veya 12 ayı birlikte nasıl inceler?
 
@@ -858,13 +858,56 @@ Portal girişinde **Paylaşılan aylara toplu bakış** alanı bulunur. **Son ay
 
 **Bu ayın kaynak raporunu aç** bağlantısı ilgili sürümü altta açar. Buradan mevcut tablo indirme, yalnız seçili raporu PDF kaydetme ve açıklama isteme akışı kullanılabilir. Toplu görünüm bu tek raporun PDF'sine eklenmez. Özel OVO maliyetleri, kârı, iç görüşme notları ve ödeme sözleri müşteriye açılmaz. Daha önce indirilmiş bir dosyanın sonradan cihazdan silinemeyeceği kuralı değişmez.
 
-Bu geliştirme müşteri iş birliği fazının ilk adımıdır. Devam eden mesaj dizileri, “inceledim” kaydı ve belge talep listeleri henüz mevcut değildir; aşağıdaki soru/tek yanıt düzeni kullanılmaya devam eder.
+### Aynı konuda konuşmaya nasıl devam edilir?
+
+Müşteri **Sorularım ve yanıtlar**, ekip ise **Müşteri portalı → Marka seçin → Müşteri konuşmaları** bölümünü kullanır. Önceden yazılmış sorular ve tek yanıtlar da burada korunur; eski metin yeniden yazılmaz.
+
+1. Konunun ayını ve rapor sürümünü kontrol edin. Yeni sürüm yayımlanması eski konuyu o yeni rapora taşımaz.
+2. Önceki mesajları okuyun. Müşteri **Bu konuya mesaj yaz**, ekip **Mesaj veya takip bilgisi ekle** düğmesine basar.
+3. En fazla 4.000 karakterlik mesajı yazın, **Mesajı gönder** düğmesine basıp onaylayın. Yanlış ifade varsa eski mesajı değiştirmek yerine yeni bir düzeltme mesajı gönderin. Hesap başına saatte en fazla 40 devam mesajı gönderilebilir.
+4. Ekip gerekiyorsa etkin bir yönetici veya ortağı **Takip sorumlusu** seçer; durum seçip **Takip bilgisini kaydet** der. Mesaj ve takip kaydı ayrı işlemlerdir. Yazılmış mesaj varken önce onu gönderin veya temizleyin.
+
+Durumlar şöyle okunur:
+
+- **OVO yanıtı bekleniyor:** Yeni müşteri sorusu veya devam mesajı var. Ekip konuyu ele almalıdır.
+- **Müşteri yanıtı bekleniyor:** OVO mesaj göndermiştir. Bu ifade müşterinin mutlaka yanıt vereceği anlamına gelmez.
+- **Çözüldü:** Ekip konunun tamamlandığını işaretlemiştir. Müşteri yeni mesaj gönderirse konu yeniden OVO yanıtını beklemeye döner; geçmiş silinmez.
+
+Ekip konu sahibini, takip sorumlusunu, son mesaj ve son OVO yanıtı tarihini görür. **Konu durumu** filtresi günlük kontrolü kolaylaştırır. Sorumlu ataması çalışana yeni yetki vermez, İşlerim'e otomatik görev veya e-posta üretmez. Analist bu paylaşım alanını yönetemez. Aynı markanın farklı müşteri hesapları birbirlerinin konuşmalarını göremez.
+
+Sayfa yaklaşık 30 saniyede bir yenilenir; **Konuşmaları yenile** ile de kontrol edebilirsiniz. Siz yazarken konu değişirse eski sürümle gönderim durur. Metniniz korunur: güncel mesajları okuyun, **Metnimi koruyup güncel takip bilgilerini al** deyin ve gönderiminizi yeniden değerlendirin. Form açıkken filtreye artık uymayan konu, taslağınız kaybolmasın diye görünmeye devam eder. Sayfadan ayrılırken kaydedilmemiş metin uyarısını dikkate alın.
+
+Kaynak rapor geri çekilmişse konuşma geçmişi korunur ama o konuya yeni mesaj gönderilemez. Açık bir rapor seçip yeni konu başlatın. Ekip eski konunun sorumlusunu veya çözüldü durumunu yine düzenleyebilir.
+
+### “İnceledim” ne demektir, ne değildir?
+
+Müşteri seçili raporun altındaki **Raporu inceleme bilgisi** alanından **Bu sürümü inceledim** düğmesine basıp açıklamayı onaylar. Bu yalnız o hesabın o sürümü incelediğini kaydeder. **Tutarları kabul etmek, sözleşme imzalamak, dönem onaylamak veya ödeme yapmak değildir.** Hakediş, kalan alacak ve dönem kilidi değişmez.
+
+Rapor ekranda açıldığında ilk ve son görüntüleme zamanı da kaydedilir. Ekip bunları **Rapor güncelliği ve inceleme takibi** bölümünde görür. Görüntüleme raporun gerçekten okunduğunun kanıtı değildir; özellik eklenmeden önceki görüntülemeler bilinmez. Aynı sürüm için yeniden “İnceledim” demek ilk inceleme tarihini değiştirmez. Başka müşteri hesabının ve yeni rapor sürümünün kaydı ayrıdır. Geri çekilmiş sürümün eski inceleme bilgisi ekipte kalır; yeni kayıt alınmaz. Tarihler Türkiye saatidir.
+
+### Müşteriden bilgi veya belge nasıl istenir?
+
+Ekip, **Müşteri portalı → Marka seçin → Müşteriden istenen bilgiler** bölümündeki **Yeni bilgi veya belge iste** düğmesini kullanır.
+
+1. Örneğin “Ağustos iade dökümü” gibi açık bir başlık yazın.
+2. Açıklamada hangi bilgi gerektiğini ve markayla zaten kararlaştırılmış güvenli teslim yolunu belirtin. İç görüşme notu veya parola yazmayın. İstenirse son tarih ekleyin.
+3. **Talebi müşteriye göster** ile onaylayın. Başlık ve açıklama o markanın bütün müşteri hesaplarında **Sizden beklenen bilgi ve belgeler** alanına gelir; konuşmaların aksine tek kişiye özel değildir.
+4. Müşteri bilgiyi açıklanan kanaldan iletir. Bu ekranda dosya yükleme, otomatik e-posta veya başka bir sisteme dosya gönderme yoktur.
+5. Ekip teslimi kontrol edip **Teslim durumunu güncelle** ile **Ekip teslim aldı** seçer ve gerekçe yazar. Durum müşteriye görünür; gerekçe yalnız iç işlem geçmişindedir.
+
+**Sizden bekleniyor** açık talep, **Artık istenmiyor** ise ekipçe kapatılan taleptir. Gerekirse gerekçeyle yeniden bekleniyor durumuna alınabilir. Eski ekranla değişiklik engellenir; gerekçeyi koruyarak güncel durumu alabilirsiniz. Talebin ilk başlığı, açıklaması ve tarihi sonradan değiştirilmez: yanlış talebi kapatıp doğrusunu oluşturun. Talep silinmez; durum değişiklikleri İşlem geçmişi'nden izlenir. Son tarihin geçmesi otomatik belge teslimi veya gecikme cezası oluşturmaz.
+
+### “Yeni sürüm gerekebilir” uyarısında ne yapmalıyım?
+
+Ekip ekranındaki **Rapor güncelliği ve inceleme takibi**, her ayın paylaşımı açık en yüksek sürümünü güncel marka raporuyla karşılaştırır. Örneğin yeni tahsilat, ödeme iptali veya marka raporundaki başka bir değer değişmişse uyarı çıkar. Özel OVO maliyetinin tek başına değişmesi müşteri raporunu güncel değil yapmaz. Eski sürüm geri çekildiği için daha eski bir açık sürüm kullanılmaya başlanırsa o sürüm yeniden karşılaştırılır.
+
+Uyarıdaki bağlantıyla yayımlama bölümüne dönün; ayı seçip ön izlemeyi kontrol edin. Gerçekten paylaşılması gerekiyorsa **Markayla paylaş** ile yeni sürüm yayımlayın. Dönem artık yayımlanabilir durumda değilse önce dönem durumunu inceleyin; uyarıyı kapatmak için iş kurallarını atlamayın. Bu uyarı finansal hata kararı değildir, raporu kendi kendine yayımlamaz ve eski sürümü otomatik geri çekmez. Yeni sürümü yayımladıktan sonra eski açık sürümleri ayrıca kontrol edin.
 
 ### Müşteriye ilk kullanımda ne anlatmalıyım?
 
 Giriş bilgilerini iletirken şu kısa açıklamayı kendi markanıza uyarlayabilirsiniz:
 
-“Panel adresini açıp size verilen kişisel e-posta ve şifreyle giriş yapın. Yayımlanmış rapor listesinden incelemek istediğiniz ayı ve sürümü seçin. Rakamların altındaki açıklamaları okuyun; isterseniz tabloyu indirin veya yazdırma ekranından PDF kaydedin. Sormak istediğiniz konuyu ilgili raporun altındaki alana yazın. Cevabımızı Sorularım ve yanıtlar bölümünde görebilirsiniz; ayrıca e-posta gönderilmez. Belgeleriniz Paylaşılan belgeler bölümündedir. İşiniz bittiğinde, özellikle ortak bilgisayarda, Çıkış yap düğmesini kullanın.”
+“Panel adresini açıp size verilen kişisel e-posta ve şifreyle giriş yapın. Yayımlanmış rapor listesinden ay ve sürüm seçin; toplu bakıştan 3, 6 veya 12 ayı inceleyin. Rakamların açıklamalarını okuyun; isterseniz tabloyu indirin veya PDF kaydedin. İncelediğiniz sürümü ‘İnceledim’ olarak işaretleyebilirsiniz; bu ödeme veya tutarları kabul etme işlemi değildir. Sormak istediğiniz konuyu ilgili raporun altına yazın; Sorularım ve yanıtlar bölümünden aynı konuşmaya devam edin. E-posta bildirimi gönderilmez. Belgeleriniz Paylaşılan belgeler, sizden beklediklerimiz Sizden beklenen bilgi ve belgeler bölümündedir. İşiniz bittiğinde, özellikle ortak bilgisayarda, Çıkış yap düğmesini kullanın.”
 
 Boş rapor listesi markanın satış yapmadığı anlamına gelmez; ekip henüz rapor yayımlamamış olabilir. Bu portalda satış verisi girilmez, ödeme yapılmaz ve sözleşme imzalanmaz. Giriş sorunu veya yanlış marka görünümü varsa işlem yapmadan OVO ekibine bildirin.
 

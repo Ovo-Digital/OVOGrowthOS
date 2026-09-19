@@ -14,6 +14,8 @@ public static partial class WorkflowEndpoints
 {
     private static void MapPortalCollaboration(RouteGroupBuilder portal, RouteGroupBuilder management)
     {
+        management.MapGet("/conversation-owners", async (AppDbContext db) => Results.Ok(await db.UserAccounts.AsNoTracking()
+            .Where(x => x.IsActive && (x.Role == "Admin" || x.Role == "Partner")).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync()));
         portal.MapGet("/conversations", async (AppDbContext db, ClaimsPrincipal user) =>
             await PortalConversations(db, await PortalBrand(db, user), Guid.Parse(user.FindFirstValue("uid")!)));
         management.MapGet("/conversations", async (Guid brandId, AppDbContext db) => await PortalConversations(db, brandId, null));
@@ -38,7 +40,7 @@ public static partial class WorkflowEndpoints
             join report in db.PortalReports on reading.ReportId equals report.Id
             where reading.BrandId == brandId
             orderby reading.LastViewedAt descending
-            select new { reading.ReportId, user.Name, report.Year, report.Month, report.Version, report.RevokedAt,
+            select new { reading.ReportId, reading.UserId, user.Name, report.Year, report.Month, report.Version, report.RevokedAt,
                 reading.FirstViewedAt, reading.LastViewedAt, reading.ReviewedAt }).ToListAsync()));
 
         portal.MapGet("/requests", async (AppDbContext db, ClaimsPrincipal user) => await ReadPortalRequests(db, await PortalBrand(db, user)));
@@ -61,10 +63,14 @@ public static partial class WorkflowEndpoints
             .Select(x => new { x.Id, x.Year, x.Month, x.Version, x.RevokedAt }).ToDictionaryAsync(x => x.Id);
         var owners = actor is null ? await db.UserAccounts.AsNoTracking().Where(x => x.Role == "Admin" || x.Role == "Partner")
             .Select(x => new { x.Id, x.Name, x.IsActive }).ToDictionaryAsync(x => x.Id) : null;
+        var customerIds = questions.Select(x => x.UserId).Distinct().ToArray();
+        var customers = actor is null ? await db.UserAccounts.AsNoTracking().Where(x => customerIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name) : null;
         return Results.Ok(questions.Select(q => new { q.Id, q.ReportId, q.Question, q.Answer, q.CreatedAt, q.AnsweredAt, q.Revision,
             status = ConversationStatus(q), ownerId = actor is null ? q.OwnerId : null,
+            customerName = customers?.GetValueOrDefault(q.UserId),
             ownerName = owners is not null && q.OwnerId is { } owner && owners.TryGetValue(owner, out var account) ? account.Name + (account.IsActive ? "" : " (Hesap kapalı)") : null,
             lastMessageAt = q.Messages.Select(x => x.CreatedAt).Append(q.AnsweredAt ?? q.CreatedAt).Max(),
+            lastReplyAt = q.Messages.Where(x => x.FromStaff).Select(x => (DateTimeOffset?)x.CreatedAt).Append(q.AnsweredAt).Max(),
             report = reports[q.ReportId],
             messages = q.Messages.OrderBy(x => x.Sequence).Select(x => new { x.Id, x.Text, x.FromStaff, x.CreatedAt }) }));
     }
