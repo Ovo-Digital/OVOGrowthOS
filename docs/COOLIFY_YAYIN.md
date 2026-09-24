@@ -5,7 +5,7 @@ OVO Growth OS'un üretim imajları GitHub Actions tarafından hazırlanır ve Gi
 - `ghcr.io/ovo-digital/ovogrowthos-web`: Next.js kullanıcı arayüzü, içeride `3000` portunu dinler.
 - `ghcr.io/ovo-digital/ovogrowthos-api`: ASP.NET Core API, içeride `8080` portunu dinler.
 
-PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Uygulama dosyaları kalıcı veri tutmadığı için volume gerekmez.
+PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Hesap e-postalarının şifreleme anahtarları için compose içindeki `mail-keys` volume'u kalıcı tutulmalıdır; silmeyin. Gmail SMTP kurulumu ve gönderimi kontrollü açma adımları [SMTP kurulum rehberinde](SMTP_KURULUMU.md) anlatılır. Varsayılan `MAIL_ENABLED=false` olduğu için bilgiler girilmeden e-posta gönderilmez.
 
 ## 1. GitHub Actions ayarı
 

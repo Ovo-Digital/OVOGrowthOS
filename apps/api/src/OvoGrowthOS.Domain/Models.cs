@@ -29,6 +29,7 @@ public sealed class UserAccount
     public required string PasswordHash { get; set; }
     public bool IsActive { get; set; } = true;
     public int TokenVersion { get; set; }
+    public bool InvitationPending { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -19,13 +19,15 @@ public static partial class WorkflowEndpoints
         MapCustomerPortal(app);
         MapMonthlyTargets(app);
         MapWorkPlanning(app);
+        MapAccountMail(app);
+        MapNotifications(app);
         return app;
     }
 
     private static void MapUsers(WebApplication app)
     {
         var group = app.MapGroup("/api/users").RequireAuthorization("AdminOnly");
-        group.MapGet("/", async (AppDbContext db) => Results.Ok(await db.UserAccounts.AsNoTracking().Where(x => x.Role != "BrandClient").OrderBy(x => x.Name).Select(x => new { x.Id, x.Email, x.Name, x.Role, x.IsActive, x.CreatedAt }).ToListAsync()));
+        group.MapGet("/", async (AppDbContext db) => Results.Ok(await db.UserAccounts.AsNoTracking().Where(x => x.Role != "BrandClient").OrderBy(x => x.Name).Select(x => new { x.Id, x.Email, x.Name, x.Role, x.IsActive, x.InvitationPending, x.CreatedAt }).ToListAsync()));
         group.MapPost("/", async (UserAccountRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
             if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 10) return Results.ValidationProblem(new Dictionary<string,string[]> { ["password"] = ["Şifre en az 10 karakter olmalıdır."] });
@@ -49,7 +51,7 @@ public static partial class WorkflowEndpoints
             var email = request.Email.Trim().ToLowerInvariant();
             if (await db.UserAccounts.AnyAsync(x => x.Email == email && x.Id != id)) return Results.Conflict(new { error = "Bu e-posta ile kayıtlı bir kullanıcı zaten var." });
             if (account.IsActive && account.Role == "Admin" && (!request.IsActive || request.Role != "Admin") &&
-                !await db.UserAccounts.AnyAsync(x => x.Id != id && x.IsActive && x.Role == "Admin"))
+                !await db.UserAccounts.AnyAsync(x => x.Id != id && x.IsActive && !x.InvitationPending && x.Role == "Admin"))
                 return Results.Conflict(new { error = "Son etkin yöneticinin hesabı kapatılamaz veya rolü değiştirilemez. Önce başka bir yönetici oluşturun." });
             var old = JsonSerializer.Serialize(new { account.Email, account.Name, account.Role, account.IsActive }, Json);
             account.Email = email; account.Name = request.Name.Trim(); account.Role = request.Role; account.IsActive = request.IsActive;

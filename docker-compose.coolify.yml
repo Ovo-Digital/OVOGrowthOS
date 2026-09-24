@@ -19,6 +19,16 @@ services:
       DefaultAdmin__Email: ${DEFAULT_ADMIN_EMAIL:-admin@ovodigital.com}
       DefaultAdmin__PasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:?Yönetici parola özeti zorunludur}
       WebOrigin: ${WEB_ORIGIN:?Web adresi zorunludur}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_KEY_PATH: /app/mail-keys
+    volumes:
+      - mail-keys:/app/mail-keys
     expose:
       - "8080"
     healthcheck:
@@ -47,3 +57,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
+volumes:
+  mail-keys:

@@ -240,7 +240,7 @@ Görevin sorumlusu, analist olsa da kendi görevini **Tamamlandı olarak işaret
 
 **Önemli:** Bir kapanış görevini tamamlamak aylık sonucu onaylamaz veya kilitlemez; yenileme görevini tamamlamak yeni anlaşma oluşturmaz. İlgili finansal/ticari işlemi kendi ekranında ayrıca yapın. Aylık sonucu hazırlayan kişi yine aynı sonucu onaylayamaz.
 
-Zil menüsü, kişisel görevler ve zamanı gelen görüşmelerden kısa bir hatırlatma listesi sunar; bütün işleri görmek için **İşlerim** sayfasını kullanın. Henüz son tarihi belirlenmemiş bir aylık sonuç otomatik olarak “gecikti” sayılmaz. E-posta veya mesaj gönderilmez; bu sürümde hatırlatmalar panel içindedir.
+Zil menüsü, kişisel görevler ve zamanı gelen görüşmelerden kısa bir hatırlatma listesi sunar; bütün işleri görmek için **İşlerim** sayfasını kullanın. Henüz son tarihi belirlenmemiş bir aylık sonuç otomatik olarak “gecikti” sayılmaz. Görev e-postalarını ayrıca **Bildirimler** sayfasındaki kişisel tercihlerinizden açabilirsiniz; zil listesindeki her kayıt e-posta konusu değildir.
 
 ### Yeni marka ekleme
 
@@ -811,12 +811,12 @@ Sol menüdeki **Müşteri portalı**, yönetici ve iş ortaklarının paylaşım
 
 1. **Müşteri portalı** ekranını açın ve doğru markayı seçin.
 2. Yönetici hesabıyla **Yeni müşteri hesabı oluştur** bölümüne kişinin adını, e-postasını ve en az 10 karakterlik ilk giriş şifresini girin. **Portal erişimi açık** işaretliyse kişi giriş yapabilir. E-posta daha önce bir ekip hesabında kullanılmışsa başka bir adres kullanın; ekip hesabı müşteri hesabına çevrilmez. Her hesap yalnız tek markaya bağlıdır, sonradan başka markaya taşınmaz.
-3. Panel adresini ve giriş bilgilerini kişiye güvenli bir kanaldan iletin. Sistem davet veya şifre yenileme e-postası göndermez. Müşteri hesabını ekipteki **Kullanıcılar** ekranından değil buradan yönetin.
+3. Şifreyi kendiniz oluşturduysanız panel adresini ve giriş bilgilerini kişiye güvenli bir kanaldan iletin; bu eski yöntem e-posta göndermez. E-posta hizmeti açıksa **Marka yetkilisini e-postayla davet et** formunu kullanarak kişinin kendi şifresini belirlemesini sağlayabilirsiniz. Müşteri hesabını ekipteki **Kullanıcılar** ekranından değil buradan yönetin.
 4. **Dönem raporunu yayımla** bölümünde kapalı bir dönem seçin. Taslak, incelemede veya yalnız onaylanmış dönemler yayımlanamaz; dönem kilitli, faturalanmış veya ödenmiş olmalıdır.
 5. Ön izlemedeki marka, ay, para birimi ve tutarları kontrol edin. **Markayla paylaş** düğmesine basıp onaylayın. Yayımlama anındaki sonuç yeni bir rapor sürümü olarak saklanır. Oluşan sürümü aşağıdan açarak kontrol edin.
 6. Belge gerekiyorsa aynı ekrandaki belge alanına yükleyin, dosyayı açıp içeriğini kontrol edin, ardından **Belgeyi paylaş** düğmesine ayrıca basın. Dosya yüklemek tek başına müşteriye paylaşmak değildir. İlk sürümde yalnız doğrudan markaya eklenmiş belgeler paylaşılır; değerlendirme ve anlaşma ekleri kendiliğinden açılmaz.
 
-Hesap açma, kapatma ve şifre değiştirme yalnız yöneticidedir. Yönetici ve iş ortağı rapor yayımlayabilir, belge paylaşabilir, paylaşımı kaldırabilir ve müşteri sorularını yanıtlayabilir. Analist paylaşım yönetimine erişemez. Müşteri hesapları çalışan atama listelerine alınmaz.
+Hesap açma, kapatma ve başka kişinin şifresini yönetme yalnız yöneticidedir. Kişi e-posta hizmeti açıksa giriş ekranından kendi şifresi için yenileme bağlantısı isteyebilir. Yönetici ve iş ortağı rapor yayımlayabilir, belge paylaşabilir, paylaşımı kaldırabilir ve müşteri sorularını yanıtlayabilir. Analist paylaşım yönetimine erişemez. Müşteri hesapları çalışan atama listelerine alınmaz.
 
 **Paylaşım kime açılır?** Yayımladığınız rapor ve paylaştığınız belge, seçili markanın erişimi açık bütün müşteri hesaplarına açılır. Bu aşamada “aynı markadan yalnız bir kişiye bu belgeyi göster” seçeneği yoktur. Kişiye özel kalan alan, müşterinin kendi soruları ve bu sorulara verilen yanıtlardır. Yeni bir yetkiliye hesap açarken o markanın halen paylaşıma açık eski rapor ve belgelerini de görebileceğini unutmayın.
 
@@ -841,7 +841,7 @@ Rapor için **Paylaşımı geri çek**, belge için **Belge paylaşımını kapa
 
 Kişinin erişimi tamamen bitecekse hesap ayrıntısını açıp **Portal erişimi açık** işaretini kaldırın ve **Hesabı güncelle** deyin. Mevcut oturumu da sonraki istekte geçersiz olur. Şifre veya hesap bilgisi değişikliğinde yeniden giriş gerekir; şifreyi değiştirmeyecekseniz yeni şifre alanını boş bırakın. Hesabı kapatmak rapor ve soru geçmişini silmez.
 
-**Müşteriden soru geldiyse:** İlgili markanın portal yönetimindeki **Müşteri konuşmaları** bölümünü açın. Konuyu ve önceki mesajları okuyup **Mesaj veya takip bilgisi ekle** düğmesini kullanın. Açık ve müşteriye uygun bir cevap yazıp **Mesajı gönder** ile onaylayın. Yanıt yalnız konuyu açan müşteriye görünür ve sonradan değiştirilemez; özel not veya iç maliyet yazmayın. Soru veya yanıt için e-posta bildirimi yoktur; ekip bu ekranı, müşteri kendi portalını kontrol eder.
+**Müşteriden soru geldiyse:** İlgili markanın portal yönetimindeki **Müşteri konuşmaları** bölümünü açın. Konuyu ve önceki mesajları okuyup **Mesaj veya takip bilgisi ekle** düğmesini kullanın. Açık ve müşteriye uygun bir cevap yazıp **Mesajı gönder** ile onaylayın. Yanıt yalnız konuyu açan müşteriye görünür ve sonradan değiştirilemez; özel not veya iç maliyet yazmayın. **Bildirimler** bölümünde ilgili kişinin tercihi ve e-posta hizmeti açıksa bağlantı içeren bildirim gönderilebilir; asıl konuşmayı panelden takip edin.
 
 ### Müşteri 3, 6 veya 12 ayı birlikte nasıl inceler?
 
@@ -905,9 +905,11 @@ Uyarıdaki bağlantıyla yayımlama bölümüne dönün; ayı seçip ön izlemey
 
 ### Müşteriye ilk kullanımda ne anlatmalıyım?
 
+**Ekibin günlük kısa kontrolü:** Markayı seçin; önce **OVO yanıtı bekleniyor** konularını inceleyip sorumlusunu belirleyin. Ardından istenen belgelerden gerçekten teslim alınanları güncelleyin. **Yeni sürüm gerekebilir** uyarısı varsa güncel ön izlemeyi eski raporla karşılaştırın; yalnız gerekli ve doğruysa yeni sürümü paylaşın. Son olarak görüntüleme ve “İnceledim” kayıtlarına bakın, ancak bunları ödeme veya ticari onay saymayın. Yeni rapor ve yanıt e-postaları alıcının **Bildirimler** tercihlerine bağlıdır; yalnız ekranı açmak e-posta göndermez.
+
 Giriş bilgilerini iletirken şu kısa açıklamayı kendi markanıza uyarlayabilirsiniz:
 
-“Panel adresini açıp size verilen kişisel e-posta ve şifreyle giriş yapın. Yayımlanmış rapor listesinden ay ve sürüm seçin; toplu bakıştan 3, 6 veya 12 ayı inceleyin. Rakamların açıklamalarını okuyun; isterseniz tabloyu indirin veya PDF kaydedin. İncelediğiniz sürümü ‘İnceledim’ olarak işaretleyebilirsiniz; bu ödeme veya tutarları kabul etme işlemi değildir. Sormak istediğiniz konuyu ilgili raporun altına yazın; Sorularım ve yanıtlar bölümünden aynı konuşmaya devam edin. E-posta bildirimi gönderilmez. Belgeleriniz Paylaşılan belgeler, sizden beklediklerimiz Sizden beklenen bilgi ve belgeler bölümündedir. İşiniz bittiğinde, özellikle ortak bilgisayarda, Çıkış yap düğmesini kullanın.”
+“Panel adresini açıp size verilen kişisel e-posta ve şifreyle giriş yapın. Yayımlanmış rapor listesinden ay ve sürüm seçin; toplu bakıştan 3, 6 veya 12 ayı inceleyin. Rakamların açıklamalarını okuyun; isterseniz tabloyu indirin veya PDF kaydedin. İncelediğiniz sürümü ‘İnceledim’ olarak işaretleyebilirsiniz; bu ödeme veya tutarları kabul etme işlemi değildir. Sormak istediğiniz konuyu ilgili raporun altına yazın; Sorularım ve yanıtlar bölümünden aynı konuşmaya devam edin. Bildirimler alanından rapor ve yanıt e-postalarını tercih edebilirsiniz. Belgeleriniz Paylaşılan belgeler, sizden beklediklerimiz Sizden beklenen bilgi ve belgeler bölümündedir. İşiniz bittiğinde, özellikle ortak bilgisayarda, Çıkış yap düğmesini kullanın.”
 
 Boş rapor listesi markanın satış yapmadığı anlamına gelmez; ekip henüz rapor yayımlamamış olabilir. Bu portalda satış verisi girilmez, ödeme yapılmaz ve sözleşme imzalanmaz. Giriş sorunu veya yanlış marka görünümü varsa işlem yapmadan OVO ekibine bildirin.
 
@@ -982,7 +984,7 @@ Bir rakam veya durum beklenmedik görünüyorsa ilk kontrol edilmesi gereken yer
 
 Ekranın üstündeki arama alanından marka, değerlendirme veya anlaşma adı aranabilir. Klavyede `Ctrl + K` veya Mac'te `⌘ + K` kısayolu aramayı hızlıca açar.
 
-Zil simgesi; size atanmış açık görevlerden, zamanı gelen marka görüşmelerinden, onay bekleyen aylık sonuçlardan, hazırlığı süren değerlendirmelerden ve etkinleştirilmeyi bekleyen kabul edilmiş anlaşmalardan kısa bir liste gösterir. Bu liste bütün bekleyen kayıtların sayımı değildir; her gruptan sınırlı sayıda hatırlatma içerir. Tüm görevler için **İşlerim**, eksik dönemler için **Ana sayfa**, değerlendirme ve anlaşmaların tamamı için kendi listelerini kullanın. Zilde kayıt görünmemesi bütün işlerin bitmiş olduğu anlamına gelmez. E-posta veya telefon bildirimi gönderilmez.
+Zil simgesi; size atanmış açık görevlerden, zamanı gelen marka görüşmelerinden, onay bekleyen aylık sonuçlardan, hazırlığı süren değerlendirmelerden ve etkinleştirilmeyi bekleyen kabul edilmiş anlaşmalardan kısa bir liste gösterir. Bu liste bütün bekleyen kayıtların sayımı değildir; her gruptan sınırlı sayıda hatırlatma içerir. Tüm görevler için **İşlerim**, eksik dönemler için **Ana sayfa**, değerlendirme ve anlaşmaların tamamı için kendi listelerini kullanın. Zilde kayıt görünmemesi bütün işlerin bitmiş olduğu anlamına gelmez. Ayrı **Bildirimler** alanında okundu takibi ve desteklenen türler için e-posta tercihleri bulunur; telefon bildirimi yoktur.
 
 ---
 
@@ -1026,6 +1028,72 @@ Yöneticiler **Ayarlar → Kullanıcılar** sayfasından kişiye özel iç ekip 
 Bir markanın sorumlusu olmak veya bir göreve atanmak hesabınıza ilave yetki vermez. Analist kendi görevini tamamlayabilir; fakat bu yolla finansal onay, tahsilat, hassas hizmet maliyeti veya müşteri paylaşımı yapamaz. İş ortağı portal paylaşımını yönetebilir ama müşteri hesabı ve şifre işlemleri için yöneticiden destek alır.
 
 Yeni kullanıcıya 10–256 karakterli bir şifre verin ve şifreyi güvenli bir kanaldan yalnızca ilgili kişiye iletin. E-posta adresi başka bir hesapta kullanılıyorsa yeni kayıt oluşturulmaz.
+
+### Şifre göndermeden hesap daveti
+
+E-posta hizmeti yönetici tarafından açılmışsa **Ayarlar → Kullanıcılar → Çalışanı e-postayla davet et** bölümünü kullanabilirsiniz. Marka yetkilisi için **Müşteri portalı → Marka seçin → Marka yetkilisini e-postayla davet et** yolunu izleyin.
+
+1. Kişinin adını, kendisine ait e-posta adresini ve ekip hesabıysa doğru yetkiyi yazın. Müşteri daveti seçtiğiniz markaya bağlıdır.
+2. **Hesabı oluştur ve davet gönder** düğmesine basın; adresi ve yetkiyi kontrol edip onaylayın. Şifre yazmanız gerekmez.
+3. Kişi gelen bağlantıdan kendi şifresini belirler. Davet **24 saat**, şifre yenileme bağlantısı **30 dakika** geçerlidir; her bağlantı yalnız bir kez kullanılabilir. Bağlantıyı açmak tek başına hesabı etkinleştirmez; kişi formu doldurup kaydetmelidir.
+4. **Davet bekleniyor** yazan hesap, erişimi açık görünse bile kişi şifresini bağlantıdan belirleyene kadar giriş yapamaz. Yönetici şifre alanını doldurmak bekleyen daveti tamamlamaz; daveti yenileyin veya kişinin giriş ekranından yeni bağlantı istemesini sağlayın.
+
+Mevcut bir e-posta adresiyle ikinci hesap açılmaz. Davetle yeni yönetici oluşturmak son yöneticiye erişim güvencesi değildir: davet kabul edilene kadar mevcut son yöneticiyi kapatamazsınız. Gmail ayarları henüz girilmemişse davet düğmesi kapalıdır; mevcut şifreyle hesap oluşturma yöntemi çalışmaya devam eder.
+
+### Şifremi unuttum veya bağlantım çalışmıyor
+
+Giriş ekranında **Şifremi unuttum / yeni davet bağlantısı** bağlantısını açın, hesabınızın e-posta adresini yazıp **Bağlantı iste** deyin. Güvenlik nedeniyle sistem bu adresin kayıtlı olup olmadığını söylemez. Kapalı hesap yeniden açılmaz. Daveti henüz tamamlanmamış kişiye yeni davet bağlantısı hazırlanır.
+
+E-postadaki bağlantıyla yeni şifreyi iki kez yazıp kaydedin. Şifre 10–256 karakter olmalıdır. Sonra giriş ekranından yeni şifreyle giriş yapın; önceki oturumlar kapanır. Eski, kullanılmış veya süresi geçmiş bağlantı çalışmaz. Yeni bağlantı üretildiğinde önceki bağlantılar geçersiz olur; yalnız son e-postayı kullanın. Bir hesaba bir dakika içinde ikinci bağlantı hazırlanmaz; saatte en fazla üç bağlantı oluşturulur.
+
+Bağlantıyı kimseyle paylaşmayın. Şifre ekranını yenilerseniz bağlantıyı e-postadan tekrar açmanız gerekebilir; bağlantı tarayıcıda saklanmaz. İleti gelmezse istenmeyen posta kutusunu kontrol edin; hizmet kapalı veya bilgiler eksik olabilir. Yöneticiyle görüşün.
+
+### Davet ve şifre e-postalarının durumunu izleme
+
+Yönetici davet formundaki **Gönderim durumları ve bekleyen davetler** bağlantısıyla **Hesap e-postaları** ekranını açar. Son 100 gönderim görünür. Bu ekran bağlantı veya şifre göstermez.
+
+- **Gönderim sırası bekliyor:** İleti hazırlanmıştır; hizmet açıkken sırayla denenir.
+- **Gönderim deneniyor:** Sunucu gönderimi başlatmıştır.
+- **E-posta sunucusu kabul etti:** Gönderici sunucu iletiyi kabul etmiştir; bu gelen kutusuna ulaştığını veya okunduğunu kanıtlamaz.
+- **Gönderim doğrulanamadı:** Kesin sonuç alınamadı; aynı ileti otomatik tekrarlanmaz. Önce alıcının kutusunu ve sunucu ayarlarını kontrol edin. Sunucu kesintisinde bu durumun görünmesi yaklaşık beş dakika sürebilir.
+- **Gönderilmeden kapatıldı:** Hesap/bağlantı değişmiş, bağlantının süresi dolmuş veya gönderim için gereken sunucu anahtarı kaybolmuş olabilir.
+
+Gerekirse **Önceki daveti geçersiz kıl ve yenisini gönder** düğmesini kullanın. Bu işlem eski daveti tekrar yollamaz; yeni bağlantı oluşturup eskisini kapatır. Şifre yenileme bağlantısını kişi giriş ekranından yeniden ister. Hesabın kapanması, e-posta adresi, şifre veya yetkisinin değişmesi önceki bağlantıyı geçersiz yapar. İletiler ortak bir alıcıya değil hesabın kendi kayıtlı adresine gider; finansal rapor veya dosya eki içermez.
+
+Hesap daveti ve şifre belirleme iletileri güvenlik amaçlıdır; aşağıdaki günlük bildirim tercihlerinden bağımsızdır.
+
+### İki aşamalı giriş ve telefon kaybında kurtarma
+
+Yönetici hesabınızda **Ayarlar → Hesap güvenliği** yolunu açın. Bu koruma isteğe bağlıdır; uygulama kimsenin hesabında kendiliğinden açmaz. Açıldığında giriş için şifrenize ek olarak telefonunuzdaki doğrulama uygulamasının kodu gerekir. Gmail, SMS veya ücretli hizmet gerekmez.
+
+1. Mevcut şifrenizi yazıp **İki aşamalı giriş kurulumunu başlat** deyin.
+2. Görünen 10 kurtarma kodunu telefondan ayrı, güvenli bir yerde saklayın. Kodları sohbet, ekip notu veya e-posta ile paylaşmayın. Bu liste sonradan tekrar gösterilmez.
+3. Kullandığınız doğrulama uygulamasında elle hesap ekleyin: hesap adı **OVO Growth OS**, tür **zamana dayalı** olsun. Ekrandaki kurulum anahtarını girin. Bu anahtar da şifre kadar özeldir.
+4. Mevcut şifrenizi ve doğrulama uygulamasındaki 6 haneli kodu yazın. Kurtarma kodlarını sakladığınızı işaretleyip **Doğrula ve iki aşamalı girişi aç** deyin. Kurulum 10 dakika içinde tamamlanmalıdır; süre dolarsa yeniden başlayın.
+5. Diğer oturumlarınız kapanır; bu ekrandaki oturumunuz yeni güvenlik durumuyla devam eder. Sonraki girişte önce e-posta/şifre, sonra doğrulama kodu sorulur. İkinci giriş adımı 5 dakika geçerlidir; süre dolarsa ilk adıma dönün.
+
+**Telefonum yoksa:** E-posta ve şifrenizden sonra 6 haneli kod yerine sakladığınız kullanılmamış kurtarma kodlarından birini yazın. Her kurtarma kodu yalnız bir kez çalışır. Aynı telefon kodu da tekrar kullanılamaz; yeni kod oluşmasını bekleyin. Art arda beş hatalı güvenlik doğrulamasında beş dakika beklemek gerekir. Yeni giriş başlatmak bu beklemeyi kaldırmaz; çok sayıda istekte ayrıca genel hız sınırı uygulanır.
+
+**Telefon değiştiriyorsam:** Giriş yaptıktan sonra Hesap güvenliği ekranında mevcut şifre ve telefon/kurtarma koduyla korumayı kapatın; yeni telefonla yeniden kurun. Korumanın kalkacağını ekranda ayrıca onaylarsınız. Kurtarma kodlarını yenilerseniz eski listenin tamamı iptal olur; yeni listeyi hemen güvenli yere alın. Bu işlemler diğer oturumları kapatır.
+
+**Şifremi unuttum:** Şifre yenileme yalnız şifreyi değiştirir; iki aşamalı girişi kaldırmaz. Şifrenizi yeniledikten sonra telefon kodu veya kurtarma kodu gerekir. Rolünüz sonradan değişse de açılmış koruma girişte aranır.
+
+**Tek yöneticiysem:** Kurtarma kodları olmadan korumayı açmayın. Telefon ve bütün kurtarma kodları birlikte kaybolursa e-posta üzerinden güvenlik atlama yolu yoktur. Sunucu sorumlusunun kimlik/sahiplik doğrulaması yaptığı, yalnız bu hesaba yönelik kayıtlı bir kurtarma müdahalesi gerekir; teknik ekip için süreç `docs/HESAP_GUVENLIGI.md` dosyasında açıklanır. Veritabanını veya kullanıcıları silmek çözüm değildir.
+
+### Bildirimler ve kişisel e-posta tercihleri
+
+İç ekip sol menüdeki **Bildirimler**, marka yetkilisi portalın üstündeki **Bildirimler** bağlantısını açar. Bu alan yalnız kendi hesabınıza ait bildirimleri gösterir. **Okundu olarak işaretle** kaydı okundu yapar; görevi tamamlamaz, raporu inceleme veya ticari onay yerine geçmez. Ayrıntıya gitmek için **İlgili sayfayı aç** seçilir.
+
+- **Günlük görev özeti:** Türkiye saatiyle 09.00 sonrasında açık, bugün bitmesi gereken ve gecikmiş görev sayılarınızı gösterir. Her gün en fazla bir özet oluşur. Önceki günün özeti güncel iş listesi yerine gösterilmez.
+- **Yaklaşan veya gecikmiş görev:** Son tarihi yarın, bugün veya geçmiş olan görev için hatırlatma oluşur. Aynı görev ve son tarih her kontrolde yeniden bildirilmez. Görev tamamlanırsa, başka kişiye atanırsa veya son tarihi değişirse eski bildirim görünmez.
+- **Müşteri konuşması:** Yeni soru ve devam mesajı atanmış yönetici/iş ortağına; henüz sorumlusu yoksa yöneticilere gösterilir. Ekip yanıtı yalnız soruyu açan müşteri hesabına gider, aynı markanın diğer müşteri hesaplarına gitmez.
+- **Yeni rapor:** Paylaşılmış yeni rapor, ilgili markanın etkin müşteri hesaplarına bildirilir. Paylaşımı geri çekilen raporun bildirimi artık açılmaz; henüz gönderilmemiş e-postası iptal edilir. Bu özellik kendiliğinden rapor yayımlamaz.
+
+**E-posta tercihlerim** bölümünde istediğiniz türleri işaretleyip **Tercihlerimi kaydet** deyin. Başlangıçta bütün e-posta tercihleri kapalıdır; panel bildirimleri çalışır. Gmail hizmeti hazır değilse tercih kaydedilebilir ama e-posta gönderilmez. E-postayı açmanız eski bildirimlerin tekrar gönderileceği anlamına gelmez. Hesabınız kapanırsa, adresiniz/oturum sürümünüz değişirse veya tercihi kapatırsanız bekleyen gönderim yeniden kontrol edilip iptal edilir.
+
+Takip, hesabınız ilk kez bildirim hizmetince kontrol edildiğinde veya bu sayfayı açtığınızda başlar; önceki konuşma ve raporların tamamı geriye dönük aktarılmaz. Bildirimler yaklaşık dakikada bir kontrol edilir; API kapalıysa kontrol yapılamaz. Son 30 gündeki en yeni 100 kayıt görüntülenir. Kesinti sonrası bir günden eski rapor/mesaj olayları panelde görünebilir ama eski e-postalar topluca gönderilmez. Bütün işleri görmek için **İşlerim** veya portalın asıl listelerini kullanın.
+
+E-posta sonucu kaydın altında görünür: **Gönderim bekliyor**, **Gönderiliyor**, **E-posta sunucusu kabul etti**, **Gönderim doğrulanamadı** veya **Gönderilmedi**. Sunucunun kabul etmesi gelen kutusuna teslim veya okunma garantisi değildir. Belirsiz gönderim otomatik tekrarlanmaz. Görev/rapor işleminizin kaydedilmesi e-posta başarısına bağlı değildir. İletide özel rapor değerleri, dosya eki ve konuşma metni yoktur; kendi hesabınızla giriş yapacağınız bağlantı vardır. Gönderilmiş bir e-posta alıcının kutusundan geri alınamaz; bağlantının açılabilmesi her zaman güncel erişim yetkisine bağlıdır.
 
 ### Bir çalışanın hesabını düzenleme veya kapatma
 
@@ -1257,7 +1325,7 @@ Portal raporu yayımlandığı andaki sürümdür; ödeme eklendiğinde bile esk
 
 ### Giriş yapılamıyor
 
-- E-posta adresinizi kontrol edin; şifreyi size verildiği biçimde yazın. Şifreyi unuttuysanız yöneticiye başvurun; otomatik şifre sıfırlama e-postası yoktur.
+- E-posta adresinizi kontrol edin; şifreyi size verildiği biçimde yazın. Şifreyi unuttuysanız giriş ekranından yenileme bağlantısı isteyin; e-posta hizmeti açık değilse veya hesabınız kapalıysa yöneticiye başvurun.
 - Çok sayıda deneme nedeniyle bekleme uyarısı varsa bir dakika bekleyin.
 - Hesabınız kapatılmış veya bilgileriniz değiştirilmiş olabilir. Güncel bilgilerle yeniden giriş yapın; erişim hâlâ yoksa yöneticiniz hesabı kontrol etsin.
 - Yerel sürümde hem web hem verileri sağlayan API çalışıyor olmalıdır. Canlı panel kullanıcısının kendi bilgisayarında bu servisleri başlatması gerekmez.
@@ -1531,10 +1599,10 @@ OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akış�
 - GrandNode, Shopify ve reklam platformlarından otomatik veri çekme (bağlantı bilgileri bekleniyor; bu faz kullanıcı onayıyla ertelendi, örnek veriler gerçek bağlantı gibi gösterilmez)
 - Muhasebe veya fatura sistemi entegrasyonu
 - Sözleşme belgesi oluşturma ve elektronik imza
-- Kurumsal tek oturum açma, e-postayla kendi kendine şifre sıfırlama ve çok şirketli kullanım (yönetici panelinden yeni şifre belirleme mevcuttur)
+- Kurumsal tek oturum açma ve çok şirketli kullanım (yönetici için isteğe bağlı iki aşamalı giriş; e-posta hizmeti açıksa davet ve şifre yenileme mevcuttur)
 - Sunucuda otomatik PDF üretme ve zamanlanmış rapor gönderimi (marka raporları ve müşteri portalında tarayıcıdan PDF kaydetme/yazdırma mevcuttur)
 - Bankadan otomatik ödeme okuma, panelden gerçek para gönderme/iade etme, fazla ödeme veya mahsup yönetimi
-- Görev, müşteri daveti, soru ve yanıtlar için otomatik e-posta veya mesaj gönderimi
+- WhatsApp/SMS ve pazarlama iletileri (görev, rapor ve konuşma e-postaları kişisel tercihle kullanılabilir)
 - Müşteri portalından veri girişi, dönem onayı, sözleşme kabulü veya ödeme yapma
 - Uygulama içinden yedek alma/geri yükleme yönetimi (ilgili geliştirme kullanıcı tercihiyle ertelendi; sunucuda ayrıca yedek bulunduğunu varsaymayın)
 

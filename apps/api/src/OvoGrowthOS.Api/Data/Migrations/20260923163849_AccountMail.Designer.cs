@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OvoGrowthOS.Api.Data;
@@ -11,9 +12,11 @@ using OvoGrowthOS.Api.Data;
 namespace OvoGrowthOS.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923163849_AccountMail")]
+    partial class AccountMail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -71,61 +74,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("AccountLinks", "growth", t =>
                         {
                             t.HasCheckConstraint("CK_AccountLinks_Values", "\"Revision\" > 0 AND \"Purpose\" BETWEEN 0 AND 1 AND \"ExpiresAt\" > \"CreatedAt\"");
-                        });
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.AccountSecurity", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ChallengeAccountVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("ChallengeExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ChallengeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("FailedAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("LastTimeStep")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LockedUntil")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ProtectedSecret")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.PrimitiveCollection<string[]>("RecoveryHashes")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("SetupExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.HasIndex("ChallengeHash")
-                        .IsUnique()
-                        .HasFilter("\"ChallengeHash\" <> ''");
-
-                    b.ToTable("AccountSecurities", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_AccountSecurities_Values", "\"Revision\" > 0 AND \"FailedAttempts\" BETWEEN 0 AND 5 AND \"LastTimeStep\" >= -1");
                         });
                 });
 
@@ -1461,38 +1409,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.NotificationPreference", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("DailyTasksEmail")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("PortalMessagesEmail")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("PortalReportsEmail")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("TaskDueEmail")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("NotificationPreferences", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_NotificationPreferences_Revision", "\"Revision\" > 0");
-                        });
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.PartnershipCondition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2274,73 +2190,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("UserAccounts", "growth");
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.UserNotification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AccountVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("AttemptedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateOnly?>("Day")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
-
-                    b.Property<int?>("EmailStatus")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ErrorCode")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("EventKey")
-                        .IsRequired()
-                        .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("ReadAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("SourceId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmailStatus", "CreatedAt");
-
-                    b.HasIndex("UserId", "CreatedAt");
-
-                    b.HasIndex("UserId", "EventKey")
-                        .IsUnique();
-
-                    b.ToTable("UserNotifications", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_UserNotifications_Values", "\"Revision\" > 0 AND \"Kind\" BETWEEN 0 AND 4 AND (\"EmailStatus\" IS NULL OR \"EmailStatus\" BETWEEN 0 AND 4)");
-                        });
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.WeeklyCapacity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2522,15 +2371,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.AccountSecurity", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
-                        .WithOne()
-                        .HasForeignKey("OvoGrowthOS.Domain.AccountSecurity", "UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.Brand", null)
@@ -2701,15 +2541,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.NotificationPreference", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
-                        .WithOne()
-                        .HasForeignKey("OvoGrowthOS.Domain.NotificationPreference", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -2912,15 +2743,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasOne("OvoGrowthOS.Domain.WorkTask", null)
                         .WithMany()
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.UserNotification", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -45,10 +45,62 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<WorkTemplateTask> WorkTemplateTasks => Set<WorkTemplateTask>();
     public DbSet<WeeklyCapacity> WeeklyCapacities => Set<WeeklyCapacity>();
     public DbSet<TaskHourPlan> TaskHourPlans => Set<TaskHourPlan>();
+    public DbSet<AccountLink> AccountLinks => Set<AccountLink>();
+    public DbSet<MailDelivery> MailDeliveries => Set<MailDelivery>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<AccountSecurity> AccountSecurities => Set<AccountSecurity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("growth");
+        modelBuilder.Entity<AccountSecurity>(e =>
+        {
+            e.HasKey(x => x.UserId);
+            e.HasOne<UserAccount>().WithOne().HasForeignKey<AccountSecurity>(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.ChallengeHash).HasMaxLength(64);
+            e.HasIndex(x => x.ChallengeHash).IsUnique().HasFilter("\"ChallengeHash\" <> ''");
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.ToTable(t => t.HasCheckConstraint("CK_AccountSecurities_Values", "\"Revision\" > 0 AND \"FailedAttempts\" BETWEEN 0 AND 5 AND \"LastTimeStep\" >= -1"));
+        });
+        modelBuilder.Entity<NotificationPreference>(e =>
+        {
+            e.HasKey(x => x.UserId);
+            e.HasOne<UserAccount>().WithOne().HasForeignKey<NotificationPreference>(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.ToTable(t => t.HasCheckConstraint("CK_NotificationPreferences_Revision", "\"Revision\" > 0"));
+        });
+        modelBuilder.Entity<UserNotification>(e =>
+        {
+            e.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.EventKey).HasMaxLength(180);
+            e.Property(x => x.Email).HasMaxLength(320);
+            e.Property(x => x.ErrorCode).HasMaxLength(40);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.HasIndex(x => new { x.UserId, x.EventKey }).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
+            e.HasIndex(x => new { x.EmailStatus, x.CreatedAt });
+            e.ToTable(t => t.HasCheckConstraint("CK_UserNotifications_Values", "\"Revision\" > 0 AND \"Kind\" BETWEEN 0 AND 4 AND (\"EmailStatus\" IS NULL OR \"EmailStatus\" BETWEEN 0 AND 4)"));
+        });
+        modelBuilder.Entity<AccountLink>(e =>
+        {
+            e.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.TokenHash).HasMaxLength(64);
+            e.Property(x => x.Email).HasMaxLength(320);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.HasIndex(x => x.TokenHash).IsUnique();
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
+            e.ToTable(t => t.HasCheckConstraint("CK_AccountLinks_Values", "\"Revision\" > 0 AND \"Purpose\" BETWEEN 0 AND 1 AND \"ExpiresAt\" > \"CreatedAt\""));
+        });
+        modelBuilder.Entity<MailDelivery>(e =>
+        {
+            e.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<AccountLink>().WithOne().HasForeignKey<MailDelivery>(x => x.AccountLinkId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.ErrorCode).HasMaxLength(40);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.ToTable(t => t.HasCheckConstraint("CK_MailDeliveries_Values", "\"Revision\" > 0 AND \"Status\" BETWEEN 0 AND 4"));
+        });
         modelBuilder.Entity<CollectionPromise>(p =>
         {
             p.HasOne<CollectionAccount>().WithOne(x => x.Promise).HasForeignKey<CollectionPromise>(x => x.MonthlyPerformanceId).OnDelete(DeleteBehavior.Restrict);

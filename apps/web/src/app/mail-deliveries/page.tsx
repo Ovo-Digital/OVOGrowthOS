@@ -1,0 +1,21 @@
+'use client';
+import {useState} from 'react';
+import {useQuery,useQueryClient} from '@tanstack/react-query';
+import {api,type SessionUser} from '@/lib/api';
+import {Card,PageHeader} from '@/components/ui/core';
+import type {MailStatus} from '@/components/account-invitation';
+type Delivery={id:string;userId:string;name:string;email:string;purpose:'Invitation'|'PasswordReset';status:'Pending'|'Sending'|'Sent'|'Uncertain'|'Cancelled';createdAt:string;expiresAt:string;errorCode:string;invitationPending:boolean};
+const labels={Pending:'Gönderim sırası bekliyor',Sending:'Gönderim deneniyor',Sent:'E-posta sunucusu kabul etti',Uncertain:'Gönderim doğrulanamadı',Cancelled:'Gönderilmeden kapatıldı'};
+export default function Page(){
+  const me=useQuery({queryKey:['session-user'],queryFn:()=>api<SessionUser>('/api/auth/me')}); const admin=me.data?.role==='Admin';
+  const status=useQuery({queryKey:['account-mail-status'],queryFn:()=>api<MailStatus>('/api/account-mail/status'),enabled:admin});
+  const list=useQuery({queryKey:['account-mail-deliveries'],queryFn:()=>api<Delivery[]>('/api/account-mail/deliveries'),enabled:admin,refetchInterval:30000});
+  const qc=useQueryClient();const[busy,setBusy]=useState(false);const[notice,setNotice]=useState('');const[error,setError]=useState('');
+  async function resend(item:Delivery){if(busy||!confirm(`${item.email} adresi için yeni davet oluşturulsun mu? Önceki bağlantılar geçersiz olacaktır.`))return;setBusy(true);setError('');setNotice('');try{await api(`/api/account-mail/invitations/${item.userId}/resend`,{method:'POST'});setNotice('Yeni davet sıraya alındı. Önceki bağlantılar geçersiz.');await qc.invalidateQueries({queryKey:['account-mail-deliveries']});}catch(e){setError(e instanceof Error?e.message:'İşlem yapılamadı.');}finally{setBusy(false);}}
+  if(me.isPending)return <p role="status">Yetki kontrol ediliyor…</p>;
+  if(me.isError)return <p role="alert">Hesap bilgisi alınamadı.</p>;
+  if(!admin)return <p>Gönderim takibi yalnız yöneticilere açıktır.</p>;
+  return <><PageHeader title="Hesap e-postaları" description="Son 100 davet ve şifre yenileme gönderimi. Bağlantılar ve şifreler bu ekranda gösterilmez."/><Card className="mb-4 space-y-2 p-5"><p>{status.isError?'E-posta hizmetinin durumu alınamadı.':status.data?.ready?'E-posta hizmeti açık.':status.isPending?'E-posta hizmeti kontrol ediliyor…':'E-posta gönderimi kapalı veya ayarları eksik.'}</p><p className="text-sm">“Sunucu kabul etti” gelen kutusuna teslim veya okunma kanıtı değildir. Doğrulanamayan gönderimler otomatik tekrarlanmaz; önce alıcıdan kontrol etmesini isteyin. Bekleyen daveti yenilerseniz önceki bağlantı geçersiz olur. Şifre yenileme için kişi giriş ekranından yeni bağlantı istemelidir.</p><button className="rounded-lg border px-3 py-2 text-sm" disabled={list.isFetching} onClick={()=>void Promise.all([list.refetch(),status.refetch()])}>Durumları yenile</button></Card>
+    {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}{list.isPending?<p role="status">Gönderimler yükleniyor…</p>:list.isError?<p role="alert">Gönderimler alınamadı. Yeniden deneyin.</p>:!list.data.length?<p>Henüz hesap e-postası oluşturulmadı.</p>:<div className="space-y-3">{list.data.map((item,i)=><Card key={item.id} className="space-y-2 p-4"><h2 className="break-words font-semibold">{item.name} · {item.purpose==='Invitation'?'Hesap daveti':'Şifre yenileme'}</h2><p className="break-all text-sm">{item.email}</p><p className="text-sm">{labels[item.status]} · {new Date(item.createdAt).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'})} (Türkiye)</p>{item.errorCode&&<p className="text-sm">{item.errorCode==='AccountOrLinkChanged'?'Hesap veya bağlantı değişti ya da bağlantının süresi doldu.':item.errorCode==='ProtectionKeyUnavailable'?'Gönderim anahtarına erişilemedi. Sunucu anahtarlarının kalıcı olduğunu kontrol ettirin.':'Gönderim sonucu kesinleştirilemedi. Ayarları ve alıcının gelen kutusunu kontrol edin.'}</p>}{item.invitationPending&&item.purpose==='Invitation'&&!list.data.slice(0,i).some(x=>x.userId===item.userId&&x.purpose==='Invitation')&&<button className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" disabled={busy||!status.data?.ready} onClick={()=>void resend(item)}>Önceki daveti geçersiz kıl ve yenisini gönder</button>}</Card>)}</div>}
+  </>;
+}

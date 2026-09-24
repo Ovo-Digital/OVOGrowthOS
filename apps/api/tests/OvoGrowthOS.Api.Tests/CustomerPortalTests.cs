@@ -58,7 +58,7 @@ public sealed class CustomerPortalTests
     {
         await using var f = new WorkflowApiFactory(); var s = await Seed(f); using var admin = Staff(f); var (client, _) = await Customer(f, admin, s.BrandId); using var c = client;
         var endpoints = f.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>().Where(e =>
-            e.RoutePattern.RawText!.StartsWith("/api/") && !e.RoutePattern.RawText.StartsWith("/api/auth/") && !e.RoutePattern.RawText.StartsWith("/api/portal/"));
+            e.RoutePattern.RawText!.StartsWith("/api/") && !e.RoutePattern.RawText.StartsWith("/api/auth/") && !e.RoutePattern.RawText.StartsWith("/api/portal/") && !e.RoutePattern.RawText.StartsWith("/api/notifications/"));
         var checkedCount = 0;
         foreach (var endpoint in endpoints)
         {

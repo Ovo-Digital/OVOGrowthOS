@@ -70,7 +70,7 @@ export default function Page() {
             <PageHeader
                 title="Genel ayarlar"
                 description="Tüm hesaplamalarda kullanılan ortak varsayılan değerler."
-                action={<div className="flex gap-2"><a href="/deal-templates" className="rounded-lg border px-4 py-2 text-sm font-semibold">Anlaşma şablonları</a><a href="/users" className="rounded-lg border px-4 py-2 text-sm font-semibold">Kullanıcılar</a></div>}
+                action={<div className="flex flex-wrap gap-2"><a href="/security" className="rounded-lg border px-4 py-2 text-sm font-semibold">Hesap güvenliği</a><a href="/deal-templates" className="rounded-lg border px-4 py-2 text-sm font-semibold">Anlaşma şablonları</a><a href="/users" className="rounded-lg border px-4 py-2 text-sm font-semibold">Kullanıcılar</a></div>}
             />
             <Card className="max-w-4xl p-6">
                 <form onSubmit={submit} className="grid gap-5 md:grid-cols-2">

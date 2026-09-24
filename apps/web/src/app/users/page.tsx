@@ -5,8 +5,9 @@ import { api, logout, type SessionUser } from '@/lib/api';
 import { turkce } from '@/lib/turkish';
 import { notify } from '@/components/feedback';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { AccountInvitation } from '@/components/account-invitation';
 
-type User = SessionUser & { isActive: boolean; createdAt: string };
+type User = SessionUser & { isActive: boolean; invitationPending: boolean; createdAt: string };
 const initial = { email: '', name: '', role: 'Analyst', password: '', isActive: true };
 
 export default function Page() {
@@ -45,13 +46,14 @@ export default function Page() {
 
   return <>
     <PageHeader title="Kullanıcılar" description="Çalışan hesaplarını oluşturun, yetkilerini düzenleyin ve kullanılmayan hesapları kapatın." />
+    <div className="mb-4"><AccountInvitation /></div>
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <div className="space-y-3">
         {users.isPending && <p role="status">Kullanıcılar yükleniyor…</p>}
         {users.isError && <p role="alert">Kullanıcılar yüklenemedi. <button className="underline" onClick={() => users.refetch()}>Yeniden dene</button></p>}
         {users.data?.length === 0 && <Card className="p-5">Henüz kullanıcı bulunmuyor.</Card>}
         {users.data?.map(user => <Card key={user.id} className="flex flex-wrap items-center justify-between gap-3 p-5">
-          <div className="min-w-0"><h2 className="font-semibold">{user.name}{user.id === me.data.id && ' (Siz)'}</h2><p className="break-all text-sm text-[#6d7175]">{user.email}</p></div>
+          <div className="min-w-0"><h2 className="font-semibold">{user.name}{user.id === me.data.id && ' (Siz)'}</h2><p className="break-all text-sm text-[#6d7175]">{user.email}</p>{user.invitationPending&&<p className="text-sm">Davet bekleniyor; kişi henüz giriş yapamaz.</p>}</div>
           <div className="flex items-center gap-3"><div className="text-right"><Badge tone={user.isActive ? 'green' : 'neutral'}>{user.isActive ? 'Etkin' : 'Kapalı'}</Badge><div className="mt-1 text-xs text-[#6d7175]">{turkce(user.role)}</div></div><button disabled={saving} onClick={() => edit(user)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" aria-label={`${user.name} hesabını düzenle`}>Düzenle</button></div>
         </Card>)}
       </div>

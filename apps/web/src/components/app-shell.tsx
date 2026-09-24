@@ -7,15 +7,16 @@ import {useQuery} from "@tanstack/react-query";
 import {Bell,BookOpen,Building2,ChartNoAxesCombined,CircleDollarSign,FileChartColumn,Gauge,Handshake,History,LayoutDashboard,LogOut,Menu,Plus,Search,Settings,ShieldCheck,Users,X} from "lucide-react";
 import {api,isSessionValid,logout,type SessionUser} from "@/lib/api";
 import {turkce} from "@/lib/turkish";
+import {NotificationLink} from "@/components/notification-link";
 
-const nav=[["Ana sayfa","/",LayoutDashboard],["İşlerim","/work",Bell],["Markalar","/brands",Building2],["Potansiyel markalar","/leads",Users],["Değerlendirmeler","/evaluations",Gauge],["Anlaşmalar","/deals",Handshake],["Aylık sonuçlar","/performance",ChartNoAxesCombined],["Hakedişler","/commissions",CircleDollarSign],["Raporlar","/reports",FileChartColumn],["Karar kuralları","/rules",ShieldCheck],["İşlem geçmişi","/activity",History],["Kullanım rehberi","/guide",BookOpen]] as const;
+const nav=[["Ana sayfa","/",LayoutDashboard],["İşlerim","/work",Bell],["Bildirimler","/notifications",Bell],["Markalar","/brands",Building2],["Potansiyel markalar","/leads",Users],["Değerlendirmeler","/evaluations",Gauge],["Anlaşmalar","/deals",Handshake],["Aylık sonuçlar","/performance",ChartNoAxesCombined],["Hakedişler","/commissions",CircleDollarSign],["Raporlar","/reports",FileChartColumn],["Karar kuralları","/rules",ShieldCheck],["İşlem geçmişi","/activity",History],["Kullanım rehberi","/guide",BookOpen]] as const;
 type SearchResult={type:string;title:string;detail:string;href:string};type Task={kind:string;title:string;detail:string;href:string;priority:string};
 
 export function AppShell({children}:{children:React.ReactNode}){
-  const path=usePathname(); const router=useRouter();
-  const me=useQuery({queryKey:["session-user"],queryFn:()=>api<SessionUser>("/api/auth/me"),enabled:path!=="/login",refetchInterval:path!=="/login"?30_000:false});
-  useEffect(()=>{if(path!=="/login"&&!isSessionValid())router.replace("/login")},[path,router]);
-  if(path==="/login")return <>{children}</>;
+  const path=usePathname(); const router=useRouter(); const publicPage=path==="/login"||path==="/account-access";
+  const me=useQuery({queryKey:["session-user"],queryFn:()=>api<SessionUser>("/api/auth/me"),enabled:!publicPage,refetchInterval:!publicPage?30_000:false});
+  useEffect(()=>{if(!publicPage&&!isSessionValid())router.replace("/login")},[publicPage,router]);
+  if(publicPage)return <>{children}</>;
   if(me.isPending)return <p className="p-6" role="status">Hesap yetkisi kontrol ediliyor…</p>;
   if(me.isError)return <div className="p-6"><p role="alert">Hesap bilgisi alınamadı. Bağlantınızı kontrol edin.</p><button className="mt-3 underline" onClick={()=>void me.refetch()}>Yeniden dene</button><button className="ml-4 underline" onClick={logout}>Çıkış yap</button></div>;
   if(me.data?.role==="BrandClient")return <CustomerShell name={me.data.name}>{children}</CustomerShell>;
@@ -24,8 +25,8 @@ export function AppShell({children}:{children:React.ReactNode}){
 }
 function CustomerShell({children,name}:{children:React.ReactNode;name:string}){
   const path=usePathname();const router=useRouter();
-  useEffect(()=>{if(path!=="/portal")router.replace("/portal")},[path,router]);
-  return <div className="min-h-screen"><header className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-5 py-4 print:hidden"><Link className="flex items-center gap-3 font-semibold" href="/portal"><Image src="/ovo-logo.svg" alt="OVO" width={40} height={40} className="rounded-lg bg-[#101112] p-1"/>Marka portalı</Link><div className="flex items-center gap-3 text-sm"><span>{name}</span><button className="underline" onClick={logout}>Çıkış yap</button></div></header><main className="mx-auto max-w-5xl p-4 sm:p-6">{path==="/portal"?children:<p>Marka portalına yönlendiriliyorsunuz…</p>}</main></div>;
+  useEffect(()=>{if(path!=="/portal"&&path!=="/notifications")router.replace("/portal")},[path,router]);
+  return <div className="min-h-screen"><header className="flex flex-wrap items-center justify-between gap-3 border-b bg-white px-5 py-4 print:hidden"><Link className="flex items-center gap-3 font-semibold" href="/portal"><Image src="/ovo-logo.svg" alt="OVO" width={40} height={40} className="rounded-lg bg-[#101112] p-1"/>Marka portalı</Link><div className="flex items-center gap-3 text-sm"><NotificationLink/><span>{name}</span><button className="underline" onClick={logout}>Çıkış yap</button></div></header><main className="mx-auto max-w-5xl p-4 sm:p-6">{path==="/portal"||path==="/notifications"?children:<p>Marka portalına yönlendiriliyorsunuz…</p>}</main></div>;
 }
 function InternalShell({children}:{children:React.ReactNode}){
   const path=usePathname();const router=useRouter();const[menu,setMenu]=useState(false);const[search,setSearch]=useState("");const[searchOpen,setSearchOpen]=useState(false);const[tasksOpen,setTasksOpen]=useState(false);const input=useRef<HTMLInputElement>(null);const evaluationDirty=useRef(false);

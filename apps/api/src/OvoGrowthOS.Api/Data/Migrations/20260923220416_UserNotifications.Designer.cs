@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OvoGrowthOS.Api.Data;
@@ -11,9 +12,11 @@ using OvoGrowthOS.Api.Data;
 namespace OvoGrowthOS.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923220416_UserNotifications")]
+    partial class UserNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -71,61 +74,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("AccountLinks", "growth", t =>
                         {
                             t.HasCheckConstraint("CK_AccountLinks_Values", "\"Revision\" > 0 AND \"Purpose\" BETWEEN 0 AND 1 AND \"ExpiresAt\" > \"CreatedAt\"");
-                        });
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.AccountSecurity", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ChallengeAccountVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("ChallengeExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ChallengeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("FailedAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("LastTimeStep")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LockedUntil")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ProtectedSecret")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.PrimitiveCollection<string[]>("RecoveryHashes")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<int>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("SetupExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId");
-
-                    b.HasIndex("ChallengeHash")
-                        .IsUnique()
-                        .HasFilter("\"ChallengeHash\" <> ''");
-
-                    b.ToTable("AccountSecurities", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_AccountSecurities_Values", "\"Revision\" > 0 AND \"FailedAttempts\" BETWEEN 0 AND 5 AND \"LastTimeStep\" >= -1");
                         });
                 });
 
@@ -2518,15 +2466,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.AccountSecurity", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
-                        .WithOne()
-                        .HasForeignKey("OvoGrowthOS.Domain.AccountSecurity", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
