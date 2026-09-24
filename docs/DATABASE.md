@@ -32,3 +32,15 @@ ORDER BY c.relname;
 Sahip hesabıyla çalışan SQL editöründeki başarılı sorgu tek başına yeterli değildir. Farklı bir ortamda rol adını doğrulamadan izin kopyalamayın. Sonraki şema değişikliklerini tablo sahipliği ve migration yetkileriyle birlikte değerlendirin; uygulama hesabına DDL yetkisi verilmiş sayılmaz.
 
 API ve panel aynı tamamlanmış sürümden yayımlanmalıdır. Önceki API yeni devam mesajlarını/takip alanlarını tanımadığından eski ve yeni yazıcıları birlikte çalıştırmak güvenli kabul edilmez. Geri dönüşte yeni tabloları ve geçmişi koruyun; veri silen `Down` adımını açık izin olmadan çalıştırmayın.
+
+## Hesap e-postaları, bildirimler ve iki aşamalı giriş
+
+- `20260923163849_AccountMail`: hesapta davet bekleme durumu, tek kullanımlık hesap bağlantıları (`AccountLinks`) ve şifrelenmiş hesap e-postası kuyruğu (`MailDeliveries`). 23 Eylül 2026'da uygulandı.
+- `20260923220416_UserNotifications`: kişisel e-posta tercihleri (`NotificationPreferences`) ve bildirim/gönderim durumu (`UserNotifications`). 24 Eylül 2026'da uygulandı. Kullanıcı/olay birleşimi benzersizdir; `Revision` eski sürümle gönderim talebi ve tercih yazmasını reddeder. Mesaj metni veya finansal rapor içeriği saklanmaz; görüntüleme/gönderimde kaynak erişimi yeniden doğrulanır.
+- `20260924152241_AccountSecurity`: hesap başına isteğe bağlı ikinci aşama (`AccountSecurities`). 24 Eylül 2026'da uygulandı. TOTP anahtarı şifreli; kurtarma kodları ve geçici giriş isteği yalnız özet olarak saklanır. `Revision`, hesap satırı kilidi ve son kabul edilen zaman aralığı tek kullanımı korur. Mevcut hesaplara otomatik koruma açılmaz.
+
+Bu eklemeli migration'lar mevcut finansal kayıtları dönüştürmez. Yeni tablolar özel `growth` şemasında kalır; `anon`/`authenticated` erişimi açılmaz. Yeni bildirim ve güvenlik tabloları kullanıcıya yabancı anahtarla bağlıdır; kontrol kısıtları geçerli durum/sürüm değerlerini korur. Migration'lar testlerden sonra uygulandı; son kontrolde bekleyen migration veya model farkı yoktu.
+
+24 Eylül gerçek PostgreSQL kontrolünde yinelenen kullanıcı/olay, eski bildirim/güvenlik sürümüyle ikinci yazma ve kurtarma dizisinin eski sürümle tüketilmesi engellendi. API bildirim ve güvenlik okumaları hassas içeriği dışarı vermedi. Yalnız deneme için açılan işlem geri alındı; deneme kayıtlarının kalmadığı doğrulandı. Bu kanıt API yazma senaryolarının bellek içi testlerini tamamlar; gerçek eşzamanlı HTTP yük testi yapıldığı anlamına gelmez.
+
+Geri dönüşte tabloları, geçmişi ve Data Protection anahtar deposunu koruyun. `Down` veri siler; açık izin olmadan uygulanmaz. İkinci aşama açılmış hesap varken bu korumayı tanımayan eski API'ye dönülmez; ayrıntılar [hesap güvenliği işletim rehberinde](HESAP_GUVENLIGI.md). `mail-keys` volume'u e-posta kapalıyken de gereklidir.

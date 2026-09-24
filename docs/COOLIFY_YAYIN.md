@@ -5,7 +5,7 @@ OVO Growth OS'un üretim imajları GitHub Actions tarafından hazırlanır ve Gi
 - `ghcr.io/ovo-digital/ovogrowthos-web`: Next.js kullanıcı arayüzü, içeride `3000` portunu dinler.
 - `ghcr.io/ovo-digital/ovogrowthos-api`: ASP.NET Core API, içeride `8080` portunu dinler.
 
-PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Hesap e-postalarının şifreleme anahtarları için compose içindeki `mail-keys` volume'u kalıcı tutulmalıdır; silmeyin. Gmail SMTP kurulumu ve gönderimi kontrollü açma adımları [SMTP kurulum rehberinde](SMTP_KURULUMU.md) anlatılır. Varsayılan `MAIL_ENABLED=false` olduğu için bilgiler girilmeden e-posta gönderilmez.
+PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Hesap e-postaları ve iki aşamalı girişin şifreleme anahtarları için compose içindeki `mail-keys` volume'u **SMTP kapalı olsa da** kalıcı tutulmalıdır; silmeyin. Gmail SMTP kurulumu ve gönderimi kontrollü açma adımları [SMTP kurulum rehberinde](SMTP_KURULUMU.md), güvenlik ve kurtarma koşulları [hesap güvenliği rehberinde](HESAP_GUVENLIGI.md) anlatılır. Varsayılan `MAIL_ENABLED=false` olduğu için bilgiler girilmeden e-posta gönderilmez.
 
 ## 1. GitHub Actions ayarı
 
@@ -122,6 +122,8 @@ Yeni sürüm yayınlanacağı zaman:
 4. Sağlık kontrollerini ve temel kullanıcı akışını yeniden doğrulayın.
 
 Belirli bir sürümü sabitlemek veya geri dönmek için ilgili başarılı GitHub Actions çalışmasının commit kodunu alın, Coolify'da iki servisin ortak `IMAGE_TAG` değerini `sha-<tam-commit-kodu>` yapın ve yeniden deploy edin. Veritabanı migration'ı geri alınması gereken bir değişiklik içeriyorsa yalnızca eski konteyner imajına dönmek yeterli olmayabilir; migration geri dönüş planını ayrıca uygulayın.
+
+**İki aşamalı giriş uyarısı:** Bu korumayı tanımayan eski API sürümü, etkinleştirilmiş hesabın ikinci aşamasını atlayabilir. Eski ve yeni API kopyalarını birlikte çalıştırmayın; bütün eski kopyalar durmadan gerçek hesaplarda etkinleştirme yapmayın. Koruma açıldıktan sonra eski API'ye dönüş rutin geri alma değildir; açık güvenlik kararı ve hesap bazlı plan gerektirir. Yeni tabloları veya anahtar volume'unu silmeyin. `MAIL_ENABLED=false` ikinci aşamayı kapatmaz.
 
 ## Netlify durumu
 
