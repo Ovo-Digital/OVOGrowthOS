@@ -16,8 +16,9 @@ public static partial class WorkflowEndpoints
         var group = app.MapGroup("/api/notifications").RequireAuthorization("SessionAccess");
         group.MapPost("/refresh", async (ClaimsPrincipal actor, NotificationService service, CancellationToken ct) =>
         { await service.Refresh(Guid.Parse(actor.FindFirstValue("uid")!), DateTimeOffset.UtcNow, ct); return Results.NoContent(); }).RequireRateLimiting("login");
-        group.MapGet("/", async (ClaimsPrincipal actor, AppDbContext db, NotificationService service, SmtpSettings settings) =>
+        group.MapGet("/", async (ClaimsPrincipal actor, AppDbContext db, NotificationService service, SmtpSettingsProvider provider) =>
         {
+            var settings = await provider.GetAsync();
             var id = Guid.Parse(actor.FindFirstValue("uid")!);
             var user = await db.UserAccounts.AsNoTracking().SingleAsync(x => x.Id == id);
             var pref = await db.NotificationPreferences.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == id);

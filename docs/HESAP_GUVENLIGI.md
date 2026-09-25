@@ -33,4 +33,4 @@ Yalnız doğrulanmış hesabın güvenlik kaydını, oturum sürümünü ve işl
 
 ## Geri dönüş
 
-Tabloyu/volume'u silmeyin ve migration `Down` çalıştırmayın. İkinci aşama açılmış hesap varken eski API sürümüne dönmek güvenlik açığı doğurur. Sorun halinde önce erişimi kısıtlayıp bu korumayı tanıyan doğrulanmış sürümü düzeltmek tercih edilir; eski sürüme dönüş ayrı, açık bir güvenlik kararı ve hesap bazlı plan gerektirir. `MAIL_ENABLED=false` yalnız e-postayı kapatır; iki aşamalı girişi etkilemez.
+Tabloyu/volume'u silmeyin ve migration `Down` çalıştırmayın. İkinci aşama açılmış hesap varken eski API sürümüne dönmek güvenlik açığı doğurur. Sorun halinde önce erişimi kısıtlayıp bu korumayı tanıyan doğrulanmış sürümü düzeltmek tercih edilir; eski sürüme dönüş ayrı, açık bir güvenlik kararı ve hesap bazlı plan gerektirir. E-postayı panelden kapatmak veya bütün API kopyalarında `MAIL_FORCE_DISABLED=true` uygulayıp yeniden başlatmak iki aşamalı girişi etkilemez. Eski `MAIL_ENABLED` yalnız panelde henüz e-posta ayarı kaydedilmemişse geçerlidir.

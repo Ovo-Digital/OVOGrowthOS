@@ -20,6 +20,7 @@ services:
       DefaultAdmin__PasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:?Yönetici parola özeti zorunludur}
       WebOrigin: ${WEB_ORIGIN:?Web adresi zorunludur}
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_FORCE_DISABLED: ${MAIL_FORCE_DISABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_SECURE: ${SMTP_SECURE:-true}

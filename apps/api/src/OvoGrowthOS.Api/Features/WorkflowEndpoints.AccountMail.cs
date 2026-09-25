@@ -20,7 +20,8 @@ public static partial class WorkflowEndpoints
     private static void MapAccountMail(WebApplication app)
     {
         var admin = app.MapGroup("/api/account-mail").RequireAuthorization("AdminOnly");
-        admin.MapGet("/status", (SmtpSettings settings) => Results.Ok(new { enabled = settings.Enabled, configured = settings.Configured, ready = settings.Ready }));
+        MapMailSettings(admin);
+        admin.MapGet("/status", async (SmtpSettingsProvider provider) => { var settings = await provider.GetAsync(); return Results.Ok(new { enabled = settings.Enabled, configured = settings.Configured, ready = settings.Ready }); });
         admin.MapGet("/deliveries", async (AppDbContext db) => Results.Ok(await (
             from mail in db.MailDeliveries.AsNoTracking()
             join link in db.AccountLinks on mail.AccountLinkId equals link.Id
@@ -34,8 +35,9 @@ public static partial class WorkflowEndpoints
         app.MapPost("/api/auth/complete-account", CompleteAccountLink).AllowAnonymous().RequireRateLimiting("login");
     }
 
-    private static async Task<IResult> CreateAccountInvitation(AccountInvitationRequest r, AppDbContext db, ClaimsPrincipal actor, SmtpSettings settings, IDataProtectionProvider protection)
+    private static async Task<IResult> CreateAccountInvitation(AccountInvitationRequest r, AppDbContext db, ClaimsPrincipal actor, SmtpSettingsProvider provider, IDataProtectionProvider protection)
     {
+        var settings = await provider.GetAsync();
         if (!settings.Ready) return MailUnavailable();
         var email = r.Email?.Trim().ToLowerInvariant();
         if (!SmtpSettings.IsAddress(email) || string.IsNullOrWhiteSpace(r.Name) || r.Name.Length > 160 || r.Role is not ("Admin" or "Partner" or "Analyst" or "BrandClient")
@@ -55,8 +57,9 @@ public static partial class WorkflowEndpoints
         return Results.Ok(new { account.Id, message = "Davet sıraya alındı. Kişi bağlantıdan şifresini belirleyince giriş yapabilir." });
     }
 
-    private static async Task<IResult> ResendAccountInvitation(Guid id, AppDbContext db, ClaimsPrincipal actor, SmtpSettings settings, IDataProtectionProvider protection)
+    private static async Task<IResult> ResendAccountInvitation(Guid id, AppDbContext db, ClaimsPrincipal actor, SmtpSettingsProvider provider, IDataProtectionProvider protection)
     {
+        var settings = await provider.GetAsync();
         if (!settings.Ready) return MailUnavailable();
         await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
         if (tx is not null) await db.Database.ExecuteSqlRawAsync("LOCK TABLE growth.\"UserAccounts\" IN SHARE ROW EXCLUSIVE MODE");
@@ -71,8 +74,9 @@ public static partial class WorkflowEndpoints
         return Results.Ok(new { message = "Yeni davet sıraya alındı. Önceki bağlantılar artık kullanılamaz." });
     }
 
-    private static async Task<IResult> RequestPasswordLink(ForgotPasswordRequest r, AppDbContext db, SmtpSettings settings, IDataProtectionProvider protection)
+    private static async Task<IResult> RequestPasswordLink(ForgotPasswordRequest r, AppDbContext db, SmtpSettingsProvider provider, IDataProtectionProvider protection)
     {
+        var settings = await provider.GetAsync();
         // Same public answer for unknown, closed, throttled and disabled-mail accounts. No SMTP call on this request.
         if (!settings.Ready || !SmtpSettings.IsAddress(r.Email?.Trim().ToLowerInvariant())) return Results.Ok(new { message = ResetAcknowledgement });
         var email = r.Email!.Trim().ToLowerInvariant();

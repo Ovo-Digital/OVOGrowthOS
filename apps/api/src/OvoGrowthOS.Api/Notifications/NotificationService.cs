@@ -7,7 +7,7 @@ namespace OvoGrowthOS.Api.Notifications;
 
 public sealed record NotificationContent(string Title, string Href);
 
-public sealed class NotificationService(AppDbContext db, SmtpSettings settings)
+public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider provider)
 {
     public static bool Staff(UserAccount user) => user.Role is "Admin" or "Partner" or "Analyst";
     public static bool Manager(UserAccount user) => user.Role is "Admin" or "Partner";
@@ -16,6 +16,7 @@ public sealed class NotificationService(AppDbContext db, SmtpSettings settings)
 
     public async Task Refresh(Guid userId, DateTimeOffset now, CancellationToken ct = default)
     {
+        var settings = await provider.GetAsync(ct);
         await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync(ct) : null;
         if (tx is not null) await LockUser(db, userId, ct);
         var user = await db.UserAccounts.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, ct);

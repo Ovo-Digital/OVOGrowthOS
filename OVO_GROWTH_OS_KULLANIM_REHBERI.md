@@ -4,7 +4,7 @@ Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi he
 
 Rehberde; uygulamanın ne işe yaradığı, hangi ekranda ne yapılması gerektiği, kararların nasıl oluştuğu ve bir markanın ilk görüşmeden aylık kapanış, tahsilat ve müşteriyle rapor paylaşımına kadar nasıl yönetildiği anlatılır.
 
-**İçerik güncellemesi: 17 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, görev şablonlarını ve haftalık ekip kapasitesini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, açıklamalı raporları ve müşteri portalını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
+**İçerik güncellemesi: 25 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, görev şablonlarını ve haftalık ekip kapasitesini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini ve panelden e-posta ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
 
 Kullanım rehberi iç ekip içindir. Yönetici, iş ortağı ve analist hesapları giriş yaptıktan sonra açabilir; marka yetkilileri bu iç rehbere erişemez. Rehber yüklenemiyorsa güncel hesabınızla yeniden giriş yapın ve bağlantınızı kontrol edin. Sistem hesabınızı doğrulayamıyorsa içeriği göstermez.
 
@@ -961,7 +961,30 @@ Bu alanlarda yapılacak değişiklikler yeni değerlendirme ve hesapları etkile
 
 ---
 
+### E-posta ayarlarını panelden hazırlama
+
+**Ayarlar → E-posta ayarları** yolunu yönetici hesabınızla açın. İş ortağı, analist ve müşteriler gönderici bilgilerine erişemez. Bu ilk sürüm Gmail içindir; farklı SMTP sağlayıcıları henüz desteklenmez.
+
+1. Önce **Genel e-posta gönderimi açık** işaretini kapalı bırakın. Bu sayede normal bildirimleri başlatmadan bilgileri hazırlayabilirsiniz.
+2. **SMTP sunucusu** alanına `smtp.gmail.com` yazın. **Port ve bağlantı güvenliği** için **465 · SSL/TLS** seçin; alternatif **587 · STARTTLS** de şifreli bağlantıdır.
+3. **Gmail kullanıcı adresi** alanına gönderim hesabınızı, **Gönderici e-posta adresi** alanına aynı hesabı veya Gmail'de doğrulanmış gönderici adresini girin. **Gönderici adı** için örneğin “OVO Digital” yazın. Bunlar alıcı değil, gönderen bilgileridir.
+4. Google hesabınızda iki adımlı doğrulamayı açıp uygun hesapta bir **uygulama şifresi** oluşturun. Bu uygulama şifresini yalnız bu sayfanın şifre alanına girin; normal Gmail parolanızı kullanmayın ve sohbette paylaşmayın. Bazı Google hesaplarında bu seçenek hesap politikası nedeniyle bulunmayabilir; sayfadaki Google yardım bağlantısını kullanın.
+5. **E-posta ayarlarını kaydet** deyin. Uygulama şifresi şifreli saklanır; kayıttan sonra geri gösterilmez. Daha sonraki düzenlemede boş bırakmak kayıtlı şifreyi korur. Gmail kullanıcı hesabını değiştirirseniz yeni hesabın uygulama şifresini de girmeniz gerekir.
+6. **Kendi adresime deneme gönder** bölümündeki adresi kontrol edin. Onay kutusunu işaretleyip **Deneme e-postası gönder** deyin. Yalnız oturum açan yöneticinin kendi adresine sade bir deneme iletisi gider; müşterilere gitmez. Genel gönderim kapalıyken de bu açıkça istenen deneme yapılabilir. Bir dakika içinde ikinci deneme engellenir.
+7. “Sunucu kabul etti” mesajı tek başına gelen kutusuna teslim garantisi değildir. Gelen kutusu ve istenmeyen postaları kontrol edin. Sonuç doğrulanamadıysa ileti yine de ulaşmış olabilir; hemen tekrar tekrar göndermeyin.
+8. Hazır olduğunuzda genel gönderimi açıp kaydedin. Görev, konuşma ve yeni paylaşılan rapor iletileri için alıcının **Bildirimler** bölümündeki ilgili tercihinin de açık olması gerekir. Müşteri raporları yalnız doğru markaya erişimi olan etkin müşteri hesaplarına bildirilir; marka kartında bir e-posta bulunması tek başına izin değildir.
+
+**Örnek:** Lale markasının iki yetkilisi olsun. Biri “Markam için paylaşılan yeni raporlar” tercihini açmış, diğeri kapatmış olsun. E-posta hizmeti hazırken yeni kapalı dönem raporunu ayrıca yayımlarsanız uygun bildirim yalnız tercihi açık kişiye hazırlanır. Bu sürüm raporu kendiliğinden yayımlamaz; her ay belirli tarihte otomatik rapor veya PDF eki göndermez. E-posta, giriş gerektiren portal bağlantısı içerir.
+
+Hesap daveti ve şifre yenileme kişinin istediği hesap işlemleridir; görev/rapor tercihinden bağımsızdır, ancak genel e-posta hizmetinin açık olması gerekir. Gelecekte eklenecek gönderim türleri ayrı planlanacaktır.
+
+**Gönderimi durdurmak:** Genel gönderimi kapatıp kaydedin. Şifreyi de kaldıracaksanız ilgili kutuyu işaretleyin; yeniden kullanmak için şifreyi tekrar girmeniz gerekir. Gmail tarafındaki uygulama şifresini iptal etmez; gerekirse Google hesabından ayrıca iptal edin. Başlamış veya gönderilmiş ileti geri alınamaz. Tekrar açarsanız hâlâ geçerli bekleyen iletiler işlenebilir; daha önce e-posta istenmemiş eski bildirimler topluca yeniden gönderilmez.
+
+**“Sunucu ayarları kullanılıyor” mesajı:** Henüz panel kaydı yoktur. İlk panel kaydı eski sunucu ayarlarının önüne geçer; sunucudaki şifre otomatik taşınmaz. Teknik ekip için ayrıntılar `docs/SMTP_KURULUMU.md` içindedir. “Sunucu bütün gönderimleri durdurmuş” görünüyorsa teknik sorumluya başvurun; panelden bu güvenlik durdurması aşılamaz. Yerel ve canlı uygulama aynı veritabanını kullanıyorsa paneldeki ayar ortaktır; ayrı ortam sanarak deneme yapmayın.
+
 ## 19. İşlem geçmişi
+
+E-posta ayarını kimin değiştirdiği ve deneme gönderim girişimleri de kaydedilir. Şifreler ve özel ileti içeriği bu geçmişte gösterilmez.
 
 **İşlem geçmişi**, sistemde yapılan önemli değişiklikleri kayıt altında tutar.
 

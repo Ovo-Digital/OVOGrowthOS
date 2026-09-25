@@ -1,4 +1,9 @@
 const labels: Record<string, string> = {
+  MailConfiguration: "E-posta ayarları",
+  MailSettingsChanged: "E-posta ayarları güncellendi",
+  MailTestRequested: "Deneme e-postası istendi",
+  MailTestAccepted: "Deneme e-postasını sunucu kabul etti",
+  MailTestUncertain: "Deneme e-postasının gönderimi doğrulanamadı",
   SecondFactorLogin: "İki aşamalı giriş doğrulandı",
   SecondFactorEnabled: "İki aşamalı giriş açıldı",
   SecondFactorDisabled: "İki aşamalı giriş kapatıldı",

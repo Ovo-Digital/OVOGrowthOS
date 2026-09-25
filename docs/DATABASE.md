@@ -35,6 +35,10 @@ API ve panel aynı tamamlanmış sürümden yayımlanmalıdır. Önceki API yeni
 
 ## Hesap e-postaları, bildirimler ve iki aşamalı giriş
 
+25 Eylül 2026: `20260925133126_MailConfiguration` yalnız `growth.MailConfigurations` tablosunu ekler. Tek kayıt (`Id=1`), pozitif eşzamanlılık sürümü ve şifreli port eşleşmesi kısıtlıdır. Migration şifre veya gönderim ayarı eklemez. Uygulama şifresi ayrı Data Protection amacıyla şifreli tutulur; yalnız API uygulama hesabı erişir, genel Data API rolleri açılmaz. Eski API panel ayarını tanımadığından karma sürümde SMTP çalıştırılmamalıdır. Geri dönüşte tablo/anahtar korunur, veri silen `Down` otomatik uygulanmaz.
+
+Doğrulama: migration mevcut Supabase veritabanına uygulandı; bekleyen migration/model değişikliği kalmadı. Gerçek PostgreSQL üzerinde tek kayıt kısıtı, eski sürümle güncelleme engeli ve ayar yanıtında şifre bulunmaması sınandı. Deneme kayıtları transaction sonunda geri alındı; gerçek SMTP ayarı oluşturulmadı ve mevcut iş verileri değiştirilmedi.
+
 - `20260923163849_AccountMail`: hesapta davet bekleme durumu, tek kullanımlık hesap bağlantıları (`AccountLinks`) ve şifrelenmiş hesap e-postası kuyruğu (`MailDeliveries`). 23 Eylül 2026'da uygulandı.
 - `20260923220416_UserNotifications`: kişisel e-posta tercihleri (`NotificationPreferences`) ve bildirim/gönderim durumu (`UserNotifications`). 24 Eylül 2026'da uygulandı. Kullanıcı/olay birleşimi benzersizdir; `Revision` eski sürümle gönderim talebi ve tercih yazmasını reddeder. Mesaj metni veya finansal rapor içeriği saklanmaz; görüntüleme/gönderimde kaynak erişimi yeniden doğrulanır.
 - `20260924152241_AccountSecurity`: hesap başına isteğe bağlı ikinci aşama (`AccountSecurities`). 24 Eylül 2026'da uygulandı. TOTP anahtarı şifreli; kurtarma kodları ve geçici giriş isteği yalnız özet olarak saklanır. `Revision`, hesap satırı kilidi ve son kabul edilen zaman aralığı tek kullanımı korur. Mevcut hesaplara otomatik koruma açılmaz.

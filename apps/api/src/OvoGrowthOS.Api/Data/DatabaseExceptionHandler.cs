@@ -11,6 +11,7 @@ public sealed class DatabaseExceptionHandler : IExceptionHandler
         string? message = exception switch
         {
             DbUpdateConcurrencyException => "Kayıt başka bir kullanıcı tarafından değiştirildi. Sayfayı yenileyip tekrar deneyin.",
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, TableName: "MailConfigurations" } } => "E-posta ayarları zaten kaydedildi. Sayfayı yenileyip güncel kaydı kullanın.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.TableName is "WorkTemplateRuns" or "WorkTemplateTasks" or "WeeklyCapacities" or "TaskHourPlans" => "Bu şablon veya haftalık plan zaten kaydedilmiş. Sayfayı yenileyin; ikinci bir kayıt oluşturulmadı.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }

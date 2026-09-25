@@ -5,12 +5,13 @@ using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Mail;
 
-public sealed class AccountMailQueue(AppDbContext db, IDataProtectionProvider protection, IAccountMailSender sender, SmtpSettings settings)
+public sealed class AccountMailQueue(AppDbContext db, IDataProtectionProvider protection, IAccountMailSender sender, SmtpSettingsProvider provider)
 {
     internal const string ProtectionPurpose = "OVO.AccountMail.v1";
 
     public async Task<bool> ProcessOne(CancellationToken cancellationToken = default)
     {
+        var settings = await provider.GetAsync(cancellationToken);
         if (!settings.Ready) return false;
         var cutoff = DateTimeOffset.UtcNow.AddMinutes(-5);
         var stale = await db.MailDeliveries.Where(x => x.Status == MailDeliveryStatus.Sending && x.AttemptedAt < cutoff).Take(20).ToListAsync(cancellationToken);

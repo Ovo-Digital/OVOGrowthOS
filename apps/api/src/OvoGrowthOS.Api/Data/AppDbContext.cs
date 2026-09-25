@@ -50,10 +50,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<AccountSecurity> AccountSecurities => Set<AccountSecurity>();
+    public DbSet<MailConfiguration> MailConfigurations => Set<MailConfiguration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("growth");
+        modelBuilder.Entity<MailConfiguration>(e =>
+        {
+            e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.Property(x => x.Host).HasMaxLength(253);
+            e.Property(x => x.User).HasMaxLength(320); e.Property(x => x.FromAddress).HasMaxLength(320);
+            e.Property(x => x.FromName).HasMaxLength(160);
+            e.ToTable(t => t.HasCheckConstraint("CK_MailConfigurations_Values", "\"Id\" = 1 AND \"Revision\" > 0 AND ((\"Port\" = 465 AND \"Secure\") OR (\"Port\" = 587 AND NOT \"Secure\"))"));
+        });
         modelBuilder.Entity<AccountSecurity>(e =>
         {
             e.HasKey(x => x.UserId);

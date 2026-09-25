@@ -5,10 +5,11 @@ using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Notifications;
 
-public sealed class NotificationMailQueue(AppDbContext db, NotificationService notifications, SmtpSettings settings, IAccountMailSender sender)
+public sealed class NotificationMailQueue(AppDbContext db, NotificationService notifications, SmtpSettingsProvider provider, IAccountMailSender sender)
 {
     public async Task<bool> ProcessOne(CancellationToken ct = default)
     {
+        var settings = await provider.GetAsync(ct);
         if (!settings.Ready) return false;
         var staleBefore = DateTimeOffset.UtcNow.AddMinutes(-5);
         var stale = await db.UserNotifications.Where(x => x.EmailStatus == MailDeliveryStatus.Sending && x.AttemptedAt < staleBefore).Take(20).ToListAsync(ct);

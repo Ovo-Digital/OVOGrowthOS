@@ -44,6 +44,22 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Panel_configuration_gates_notifications_without_overriding_recipient_preferences()
+    {
+        await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(p, sender, false); using var c = await Client(f);
+        var request = new OvoGrowthOS.Api.Features.MailSettingsRequest(true, "smtp.gmail.com", 465, true, "sender@example.test", "sender@example.test", "OVO", "abcdefghijklmnop", false, 0);
+        (await c.PutAsJsonAsync("/api/account-mail/settings", request)).EnsureSuccessStatusCode();
+        await TaskSeed(f); await Refresh(f, Admin); Assert.False(await Send(f)); // Per-recipient opt-in still required.
+        await Db(f, async db => { (await db.NotificationPreferences.SingleAsync()).TaskDueEmail = true; db.WorkTasks.Add(new WorkTask { BrandId = (await db.Brands.SingleAsync()).Id, AssigneeId = Admin, Title = "Next task", DueOn = TeamWork.Today(DateTimeOffset.UtcNow) }); await db.SaveChangesAsync(); });
+        await Refresh(f, Admin);
+        (await c.PutAsJsonAsync("/api/account-mail/settings", request with { Revision = 1, Enabled = false, Password = null })).EnsureSuccessStatusCode();
+        Assert.False(await Send(f)); Assert.Empty(sender.Messages);
+        (await c.PutAsJsonAsync("/api/account-mail/settings", request with { Revision = 2, Password = null })).EnsureSuccessStatusCode();
+        Assert.True(await Send(f)); Assert.Single(sender.Messages); Assert.Equal("admin@ovo.test", sender.Messages[0].To);
+        Assert.DoesNotContain("Next task", sender.Messages[0].Body); Assert.False(await Send(f));
+    }
+
+    [Fact]
     public async Task Default_preferences_are_off_and_daily_event_is_idempotent_and_private()
     {
         await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(p, sender); using var c = await Client(f);

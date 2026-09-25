@@ -5,7 +5,7 @@ OVO Growth OS'un üretim imajları GitHub Actions tarafından hazırlanır ve Gi
 - `ghcr.io/ovo-digital/ovogrowthos-web`: Next.js kullanıcı arayüzü, içeride `3000` portunu dinler.
 - `ghcr.io/ovo-digital/ovogrowthos-api`: ASP.NET Core API, içeride `8080` portunu dinler.
 
-PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Hesap e-postaları ve iki aşamalı girişin şifreleme anahtarları için compose içindeki `mail-keys` volume'u **SMTP kapalı olsa da** kalıcı tutulmalıdır; silmeyin. Gmail SMTP kurulumu ve gönderimi kontrollü açma adımları [SMTP kurulum rehberinde](SMTP_KURULUMU.md), güvenlik ve kurtarma koşulları [hesap güvenliği rehberinde](HESAP_GUVENLIGI.md) anlatılır. Varsayılan `MAIL_ENABLED=false` olduğu için bilgiler girilmeden e-posta gönderilmez.
+PostgreSQL servisi oluşturulmaz. API doğrudan mevcut Supabase PostgreSQL veritabanına bağlanır. Hesap e-postaları ve iki aşamalı girişin şifreleme anahtarları için compose içindeki `mail-keys` volume'u **SMTP kapalı olsa da** kalıcı tutulmalıdır; silmeyin. Gmail SMTP kurulumu ve gönderimi kontrollü açma adımları [SMTP kurulum rehberinde](SMTP_KURULUMU.md), güvenlik ve kurtarma koşulları [hesap güvenliği rehberinde](HESAP_GUVENLIGI.md) anlatılır. İlk kurulumda panel ayarı yoksa varsayılan `MAIL_ENABLED=false` gönderimi kapalı tutar. Panel ayarı kaydedildikten sonra genel gönderim anahtarı panelden yönetilir; sunucudaki acil durdurma anahtarı `MAIL_FORCE_DISABLED` olur.
 
 ## 1. GitHub Actions ayarı
 
@@ -84,6 +84,10 @@ WEB_ORIGIN=https://ovogrowth.ovodigi.com
 Supabase bağlantı değerinde `$` gibi özel karakterler varsa Coolify'da **Literal** seçeneğini etkinleştirin. Veritabanı bağlantısını build aşamasına göndermeyin.
 
 ## 6. Kaynak sınırları ve sağlık kontrolü
+
+### Panelden e-posta yönetimi
+
+Güncel sürümde **Ayarlar → E-posta ayarları** SMTP bilgilerini yönetir. Panel kaydı varsa eski `MAIL_ENABLED`/`SMTP_*` değerleri kullanılmaz. Acil durdurma için bütün API kopyalarında `MAIL_FORCE_DISABLED=true` uygulayıp yeniden başlatın; panelden aşılamaz ve deneme iletilerini de durdurur. Anahtar volume'unu koruyun. İlk panel kaydı şifreyi sunucu ortamından otomatik taşımaz; canlı Gmail uygulama şifresini kullanıcı canlı panelde girer. Geçiş ve geri dönüş sınırları için [SMTP rehberini](SMTP_KURULUMU.md) okuyun.
 
 Başlangıç sınırları compose dosyasında tanımlıdır:
 

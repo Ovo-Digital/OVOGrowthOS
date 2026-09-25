@@ -1,7 +1,7 @@
 'use client';
 import { FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, type SessionUser } from '@/lib/api';
 import { Card, PageHeader } from '@/components/ui/core';
 import { notify } from '@/components/feedback';
 type S = {
@@ -29,6 +29,7 @@ const rateKeys = new Set<keyof S>([
 ]);
 export default function Page() {
     const qc = useQueryClient();
+    const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
     const { data: s } = useQuery({
         queryKey: ['settings'],
         queryFn: () => api<S>('/api/settings'),
@@ -70,7 +71,7 @@ export default function Page() {
             <PageHeader
                 title="Genel ayarlar"
                 description="Tüm hesaplamalarda kullanılan ortak varsayılan değerler."
-                action={<div className="flex flex-wrap gap-2"><a href="/security" className="rounded-lg border px-4 py-2 text-sm font-semibold">Hesap güvenliği</a><a href="/deal-templates" className="rounded-lg border px-4 py-2 text-sm font-semibold">Anlaşma şablonları</a><a href="/users" className="rounded-lg border px-4 py-2 text-sm font-semibold">Kullanıcılar</a></div>}
+                action={<div className="flex flex-wrap gap-2">{me.data?.role === 'Admin' && <a href="/settings/email" className="rounded-lg border px-4 py-2 text-sm font-semibold">E-posta ayarları</a>}<a href="/security" className="rounded-lg border px-4 py-2 text-sm font-semibold">Hesap güvenliği</a><a href="/deal-templates" className="rounded-lg border px-4 py-2 text-sm font-semibold">Anlaşma şablonları</a><a href="/users" className="rounded-lg border px-4 py-2 text-sm font-semibold">Kullanıcılar</a></div>}
             />
             <Card className="max-w-4xl p-6">
                 <form onSubmit={submit} className="grid gap-5 md:grid-cols-2">

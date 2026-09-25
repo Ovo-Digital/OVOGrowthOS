@@ -32,11 +32,30 @@ public interface IAccountMailSender
     Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken);
 }
 
-public sealed class SmtpAccountMailSender(SmtpSettings settings) : IAccountMailSender
+public interface ISmtpTestSender
+{
+    Task SendAsync(SmtpSettings settings, string recipient, CancellationToken ct);
+}
+
+public sealed class SmtpTestSender : ISmtpTestSender
+{
+    public Task SendAsync(SmtpSettings settings, string recipient, CancellationToken ct) =>
+        SmtpAccountMailSender.SendConfigured(settings, Guid.NewGuid(), recipient, "OVO Growth OS deneme e-postası",
+            "Bu ileti, yönetici tarafından e-posta ayarlarını sınamak için gönderildi. Müşteri raporu, hesap bağlantısı veya özel veri içermez. Gelen kutunuza ulaştığını kendiniz kontrol edin.", ct);
+}
+
+public sealed class SmtpAccountMailSender(SmtpSettingsProvider provider) : IAccountMailSender
 {
     public async Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken)
     {
+        var settings = await provider.GetAsync(cancellationToken);
         if (!settings.Ready) throw new InvalidOperationException("Mail is disabled or unconfigured.");
+        await SendConfigured(settings, deliveryId, to, subject, body, cancellationToken);
+    }
+
+    internal static async Task SendConfigured(SmtpSettings settings, Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken)
+    {
+        if (!settings.Configured) throw new InvalidOperationException("Mail is unconfigured.");
         var message = new MimeMessage { Subject = subject, MessageId = $"{deliveryId:N}@ovo-growth-os", Body = new TextPart("plain") { Text = body } };
         message.From.Add(MailboxAddress.Parse(settings.From));
         message.To.Add(MailboxAddress.Parse(to)); // MAIL_TO is deliberately never used for private account links.

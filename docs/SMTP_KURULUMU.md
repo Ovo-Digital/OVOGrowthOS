@@ -1,13 +1,28 @@
-# Gmail SMTP — hesap daveti ve şifre yenileme
+# Gmail SMTP — panel ayarları ve kontrollü gönderim
 
 Bu sürüm hesap daveti, şifre yenileme ve kişisel tercihe bağlı görev/rapor/konuşma bildirimlerini hazırlar. Gerçek Gmail bilgileri girilmedi; dışarıya test iletisi gönderilmedi. Varsayılan gönderim **kapalıdır**. Günlük bildirimlerin kişisel e-posta tercihleri de başlangıçta kapalıdır.
 
-## Sonradan girilecek ayarlar
+## Panelden yönetim — 25 Eylül 2026
+
+Önerilen yol **Ayarlar → E-posta ayarları**. Yalnız Admin okuyup yazabilir. İlk sürüm yalnız `smtp.gmail.com`, 465/TLS veya 587/zorunlu STARTTLS kabul eder; serbest sunucu/IP ve şifresiz taşıma açılmaz. Google uygulama şifresi, ayrı Data Protection amacıyla şifrelenerek `growth.MailConfigurations` içinde tutulur. GET yanıtı yalnız şifre var/yok bilgisini verir. Şifre, istek gövdesi veya şifreli içerik işlem geçmişine yazılmaz. Harici HTTP gövde kaydında `/api/account-mail/settings` mutlaka hariç tutulmalıdır.
+
+Panel kaydı yoksa önceki ortam değişkenleri çalışır. İlk panel kaydından sonra **panel bütünüyle önceliklidir**; boş/çözülemeyen şifre veya kapalı panel ayarı eski sunucu şifresine geri düşmez. İlk kayıtta ortam şifresi otomatik içeri alınmaz. Boş şifre mevcut panel şifresini korur; açık kaldırma işlemi gönderimi kapatmayı gerektirir. Kullanıcı adresi değişirse yeni şifre veya açık kaldırma gerekir. Eski form 409 alır; kaydetmeden güncel sürüm kontrol edilir.
+
+`MAIL_FORCE_DISABLED=true`, hem ortam hem panel yapılandırmasındaki normal ve deneme gönderimlerini o API kopyasında durdurur. Coolify compose bu yeni değişkeni geçirir. **Panel kaydı varken `MAIL_ENABLED=false` tek başına kapatma anahtarı değildir.** Normal kullanımda panelden kapatın; acil durumda bütün API kopyalarında `MAIL_FORCE_DISABLED=true` uygulayıp yeniden başlatın. Aynı DB'ye bağlı yerel geliştirmede bu bayrağı true tutun; geliştirme sürecinin üretim kuyruğunu sahiplenmesine izin vermeyin. Bu bayrak bildirim panelini veya iki aşamalı girişi kapatmaz.
+
+Yalnız kaydedilmiş ayarlarla, oturumdaki yöneticinin kendi adresine deneme yapılır. İstekten farklı alıcı alınmaz. Onay zorunlu, IP sınırı ve ayar kaydında dakikalık deneme sınırı vardır. Deneme önce sürüm artırılarak kaydedilir; eşzamanlı eski istek ikinci gönderim yapamaz. Normal gönderim kapalıyken açıkça onaylanan deneme yapılabilir; acil durdurma bunu da engeller. SMTP kabulü teslim değildir; hata metni dışarı verilmez, belirsiz sonuç otomatik tekrarlanmaz. Deneme API'si bu açık kullanıcı işlemi için en fazla 30 saniye SMTP bekler; normal hesap/bildirim gönderimleri kuyrukta kalır.
+
+Migration `20260925133126_MailConfiguration` yalnız yeni tabloyu oluşturur; kayıt veya şifre eklemez, gönderimi kendiliğinden açmaz. Anahtar volume'u SMTP kapalıyken de korunur. API kopyaları ortak kalıcı Data Protection anahtar deposu ve uygulama kimliğini kullanmalıdır. Yerel anahtarlarla kaydedilmiş şifrenin farklı anahtar deposundaki sunucuda çözülemeyeceğini unutmayın; canlı ayarları canlı panelden hazırlayın.
+
+Geri dönüş: Eski API panel ayarlarını ve yeni acil durdurma bayrağını tanımaz. Panelden durdurmayı boşa düşürmemek için eski/yeni göndericileri birlikte çalıştırmayın. Eski sürüme dönüş zorunluysa eski kopyaların kendi `MAIL_ENABLED=false` ayarını da açıkça uygulayın. Yeni tabloyu/anahtarları koruyun; veri silen `Down` ayrıca onay olmadan çalıştırılmaz. İki aşamalı girişe ilişkin daha sıkı geri dönüş sınırları geçerlidir.
+
+## Eski ortam değişkenleri — panel kaydı yokken
 
 Yerelde API ortam değişkenleri veya `dotnet user-secrets`, Coolify'da yalnız **api** servisinin gizli ortam değişkenleri kullanılır. Web'e veya `NEXT_PUBLIC_*` alanlarına parola koymayın. Örnek değerleri gerçek hesap bilgilerinizle değiştirin; `.env` dosyasını Git'e eklemeyin.
 
 ```dotenv
 MAIL_ENABLED=false
+MAIL_FORCE_DISABLED=false
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_SECURE=true
@@ -28,10 +43,10 @@ Google'ın [uygulama şifresi açıklamasına](https://support.google.com/accoun
 ## Gönderimi açmadan önce
 
 1. API ve paneli aynı kaynak sürümünden hazırlayın. `20260923163849_AccountMail` migration'ını yetkili veritabanı hesabıyla uygulayın; uygulama hesabının yeni tablolardaki okuma/ekleme/güncelleme yetkilerini doğrulayın. `growth` genel erişime açılmaz.
-2. SMTP ve gönderici bilgilerini gizli ayarlara girin. `MAIL_ENABLED=false` olarak bırakın. Ayarlar ekranında hizmetin kapalı olması beklenen davranıştır; program hiçbir SMTP bağlantısı kurmaz.
+2. Güncel migration'ları uygulayın. Panelden SMTP ve gönderici bilgilerini genel gönderim kapalıyken kaydedin; normal gönderimler başlamaz. Deneme ancak ayrı onayla yapılır.
 3. Coolify compose içindeki `mail-keys` kalıcı volume'unu koruyun. `MAIL_KEY_PATH=/app/mail-keys` yalnız API içinde kullanılır. Birden fazla API kopyası aynı anahtar deposunu ve aynı uygulama kimliğini kullanmalıdır. Anahtarlar hassastır; dosya erişimini yalnız API ve yetkili işletmeciyle sınırlayın. Volume şifreli gönderim içerikleriyle birlikte korunmalıdır; veritabanındaki şifreleme tek başına anahtara erişen işletmeciye karşı koruma değildir.
-4. `MAIL_ENABLED=true` yapıp API'yi yeniden başlatın. **Hesap e-postaları** ekranında “hizmet açık” yalnız ayarların biçimsel olarak tam olduğunu gösterir; Gmail kimlik doğrulama veya teslim doğrulaması değildir.
-5. Yalnız kontrol ettiğiniz bir deneme alıcısına yeni hesap daveti oluşturun. Gelen kutusu/istenmeyen posta, doğru site adresi, tek kullanım, yeni şifreyle giriş ve gönderim durumu kontrollerini yapın. Bu canlı pilot kullanıcı SMTP bilgilerini girdikten sonra yapılmalıdır.
+4. Panelde açık onayla kendi adresinize deneme gönderip gelen kutusunu kontrol edin. Ardından genel gönderimi açıp kaydedin; yeniden başlatma gerekmez. “Hizmet açık” yalnız ayarların biçimsel olarak tam olduğunu gösterir; Gmail teslim doğrulaması değildir.
+5. Kontrollü bir hesap daveti pilotunda doğru site adresi, tek kullanım, şifre belirleme ve gönderim durumu kontrollerini kullanıcıyla yapın. Gerçek SMTP bilgileri girilmeden bu pilot tamamlanmış sayılmaz.
 
 ## Günlük bildirimler
 
@@ -39,7 +54,7 @@ Google'ın [uygulama şifresi açıklamasına](https://support.google.com/accoun
 
 `growth.UserNotifications` üzerindeki alıcı/olay benzersizliği ve sürüm denetimi tekrar üretimi/gönderim sahiplenmesini korur. SMTP denemesi başlamadan önce sahiplenme kaydedilir; belirsiz gönderim otomatik tekrarlanmaz. Gönderim sırasında hesap ve ilgili kaynak satırları kontrol edilip kilitlenir. Hesap, adres, oturum, tercih, görev sorumlusu veya rapor paylaşımı değiştiyse bekleyen ileti iptal edilir. E-postada özel mali değer, belge veya mesaj gövdesi yoktur. Bildirim listesi de kaynak erişimini yeniden denetler. Bu kuyruğun durumları kişinin **Bildirimler** ekranındadır; **Hesap e-postaları** yalnız davet/şifre akışını listeler.
 
-Geri dönüşte bu tablolar korunabilir; önceki uygulama bunları kullanmaz. Veri silen `Down` kendiliğinden uygulanmaz. Bildirim tercihini sonradan açmak eski kayıtları göndermeye çevirmez; `MAIL_ENABLED=false` bütün SMTP işleyicilerini durdurur. E-postanın fiziksel olarak alıcının kutusundan geri alınamayacağı unutulmamalıdır.
+Geri dönüşte bu tablolar korunur; veri silen `Down` kendiliğinden uygulanmaz. Bildirim tercihini sonradan açmak eski kayıtları göndermeye çevirmez. Gönderim panelden veya `MAIL_FORCE_DISABLED=true` ile durdurulur; başlamış/gönderilmiş ileti geri alınmaz. Yeniden açıldığında hâlâ geçerli bekleyenler işlenebilir.
 
 Anahtar kaybolursa eski kuyruktaki iletiler çözülemez; görünür bir hata durumuna alınır. Önceden gönderilmiş bağlantının doğrulanması anahtara bağlı değildir: veritabanında rastgele 256 bit tokenın SHA-256 özeti bulunur. Kullanılmış/süresi dolmuş bağlantı geçersizdir. Veri varken migration `Down` veya volume silme yapmayın.
 
@@ -53,4 +68,4 @@ Kuyruk içeriği ASP.NET Data Protection ile şifrelenir; gönderim sonrası vey
 
 Daveti kabul etmek rolü/markayı değiştirmez. Yeni şifreyi kaydetmek bütün eski oturumları geçersiz kılar. Şifre yenileme yanıtları hesabın varlığını açıklamaz; IP hız sınırı ve hesap başına dakika/saat sınırı uygulanır. Davet bekleyen yönetici son etkin yönetici yerine sayılmaz.
 
-Geri dönüşte yeni tabloları ve bekleyen hesap bayrağını koruyun. Eski API yeni davet durumunu tanımadığından hesap yönetimi yapan eski/yeni sürümleri birlikte çalıştırmayın. Gönderimi durdurmak için `MAIL_ENABLED=false` yeterlidir; kayıt veya anahtar silmeyin.
+Geri dönüşte yeni tabloları ve bekleyen hesap bayrağını koruyun. Eski API yeni davet/panel durumunu tanımadığından eski/yeni sürümleri birlikte çalıştırmayın. Güncel sürümde panelden veya `MAIL_FORCE_DISABLED=true` ile gönderimi durdurun; kayıt veya anahtar silmeyin.

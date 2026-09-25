@@ -23,7 +23,8 @@ builder.Services.AddProblemDetails();
 var protection = builder.Services.AddDataProtection();
 if (builder.Configuration["MAIL_KEY_PATH"] is { Length: > 0 } keyPath)
     protection.PersistKeysToFileSystem(new DirectoryInfo(keyPath));
-builder.Services.AddSingleton<SmtpSettings>();
+builder.Services.AddScoped<SmtpSettingsProvider>();
+builder.Services.AddScoped<ISmtpTestSender, SmtpTestSender>();
 builder.Services.AddScoped<IAccountMailSender, SmtpAccountMailSender>();
 builder.Services.AddScoped<AccountMailQueue>();
 builder.Services.AddScoped<NotificationService>();
