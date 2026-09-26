@@ -21,6 +21,12 @@ public static partial class WorkflowEndpoints
         MapWorkPlanning(app);
         MapAccountMail(app);
         MapNotifications(app);
+        MapMailCenter(app);
+        MapDataQuality(app);
+        MapDealScope(app);
+        MapTimeTracking(app);
+        MapRenewalSummary(app);
+        MapPipeline(app);
         return app;
     }
 

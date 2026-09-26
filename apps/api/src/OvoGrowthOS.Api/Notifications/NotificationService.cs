@@ -25,12 +25,12 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
         if (pref is null) { pref = new NotificationPreference { UserId = userId, StartedAt = now }; db.Add(pref); }
         var since = pref.StartedAt > now.AddDays(-30) ? pref.StartedAt : now.AddDays(-30);
         var existing = (await db.UserNotifications.Where(x => x.UserId == userId).Select(x => x.EventKey).ToListAsync(ct)).ToHashSet();
-        void Add(NotificationKind kind, Guid? source, string key, DateTimeOffset happened, DateOnly? day = null)
+        void Add(NotificationKind kind, Guid? source, string key, DateTimeOffset happened, DateOnly? day = null, bool emailAllowed = true)
         {
             if (!existing.Add(key)) return;
             db.Add(new UserNotification { UserId = userId, Kind = kind, SourceId = source, EventKey = key, Day = day,
                 CreatedAt = now, Email = user.Email, AccountVersion = user.TokenVersion,
-                EmailStatus = settings.Ready && pref.WantsEmail(kind) && happened >= now.AddHours(-24) ? MailDeliveryStatus.Pending : null });
+                EmailStatus = emailAllowed && settings.Ready && pref.WantsEmail(kind) && happened >= now.AddHours(-24) ? MailDeliveryStatus.Pending : null });
         }
         var today = TeamWork.Today(now);
         if (Staff(user))
@@ -44,8 +44,15 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
         var brandId = await db.PortalAccesses.Where(x => x.UserId == userId).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
         if (user.Role == "BrandClient" && brandId.HasValue)
         {
+            var policy = await db.BrandMailPolicies.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == brandId, ct);
+            var emailAllowed = policy?.ReportEmailEnabled == true;
+            var scheduled = policy?.ScheduledReportEnabled == true;
             var reports = await db.PortalReports.AsNoTracking().Where(x => x.BrandId == brandId && x.RevokedAt == null && x.PublishedAt >= since).ToListAsync(ct);
-            foreach (var report in reports) Add(NotificationKind.PortalReport, report.Id, $"report:{report.Id}", report.PublishedAt);
+            foreach (var report in reports)
+            {
+                var owns = ReportMailSchedule.OwnsEmail(scheduled, policy?.ScheduledSendDay ?? 5, policy?.ScheduledSendHour ?? 9, now, report.Year, report.Month);
+                Add(NotificationKind.PortalReport, report.Id, $"report:{report.Id}", report.PublishedAt, emailAllowed: emailAllowed && !owns);
+            }
         }
         if (Manager(user) || user.Role == "BrandClient" && brandId.HasValue)
         {

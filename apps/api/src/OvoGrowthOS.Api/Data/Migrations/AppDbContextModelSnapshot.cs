@@ -509,6 +509,23 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<Guid>("BrandId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("LostBy")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasDefaultValue("");
+
+                    b.Property<DateOnly?>("LostOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("LostReason")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasDefaultValue("");
+
                     b.Property<DateOnly?>("NextContactOn")
                         .HasColumnType("date");
 
@@ -524,6 +541,18 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("integer");
 
+                    b.Property<int>("SourceChannel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("SourceNote")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasDefaultValue("");
+
                     b.Property<int>("Stage")
                         .HasColumnType("integer");
 
@@ -534,9 +563,100 @@ namespace OvoGrowthOS.Api.Data.Migrations
 
                     b.HasKey("BrandId");
 
+                    b.HasIndex("LostOn");
+
                     b.HasIndex("OwnerId", "NextContactOn");
 
                     b.ToTable("BrandFollowUps", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandMailPolicy", b =>
+                {
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BodyTemplate")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("ReportEmailEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ScheduledReportEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ScheduledSendDay")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScheduledSendHour")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubjectTemplate")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("BrandId");
+
+                    b.ToTable("BrandMailPolicies", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_BrandMailPolicies_Revision", "\"Revision\" > 0");
+
+                            t.HasCheckConstraint("CK_BrandMailPolicies_Schedule", "\"ScheduledSendDay\" BETWEEN 1 AND 31 AND \"ScheduledSendHour\" BETWEEN 0 AND 23");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandStageHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("EnteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnteredBy")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<bool>("EntryKnown")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ExitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExitedBy")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "EnteredAt");
+
+                    b.HasIndex("Stage", "ExitedAt");
+
+                    b.ToTable("BrandStageHistories", "growth");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.CollectionAccount", b =>
@@ -861,6 +981,115 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasIndex("BrandId", "Status");
 
                     b.ToTable("PartnershipDeals", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.DealScopeItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("RemoveReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RemovedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DealId", "CreatedAt");
+
+                    b.HasIndex("DealId", "Title")
+                        .IsUnique()
+                        .HasFilter("\"RemovedAt\" IS NULL");
+
+                    b.ToTable("DealScopeItems", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_DealScopeItems_Values", "length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Description\")) BETWEEN 0 AND 2000 AND (\"RemovedAt\" IS NULL OR (length(btrim(\"RemoveReason\")) > 0 AND length(btrim(\"RemovedBy\")) > 0))");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.DealScopeRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DealId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DecisionNote")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ScopeItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScopeItemId")
+                        .IsUnique();
+
+                    b.HasIndex("DealId", "Status", "RequestedAt");
+
+                    b.ToTable("DealScopeRequests", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_DealScopeRequests_Values", "\"Status\" BETWEEN 0 AND 2 AND length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Description\")) BETWEEN 0 AND 2000 AND ((\"Status\" = 0 AND \"DecidedAt\" IS NULL AND \"ScopeItemId\" IS NULL) OR (\"Status\" <> 0 AND \"DecidedAt\" IS NOT NULL AND length(btrim(\"DecisionNote\")) > 0 AND length(btrim(\"DecidedBy\")) > 0 AND (\"Status\" = 1) = (\"ScopeItemId\" IS NOT NULL)))");
+                        });
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.DealTemplate", b =>
@@ -2142,6 +2371,9 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<Guid?>("SourceTimeEntryId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("VoidReason")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -2159,6 +2391,10 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasIndex("Reference")
                         .IsUnique()
                         .HasFilter("\"VoidedAt\" IS NULL");
+
+                    b.HasIndex("SourceTimeEntryId")
+                        .IsUnique()
+                        .HasFilter("\"SourceTimeEntryId\" IS NOT NULL AND \"VoidedAt\" IS NULL");
 
                     b.HasIndex("MonthlyPerformanceId", "IncurredOn");
 
@@ -2278,6 +2514,61 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("TaskHourPlans", "growth", t =>
                         {
                             t.HasCheckConstraint("CK_TaskHourPlans_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"Hours\" BETWEEN 0 AND 168 AND \"Revision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.TaskTimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Hours")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VoidReason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VoidedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("WeekStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId", "CreatedAt");
+
+                    b.HasIndex("UserId", "WeekStart");
+
+                    b.ToTable("TaskTimeEntries", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_TaskTimeEntries_Values", "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND \"Hours\" > 0 AND \"Hours\" <= 168 AND (\"VoidedAt\" IS NULL OR (length(btrim(\"VoidReason\")) > 0 AND length(btrim(\"VoidedBy\")) > 0))");
                         });
                 });
 
@@ -2630,6 +2921,24 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandMailPolicy", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.BrandMailPolicy", "BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandStageHistory", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.CollectionAccount", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
@@ -2692,6 +3001,29 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Brand");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.DealScopeItem", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Deal", null)
+                        .WithMany()
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.DealScopeRequest", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Deal", null)
+                        .WithMany()
+                        .HasForeignKey("DealId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.DealScopeItem", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.DealScopeRequest", "ScopeItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.InvestmentAccount", b =>
@@ -2968,6 +3300,21 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.HasOne("OvoGrowthOS.Domain.WorkTask", null)
                         .WithMany()
                         .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.TaskTimeEntry", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

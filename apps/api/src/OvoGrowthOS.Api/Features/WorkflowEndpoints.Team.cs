@@ -10,7 +10,8 @@ namespace OvoGrowthOS.Api.Features;
 public sealed record WorkTaskRequest(Guid Id, Guid BrandId, Guid AssigneeId, string Title, string Description,
     WorkPriority Priority, WorkKind Kind, Guid? DealId, int? Year, int? Month, DateOnly DueOn, int Revision = 0);
 public sealed record WorkCompletionRequest(bool Completed, int Revision);
-public sealed record FollowUpRequest(Guid? OwnerId, LeadStage Stage, string WaitingReason, DateOnly? NextContactOn, string NextStep, int Revision);
+public sealed record FollowUpRequest(Guid? OwnerId, LeadStage Stage, string WaitingReason, DateOnly? NextContactOn, string NextStep, int Revision,
+    LeadSource? SourceChannel = null, string? SourceNote = null);
 public sealed record ContactNoteRequest(Guid Id, DateOnly ContactOn, string Text);
 
 public static partial class WorkflowEndpoints
@@ -76,7 +77,11 @@ public static partial class WorkflowEndpoints
             from follow in follows.DefaultIfEmpty()
             orderby brand.UpdatedAt descending, brand.Id
             select new { brand.Id, brand.Name, brand.Status, brand.ContactName, brand.ContactEmail,
-                followUp = follow, lastContactOn = db.BrandContactNotes.Where(x => x.BrandId == brand.Id).Max(x => (DateOnly?)x.ContactOn) }, page, pageSize))).RequireAuthorization("ReadAccess");
+                followUp = follow, lastContactOn = db.BrandContactNotes.Where(x => x.BrandId == brand.Id).Max(x => (DateOnly?)x.ContactOn),
+                stageEnteredAt = db.BrandStageHistories.Where(h => h.BrandId == brand.Id && h.ExitedAt == null)
+                    .OrderByDescending(h => h.EnteredAt).Select(h => (DateTimeOffset?)h.EnteredAt).FirstOrDefault(),
+                stageEntryKnown = db.BrandStageHistories.Where(h => h.BrandId == brand.Id && h.ExitedAt == null)
+                    .OrderByDescending(h => h.EnteredAt).Select(h => (bool?)h.EntryKnown).FirstOrDefault() ?? false }, page, pageSize))).RequireAuthorization("ReadAccess");
     }
 
     private static async Task<IResult> ListWorkTasks(AppDbContext db, ClaimsPrincipal user, Guid? brandId = null,
@@ -149,8 +154,30 @@ public static partial class WorkflowEndpoints
         var old = follow is null ? null : JsonSerializer.Serialize(follow, Json);
         if (follow is null) { follow = new BrandFollowUp { BrandId = id }; db.Add(follow); }
         follow.OwnerId = r.OwnerId; follow.Stage = r.Stage; follow.WaitingReason = r.WaitingReason.Trim(); follow.NextContactOn = r.NextContactOn;
-        follow.NextStep = r.NextStep.Trim(); follow.Revision++;
+        follow.NextStep = r.NextStep.Trim();
+        if (r.SourceChannel.HasValue) follow.SourceChannel = r.SourceChannel.Value;
+        if (r.SourceNote is not null) follow.SourceNote = r.SourceNote.Trim();
+        follow.Revision++;
+        await RecordStageChange(db, id, r.Stage, User(user));
         Audit(db, user, "BrandFollowUpChanged", "Brand", id, old, follow); await db.SaveChangesAsync(); return Results.Ok(follow);
+    }
+
+    private static async Task RecordStageChange(AppDbContext db, Guid brandId, LeadStage stage, string actor)
+    {
+        var rows = await db.BrandStageHistories.Where(x => x.BrandId == brandId).OrderBy(x => x.EnteredAt).ToListAsync();
+        var open = rows.LastOrDefault(x => x.ExitedAt is null);
+        if (open is null)
+        {
+            // The first row of a brand only marks when measurement started, so it never counts as waiting time.
+            db.BrandStageHistories.Add(new BrandStageHistory { BrandId = brandId, Stage = stage, EntryKnown = rows.Count > 0, EnteredBy = actor });
+            return;
+        }
+        if (open.Stage == stage) return;
+        foreach (var row in rows.Where(x => x.ExitedAt is null))
+        {
+            row.ExitedAt = DateTimeOffset.UtcNow; row.ExitedBy = actor;
+        }
+        db.BrandStageHistories.Add(new BrandStageHistory { BrandId = brandId, Stage = stage, EntryKnown = true, EnteredBy = actor });
     }
 
     private static async Task<IResult> AddContactNote(Guid id, ContactNoteRequest r, AppDbContext db, ClaimsPrincipal user)

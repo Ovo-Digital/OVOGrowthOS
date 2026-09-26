@@ -118,6 +118,7 @@ public sealed class NotificationTests
         var client = Guid.NewGuid(); var other = Guid.NewGuid(); var brand = Guid.NewGuid(); var report = Guid.NewGuid(); var question = Guid.NewGuid();
         await Db(f, async db => {
             db.Add(new Brand { Id = brand, Name = "Secret brand" });
+            db.Add(new BrandMailPolicy { BrandId = brand, ReportEmailEnabled = true });
             foreach (var id in new[] { client, other }) { db.Add(new UserAccount { Id = id, Email = id+"@example.test", Role = "BrandClient", Name = "Client", PasswordHash = JwtTokenService.HashPassword(WorkflowApiFactory.TestPassword) }); db.Add(new PortalAccess { UserId = id, BrandId = brand }); }
             await db.SaveChangesAsync();
         });

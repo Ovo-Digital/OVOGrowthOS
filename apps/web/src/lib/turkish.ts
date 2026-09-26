@@ -1,6 +1,7 @@
 const labels: Record<string, string> = {
   MailConfiguration: "E-posta ayarları",
   MailSettingsChanged: "E-posta ayarları güncellendi",
+  BrandMailPolicyChanged: "Markanın rapor e-posta kuralı güncellendi",
   MailTestRequested: "Deneme e-postası istendi",
   MailTestAccepted: "Deneme e-postasını sunucu kabul etti",
   MailTestUncertain: "Deneme e-postasının gönderimi doğrulanamadı",
@@ -51,6 +52,7 @@ const labels: Record<string, string> = {
   AccountInvited: "Hesap daveti oluşturuldu",
   AccountInvitationRenewed: "Hesap daveti yenilendi",
   AccountInvitationAccepted: "Hesap daveti kabul edildi",
+  NotificationMailResent: "Bildirim e-postası yeniden gönderildi",
   AccountPasswordReset: "Hesap şifresi yenilendi",
   UserAccount: "Kullanıcı hesabı",
   Active: "Aktif",

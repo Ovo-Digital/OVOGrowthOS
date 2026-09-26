@@ -44,3 +44,19 @@ public sealed class InvestmentEntryValidator : AbstractValidator<InvestmentEntry
         RuleFor(x => x.Revision).GreaterThanOrEqualTo(0).WithMessage("Kayıt sürümü geçersiz. Sayfayı yenileyin.");
     }
 }
+
+public sealed class TimeToCostValidator : AbstractValidator<TimeToCostRequest>
+{
+    public TimeToCostValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty().WithMessage("Gider kimliği eksik. Formu yeniden açın.");
+        RuleFor(x => x.TimeEntryId).NotEmpty().WithMessage("Aktarılacak saat girişini seçin.");
+        RuleFor(x => x.Confirmed).Equal(true).WithMessage("Saatleri maliyete aktarmadan önce açık onay kutusunu işaretleyin.");
+        RuleFor(x => x.HourlyCost).Must(x => x > 0 && x <= 1000000 && decimal.Round(x, 4) == x)
+            .WithMessage("Pozitif ve en fazla dört ondalık haneli bir saat ücreti girin.");
+        RuleFor(x => x.IncurredOn).Must(x => x.Year is >= 2020 and <= 2100).WithMessage("Geçerli gider tarihi seçin.");
+        RuleFor(x => x.Reference).NotEmpty().MaximumLength(160).WithMessage("Gider için benzersiz referans yazın (en fazla 160 karakter).");
+        RuleFor(x => x.Description).NotEmpty().MaximumLength(1000).WithMessage("Giderin ne olduğunu açıklayın (en fazla 1000 karakter).");
+        RuleFor(x => x.Revision).GreaterThanOrEqualTo(0).WithMessage("Kayıt sürümü geçersiz. Sayfayı yenileyin.");
+    }
+}

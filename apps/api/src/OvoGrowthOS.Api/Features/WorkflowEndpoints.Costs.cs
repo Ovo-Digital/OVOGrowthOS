@@ -23,6 +23,7 @@ public static partial class WorkflowEndpoints
             return Results.Ok(CostView(p, await db.ServiceCostAccounts.AsNoTracking().Include(x => x.Entries).Include(x => x.Reviews).SingleOrDefaultAsync(x => x.MonthlyPerformanceId == id)));
         });
         costs.MapPost("/entries", AddServiceCost).AddEndpointFilter<ValidationFilter<ServiceCostRequest>>();
+        costs.MapPost("/entries/from-time", AddCostFromTime).AddEndpointFilter<ValidationFilter<TimeToCostRequest>>();
         costs.MapPost("/entries/{entryId:guid}/void", VoidServiceCost).AddEndpointFilter<ValidationFilter<VoidPaymentRequest>>().RequireAuthorization("AdminOnly");
         costs.MapPut("/confirmation", ConfirmCosts).AddEndpointFilter<ValidationFilter<CostConfirmationRequest>>();
         var investment = app.MapGroup("/api/deals/{id:guid}/investment").RequireAuthorization("OperationsWrite");
@@ -49,7 +50,10 @@ public static partial class WorkflowEndpoints
     };
     private static IResult CostConflict() => Results.Conflict(new { error = "Maliyet kaydı değişti. Sayfayı yenileyip tekrar deneyin." });
 
-    private static async Task<IResult> AddServiceCost(Guid id, ServiceCostRequest r, AppDbContext db, ClaimsPrincipal user)
+    private static Task<IResult> AddServiceCost(Guid id, ServiceCostRequest r, AppDbContext db, ClaimsPrincipal user) =>
+        AddServiceCostCore(id, r, db, user, null);
+
+    private static async Task<IResult> AddServiceCostCore(Guid id, ServiceCostRequest r, AppDbContext db, ClaimsPrincipal user, Guid? sourceTimeEntryId)
     {
         await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
         await LockCollectionPeriod(db, id);
@@ -66,10 +70,13 @@ public static partial class WorkflowEndpoints
         if (await db.ServiceCostEntries.AnyAsync(x => x.Id == r.Id || x.VoidedAt == null && x.Reference == reference) ||
             await db.InvestmentEntries.AnyAsync(x => x.VoidedAt == null && x.Kind == InvestmentEntryKind.Investment && x.Reference == reference))
             return Results.Conflict(new { error = "Bu gider referansı zaten kayıtlı. Aynı gideri hizmet maliyeti ve yatırım olarak iki kez eklemeyin." });
+        if (sourceTimeEntryId.HasValue && await db.ServiceCostEntries.AnyAsync(x => x.VoidedAt == null && x.SourceTimeEntryId == sourceTimeEntryId))
+            return Results.Conflict(new { error = "Bu saat girişi daha önce maliyete aktarılmış. Aynı çalışma iki kez maliyet olmaz." });
         if (account is null) { account = new() { MonthlyPerformanceId = id }; db.ServiceCostAccounts.Add(account); }
         var entry = new ServiceCostEntry { Id = r.Id, MonthlyPerformanceId = id, Kind = r.Kind,
             Amount = r.Kind == ServiceCostKind.TeamWork ? OperatingCosts.TeamAmount(r.Hours!.Value, r.HourlyCost!.Value) : r.Amount,
-            Hours = r.Hours, HourlyCost = r.HourlyCost, IncurredOn = r.IncurredOn, Reference = reference, Description = r.Description.Trim(), CreatedBy = User(user) };
+            Hours = r.Hours, HourlyCost = r.HourlyCost, IncurredOn = r.IncurredOn, Reference = reference, Description = r.Description.Trim(),
+            CreatedBy = User(user), SourceTimeEntryId = sourceTimeEntryId };
         account.Entries.Add(entry); db.ServiceCostEntries.Add(entry); account.Revision++;
         Audit(db, user, "ServiceCostAdded", "MonthlyPerformance", id, null, new { entry.Id });
         await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync(); return Results.Ok(CostView(p, account));

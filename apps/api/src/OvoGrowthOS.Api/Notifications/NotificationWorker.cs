@@ -24,7 +24,15 @@ public sealed class NotificationMailQueue(AppDbContext db, NotificationService n
         var user = await db.UserAccounts.AsNoTracking().SingleAsync(x => x.Id == mail.UserId, ct);
         var pref = await db.NotificationPreferences.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == mail.UserId, ct);
         var content = await notifications.Resolve(mail, user, DateTimeOffset.UtcNow, true, ct);
-        if (content is null || pref?.WantsEmail(mail.Kind) != true || user.Email != mail.Email || user.TokenVersion != mail.AccountVersion || mail.CreatedAt < DateTimeOffset.UtcNow.AddHours(-24))
+        BrandMailPolicy? policy = null; PortalReport? report = null;
+        if (mail.Kind == NotificationKind.PortalReport && content is not null)
+        {
+            report = await db.PortalReports.AsNoTracking().SingleAsync(x => x.Id == mail.SourceId, ct);
+            if (tx is not null) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"Brands\" WHERE \"Id\" = {report.BrandId} FOR SHARE", ct);
+            policy = await db.BrandMailPolicies.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == report.BrandId, ct);
+        }
+        if (content is null || mail.Kind == NotificationKind.PortalReport && policy?.ReportEmailEnabled != true
+            || pref?.WantsEmail(mail.Kind) != true || user.Email != mail.Email || user.TokenVersion != mail.AccountVersion || mail.CreatedAt < DateTimeOffset.UtcNow.AddHours(-24))
         { mail.EmailStatus = MailDeliveryStatus.Cancelled; mail.ErrorCode = "NoLongerEligible"; }
         else
         {
@@ -32,7 +40,16 @@ public sealed class NotificationMailQueue(AppDbContext db, NotificationService n
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 timeout.CancelAfter(TimeSpan.FromSeconds(30));
-                await sender.SendAsync(mail.Id, user.Email, "OVO Growth OS bildiriminiz", $"{content.Title}\n\nAyrıntılar için hesabınızla giriş yapın: {settings.WebOrigin}{content.Href}\n\nE-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.", timeout.Token);
+                var subject = "OVO Growth OS bildiriminiz";
+                var body = $"{content.Title}\n\nAyrıntılar için hesabınızla giriş yapın: {settings.WebOrigin}{content.Href}";
+                if (policy is not null && report is not null)
+                {
+                    var name = await db.Brands.Where(x => x.Id == report.BrandId).Select(x => x.Name).SingleAsync(ct);
+                    var period = $"{report.Month:00}/{report.Year}";
+                    subject = ReportMailTemplate.Render(policy.SubjectTemplate, name, period, settings.WebOrigin + "/portal");
+                    body = ReportMailTemplate.Render(policy.BodyTemplate, name, period, settings.WebOrigin + "/portal");
+                }
+                await sender.SendAsync(mail.Id, user.Email, subject, body + "\n\nE-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.", timeout.Token);
                 mail.EmailStatus = MailDeliveryStatus.Sent;
             }
             catch { mail.EmailStatus = MailDeliveryStatus.Uncertain; mail.ErrorCode = "SmtpNotConfirmed"; }
@@ -52,6 +69,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, ILogger<Noti
         {
             try
             {
+                await using (var scope = scopes.CreateAsyncScope())
+                    await scope.ServiceProvider.GetRequiredService<ScheduledReportQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 Guid[] ids;
                 await using (var scope = scopes.CreateAsyncScope())
                     ids = await scope.ServiceProvider.GetRequiredService<AppDbContext>().UserAccounts.Where(x => x.IsActive && !x.InvitationPending).Select(x => x.Id).ToArrayAsync(stoppingToken);

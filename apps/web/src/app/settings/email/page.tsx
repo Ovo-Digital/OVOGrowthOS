@@ -24,7 +24,7 @@ export default function EmailSettingsPage() {
       <SettingsForm key={query.data.revision} initial={query.data} report={setNotice} reload={async () => { await query.refetch(); }} />}
     <Card className="mt-5 space-y-3 p-5 text-sm">
       <h2 className="font-semibold">Hangi iletiler gönderilir?</h2>
-      <p>Görev, yeni paylaşılan rapor ve konuşma bildirimleri için hem bu hizmet hem alıcının Bildirimler bölümündeki ilgili tercihi açık olmalıdır. Marka adres defterine toplu gönderim yapılmaz; rapor bildirimi yalnız o markaya erişimi olan etkin müşteri hesaplarına gider.</p>
+      <p>Görev, yeni paylaşılan rapor ve konuşma bildirimleri için hem bu hizmet hem alıcının Bildirimler bölümündeki ilgili tercihi açık olmalıdır. Rapor e-postalarında ayrıca Müşteri portalı yönetimindeki marka izni açık olmalıdır; bu izin başlangıçta kapalıdır. Marka adres defterine toplu gönderim yapılmaz; rapor bildirimi yalnız o markaya erişimi olan etkin müşteri hesaplarına gider.</p>
       <p>Davet ve şifre yenileme, istenen hesap işlemleridir; görev/rapor tercihinden bağımsızdır. Müşteriye aylık raporu belirli bir günde otomatik gönderme ve PDF eki henüz yoktur. Mevcut rapor bildirimi, ayrıca yayımladığınız rapora giriş gerektiren bir bağlantı verir.</p>
       <p>Kaydetmek tek başına deneme iletisi göndermez. Genel gönderimi açarsanız uygun bekleyen ve yeni iletiler işlenebilir. Kapattığınızda sonraki gönderimler durur; başlamış veya gönderilmiş ileti geri alınamaz. Deneme düğmesi yalnız sizin adresinize açık onayla tek ileti gönderir.</p>
       <Link href="/mail-deliveries" className="underline">Hesap daveti ve şifre gönderimlerini gör</Link>

@@ -51,10 +51,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<AccountSecurity> AccountSecurities => Set<AccountSecurity>();
     public DbSet<MailConfiguration> MailConfigurations => Set<MailConfiguration>();
+    public DbSet<BrandMailPolicy> BrandMailPolicies => Set<BrandMailPolicy>();
+    public DbSet<DealScopeItem> DealScopeItems => Set<DealScopeItem>();
+    public DbSet<DealScopeRequest> DealScopeRequests => Set<DealScopeRequest>();
+    public DbSet<TaskTimeEntry> TaskTimeEntries => Set<TaskTimeEntry>();
+    public DbSet<BrandStageHistory> BrandStageHistories => Set<BrandStageHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("growth");
+        modelBuilder.Entity<BrandMailPolicy>(e =>
+        {
+            e.HasKey(x => x.BrandId);
+            e.HasOne<Brand>().WithOne().HasForeignKey<BrandMailPolicy>(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.Property(x => x.SubjectTemplate).HasMaxLength(180); e.Property(x => x.BodyTemplate).HasMaxLength(2000);
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_BrandMailPolicies_Revision", "\"Revision\" > 0");
+                t.HasCheckConstraint("CK_BrandMailPolicies_Schedule", "\"ScheduledSendDay\" BETWEEN 1 AND 31 AND \"ScheduledSendHour\" BETWEEN 0 AND 23");
+            });
+        });
         modelBuilder.Entity<MailConfiguration>(e =>
         {
             e.HasKey(x => x.Id); e.Property(x => x.Id).ValueGeneratedNever();
@@ -251,6 +268,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.Property(x => x.Reference).HasMaxLength(160); e.Property(x => x.Description).HasMaxLength(1000); e.Property(x => x.VoidReason).HasMaxLength(1000);
             e.HasIndex(x => x.Reference).HasFilter("\"VoidedAt\" IS NULL").IsUnique();
+            e.HasIndex(x => x.SourceTimeEntryId).HasFilter("\"SourceTimeEntryId\" IS NOT NULL AND \"VoidedAt\" IS NULL").IsUnique();
             e.HasIndex(x => new { x.MonthlyPerformanceId, x.IncurredOn });
             e.ToTable(t =>
             {
@@ -311,8 +329,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             b.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
             b.Property(x => x.WaitingReason).HasMaxLength(1000);
             b.Property(x => x.NextStep).HasMaxLength(1000);
+            b.Property(x => x.SourceNote).HasMaxLength(Pipeline.MaxSourceNoteLength).HasDefaultValue("");
+            b.Property(x => x.LostReason).HasMaxLength(Pipeline.MaxReasonLength).HasDefaultValue("");
+            b.Property(x => x.LostBy).HasMaxLength(320).HasDefaultValue("");
+            b.Property(x => x.SourceChannel).HasDefaultValue(LeadSource.Unspecified);
             b.Property(x => x.Revision).IsConcurrencyToken();
             b.HasIndex(x => new { x.OwnerId, x.NextContactOn });
+            b.HasIndex(x => x.LostOn);
+        });
+        modelBuilder.Entity<BrandStageHistory>(s =>
+        {
+            s.HasKey(x => x.Id);
+            s.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            s.Property(x => x.EnteredBy).HasMaxLength(320);
+            s.Property(x => x.ExitedBy).HasMaxLength(320);
+            s.Property(x => x.Note).HasMaxLength(1000);
+            s.HasIndex(x => new { x.BrandId, x.EnteredAt });
+            s.HasIndex(x => new { x.Stage, x.ExitedAt });
         });
         modelBuilder.Entity<BrandContactNote>(n =>
         {
@@ -333,6 +366,42 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             t.HasIndex(x => new { x.BrandId, x.Year, x.Month }).HasFilter("\"Kind\" = 1").IsUnique();
             t.HasIndex(x => x.DealId).HasFilter("\"Kind\" = 2").IsUnique();
             t.ToTable(table => table.HasCheckConstraint("CK_WorkTasks_Target", "(\"Kind\" = 0 AND \"DealId\" IS NULL AND \"Year\" IS NULL AND \"Month\" IS NULL) OR (\"Kind\" = 1 AND \"DealId\" IS NOT NULL AND \"Year\" IS NOT NULL AND \"Month\" IS NOT NULL AND \"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12) OR (\"Kind\" = 2 AND \"DealId\" IS NOT NULL AND \"Year\" IS NULL AND \"Month\" IS NULL)"));
+        });
+        modelBuilder.Entity<DealScopeItem>(i =>
+        {
+            i.HasOne<Deal>().WithMany().HasForeignKey(x => x.DealId).OnDelete(DeleteBehavior.Restrict);
+            i.Property(x => x.Title).HasMaxLength(200);
+            i.Property(x => x.Description).HasMaxLength(2000);
+            i.Property(x => x.RemoveReason).HasMaxLength(1000);
+            i.HasIndex(x => new { x.DealId, x.Title }).HasFilter("\"RemovedAt\" IS NULL").IsUnique();
+            i.HasIndex(x => new { x.DealId, x.CreatedAt });
+            i.ToTable(t => t.HasCheckConstraint("CK_DealScopeItems_Values",
+                "length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Description\")) BETWEEN 0 AND 2000 AND (\"RemovedAt\" IS NULL OR (length(btrim(\"RemoveReason\")) > 0 AND length(btrim(\"RemovedBy\")) > 0))"));
+        });
+        modelBuilder.Entity<DealScopeRequest>(r =>
+        {
+            r.HasOne<Deal>().WithMany().HasForeignKey(x => x.DealId).OnDelete(DeleteBehavior.Restrict);
+            r.HasOne<DealScopeItem>().WithOne().HasForeignKey<DealScopeRequest>(x => x.ScopeItemId).OnDelete(DeleteBehavior.Restrict);
+            r.Property(x => x.Title).HasMaxLength(200);
+            r.Property(x => x.Description).HasMaxLength(2000);
+            r.Property(x => x.DecisionNote).HasMaxLength(1000);
+            r.HasIndex(x => new { x.DealId, x.Status, x.RequestedAt });
+            r.ToTable(t => t.HasCheckConstraint("CK_DealScopeRequests_Values",
+                "\"Status\" BETWEEN 0 AND 2 AND length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Description\")) BETWEEN 0 AND 2000 AND (" +
+                "(\"Status\" = 0 AND \"DecidedAt\" IS NULL AND \"ScopeItemId\" IS NULL) OR " +
+                "(\"Status\" <> 0 AND \"DecidedAt\" IS NOT NULL AND length(btrim(\"DecisionNote\")) > 0 AND length(btrim(\"DecidedBy\")) > 0 AND (\"Status\" = 1) = (\"ScopeItemId\" IS NOT NULL)))"));
+        });
+        modelBuilder.Entity<TaskTimeEntry>(e =>
+        {
+            e.HasOne<WorkTask>().WithMany().HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<UserAccount>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.VoidReason).HasMaxLength(1000);
+            e.HasIndex(x => new { x.UserId, x.WeekStart });
+            e.HasIndex(x => new { x.TaskId, x.CreatedAt });
+            e.ToTable(t => t.HasCheckConstraint("CK_TaskTimeEntries_Values",
+                "EXTRACT(ISODOW FROM \"WeekStart\") = 1 AND EXTRACT(YEAR FROM \"WeekStart\") BETWEEN 2020 AND 2100 AND " +
+                "\"Hours\" > 0 AND \"Hours\" <= 168 AND (\"VoidedAt\" IS NULL OR (length(btrim(\"VoidReason\")) > 0 AND length(btrim(\"VoidedBy\")) > 0))"));
         });
         modelBuilder.Entity<Brand>(b =>
         {

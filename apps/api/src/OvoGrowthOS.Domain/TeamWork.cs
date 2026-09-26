@@ -12,6 +12,11 @@ public sealed class BrandFollowUp
     public string WaitingReason { get; set; } = "";
     public DateOnly? NextContactOn { get; set; }
     public string NextStep { get; set; } = "";
+    public LeadSource SourceChannel { get; set; } = LeadSource.Unspecified;
+    public string SourceNote { get; set; } = "";
+    public DateOnly? LostOn { get; set; }
+    public string LostReason { get; set; } = "";
+    public string LostBy { get; set; } = "";
     public int Revision { get; set; }
 }
 

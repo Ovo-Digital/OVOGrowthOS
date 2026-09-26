@@ -17,7 +17,7 @@ public sealed class DatabaseExceptionHandler : IExceptionHandler
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.TableName is "MonthlyTargets" or "TargetActions" => "Bu hedef veya takip işi zaten kaydedilmiş. Sayfayı yenileyin; ikinci bir kayıt oluşturulmadı.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
-                when postgres.TableName is "PortalAccesses" or "PortalReports" or "PortalDocumentShares" or "PortalMessages" or "PortalReportReadings" => "Portal kaydı zaten oluşturulmuş veya başka bir işlemle değişmiş. Sayfayı yenileyip kontrol edin.",
+                when postgres.TableName is "PortalAccesses" or "PortalReports" or "PortalDocumentShares" or "PortalMessages" or "PortalReportReadings" or "BrandMailPolicies" => "Portal kaydı zaten oluşturulmuş veya başka bir işlemle değişmiş. Sayfayı yenileyip kontrol edin.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.TableName is "ServiceCostAccounts" or "ServiceCostEntries" or "InvestmentAccounts" or "InvestmentEntries" => "Maliyet veya yatırım referansı zaten kayıtlı. Sayfayı yenileyip kontrol edin; ikinci kez eklenmedi.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }

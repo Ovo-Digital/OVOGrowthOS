@@ -38,6 +38,7 @@ public sealed class ServiceCostEntry
     public DateTimeOffset? VoidedAt { get; set; }
     public string VoidedBy { get; set; } = "";
     public string VoidReason { get; set; } = "";
+    public Guid? SourceTimeEntryId { get; set; }
 }
 public sealed class InvestmentAccount
 {

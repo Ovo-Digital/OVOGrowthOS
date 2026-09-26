@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAccountMailSender, SmtpAccountMailSender>();
 builder.Services.AddScoped<AccountMailQueue>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationMailQueue>();
+builder.Services.AddScoped<ScheduledReportQueue>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<NotificationWorker>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<AccountMailWorker>();
 builder.Services.AddExceptionHandler<DatabaseExceptionHandler>();

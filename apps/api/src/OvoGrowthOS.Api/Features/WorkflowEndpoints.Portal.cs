@@ -82,6 +82,7 @@ public static partial class WorkflowEndpoints
 
         var management = app.MapGroup("/api/portal-management/brands/{brandId:guid}").RequireAuthorization("OperationsWrite");
         MapPortalCollaboration(portal, management);
+        MapBrandMailPolicy(management);
         management.MapGet("/accounts", async (Guid brandId, AppDbContext db) => Results.Ok(await db.PortalAccesses.AsNoTracking().Where(x => x.BrandId == brandId)
             .Select(x => new { id = x.UserId, x.User.Name, x.User.Email, x.User.IsActive, x.User.InvitationPending }).ToListAsync())).RequireAuthorization("AdminOnly");
         management.MapPost("/accounts", async (Guid brandId, PortalAccountRequest r, AppDbContext db, ClaimsPrincipal user) =>

@@ -4,7 +4,7 @@ Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi he
 
 Rehberde; uygulamanın ne işe yaradığı, hangi ekranda ne yapılması gerektiği, kararların nasıl oluştuğu ve bir markanın ilk görüşmeden aylık kapanış, tahsilat ve müşteriyle rapor paylaşımına kadar nasıl yönetildiği anlatılır.
 
-**İçerik güncellemesi: 25 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, görev şablonlarını ve haftalık ekip kapasitesini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini ve panelden e-posta ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
+**İçerik güncellemesi: 26 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, aday hattında aşama geçmişi, kaynak ve kayıp takibini, görev şablonlarını ve haftalık ekip kapasitesini, hizmet kapsamını ve paket dışı talepleri, gerçekleşen saat girişini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, yenileme toplantı özetini, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini ve panelden e-posta ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
 
 Kullanım rehberi iç ekip içindir. Yönetici, iş ortağı ve analist hesapları giriş yaptıktan sonra açabilir; marka yetkilileri bu iç rehbere erişemez. Rehber yüklenemiyorsa güncel hesabınızla yeniden giriş yapın ve bağlantınızı kontrol edin. Sistem hesabınızı doğrulayamıyorsa içeriği göstermez.
 
@@ -24,15 +24,22 @@ Rehberi baştan sona ezberlemeniz gerekmez. Sol menüden **Kullanım rehberi** s
 - **Ücret ve iş birliği şartlarını belirleyeceğim:** **Anlaşmalar** üzerinden seçenekleri ve koşulları inceleyin. Sadece görüşme notu yazmak anlaşmayı etkinleştirmez.
 - **Bu ayın satış ve giderlerini gireceğim:** **Aylık sonuçlar** ekranını açın. Çok sayıda kayıt için aynı ekrandaki **Dosyadan aktar** yolunu kullanın; ayrıntıları rehberin raporlar bölümündedir.
 - **Hazırlanan ayı kontrol edeceğim:** **İşlerim → Onay bekleyenler** veya **Aylık sonuçlar** üzerinden dönemi açın. Hazırlayan kişiyle onaylayan kişi farklı olmalıdır.
+- **Bu ay hangi bilgi eksik, hangi marka kapanmaya hazır?** Sol menüden **Kapanış hazırlığı** ekranını açın; dönem seçip marka marka hangi kaynağın girildiğini, hangi uyarının çıktığını ve kimin sorumlu olduğunu görün.
 - **Bu ay hedefin neresindeyiz?** Markayı açıp **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
 - **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın ekip alanındaki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
 - **Ekibin bu hafta yeni işe zamanı var mı?** **İşlerim → Haftalık ekip kapasitesi** ekranını açın. Önce kapasite ve görev saatlerinin girildiğini kontrol edin; **Yeni marka veya ek iş ön izlemesi** ile ek yükü kaydetmeden deneyin.
 - **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir.
 - **Kimden ne kadar alacağımız var?** **Hakedişler** ekranında ayı, para birimini ve ödeme filtresini seçin. İlgili dökümde fatura ve gerçek ödeme kayıtlarını yönetin.
 - **Bu markaya gerçekten ne kadar emek ve para harcadık?** Kapalı aylık sonucun **OVO gerçekleşen hizmet maliyeti** bölümünü açın. Başlangıç yatırımını ise ilgili anlaşmanın **Yatırım ve geri kazanım defteri** bölümünde izleyin.
+- **Bu anlaşmanın kapsamı ne, paket dışı talep bekliyor mu?** Anlaşmayı açıp **Hizmet kapsamı** bölümüne bakın. Bekleyen talebi karar notuyla onaylayın ya da reddedin; onaylanan talep kapsam kalemine dönüşür.
+- **Görevde ne kadar saat gerçekten harcandı?** Görevin **Haftalık saat planı** panelindeki **Gerçekleşen saatler** alanını açın. Planlanan ve gerçekleşen saat yan yana görünür; gerekiyorsa bir kapanmış döneme maliyete aktarın.
+- **Yenileme toplantısına ne hazırlayacağım?** Anlaşmayı açıp **Yenileme toplantısı özeti** bölümünü inceleyin (yönetici ve iş ortağı hesaplarında görünür). Özet yalnız bilgi verir; hiçbir ücreti kendiliğinden değiştirmez.
+- **Aday hattında ne kadar bekliyoruz, adaylar nereden geliyor?** **Potansiyel markalar** ekranındaki **Aday hattı özeti** kartını açın; aşama bekleme sürelerini, kaynak dağılımını ve dönüşüm oranını yan yana görün.
+- **Bu aday neden kapanmadı?** **Potansiyel markalar** ekranında ilgili satırın sonundaki **Kaybı kaydet** düğmesine basın ve nedeni yazın. Anlaşması olan bir marka kayıp olarak işaretlenemez.
 - **Yönetime veya markaya sonuç anlatacağım:** **Raporlar** ve markanın **Açıklamalı marka raporu** görünümünü kullanın. İç yönetim çıktısını markayla paylaşmayın.
 - **Marka kendi hesabından raporunu görsün:** **Müşteri portalı** üzerinden hesap, rapor ve belge paylaşımını yönetin. Bu rehberin 16. bölümünde ilk kurulum ve müşteri kullanım adımları vardır.
 - **Bir değişikliği kim yaptı?** **İşlem geçmişi** ekranını veya ilgili kaydın geçmiş bağlantısını açın.
+- **E-posta gitmedi mi, neden?** Yönetici **Gönderim merkezi** ekranını açıp tür, durum, tarih ve alıcıya göre filtreleyin. Durdurulan iletilerin nedenini ve gerekçeli yeniden gönderim düğmesini burada görürsünüz.
 - **Yeni çalışan başlayacak:** Yönetici **Ayarlar → Kullanıcılar** yolunu kullanır. Müşteri hesapları ise **Müşteri portalı** içinden açılır; ikisi aynı tür hesap değildir.
 
 ### İlk gün güvenli başlangıç
@@ -614,6 +621,24 @@ Bir aylık sonuç kaydı aşağıdaki sırayla ilerler:
 
 Bir düğmenin görünmesi tek başına o işlemi yapabileceğiniz anlamına gelmez; hesabınızın rolü ve kaydın durumu kontrol edilir. “Hazırlayan aynı kaydı onaylayamaz” uyarısında başka bir kişinin şifresini istemeyin; ikinci yetkilinin kendi hesabından kontrol etmesini sağlayın.
 
+### Kapanış öncesi: hangi bilgi eksik?
+
+**Ne işe yarar?** Müşteri raporu göndermeden önce “bu markanın bu ay hangi kaynağı eksik, hangi rakam incelenmeli, ay kapanmaya hazır mı?” sorusunu tek ekranda yanıtlar. Sol menüden **Kapanış hazırlığı** açın.
+
+1. Üstteki **Dönem** alanından yılı ve ayı seçin. Sayfa üstünde dönem için özet görünür: **Hazır**, **İncelenecek**, **Kayıt yok**, **Kapsam dışı** ve **Açık takip işi** sayıları.
+2. Her marka kartında dört kaynak vardır: **Satış**, **İade**, **Reklam**, **Gider**. Kaynağın durumu **Girildi**, **0 girildi**, **Kayıt yok** veya **Kapsam dışı** olarak yazılır.
+   - **Girildi:** Kaynak raporla eşleşen bir tutar girilmiş.
+   - **0 girildi:** Kayıt var ve gerçekten sıfır. **Kayıt yok** ile aynı değildir; sıfır, bilinmeyen bilgi anlamına gelmez.
+   - **Kayıt yok:** Bu ay için o kaynaktan hiç kayıt bulunmuyor.
+   - **Kapsam dışı:** Anlaşmaya göre bu markadan o ay beklenti yok.
+3. Kartta ayrıca kaydın **kaynağı** (elle giriş mi, hangi dosyadan aktarıldı mı) ve **sorumlusu** yazılıdır.
+4. Uyarı ve **inceleme önerileri** üç satırlıdır: ne bulundu, neden önemli, ne yapılacak. Bunlar örnek eşiklerle üretilir: iade tutarının satışa oranı %15'i aşarsa, KDV oranı kayıtlı ayarlamadan belirgin saparsa (yaklaşık %5), önceki aya göre bir kaynak tutarı hem %50 hem 5.000 birim değişirse ve kayıt hiç yoksa.
+5. **Uyarılar sonucu kendiliğinden değiştirmez.** Onay vermez, kilidi açmaz, tutarı düzeltmez ve kapanış kararını vermez. Onay ve kilitleme yine iki kişiyle ve **Aylık sonuçlar** ekranından yapılır.
+6. Eksik veya incelenecek bir kartta **Tek takip işi aç** düğmesi görünür (yönetici veya iş ortağı hesabı gerekir). Bu, mevcut görev sisteminde açılan standart bir kapanış görevidir: aynı marka ve dönem için yalnız bir tane olur, açıklamayı sistem otomatik yazar ve son tarihi takip eden ayın 5'ine koyar. Görev **İşlerim** ekranında görünür; ikinci kez düğmeye basmak ikinci görev oluşturmaz.
+7. Karttaki **Aylık sonucu aç** bağlantısı sizi ilgili döneme götürür; girilecek veriyi oradan tamamlarsınız.
+
+Bu ekran şifre, bağlantı adresi, e-posta metni veya başka bir kullanıcının gizli bilgilerini göstermez. Kapanış yine de **İncelemede → Onaylandı → Kilitlendi** sırasıyla yürür.
+
 ### Yeni aylık sonuç nasıl girilir?
 
 1. **Aylık sonuçlar → Aylık sonuç gir** yolunu açın. Yönetici veya iş ortağı hesabı gerekir.
@@ -974,13 +999,61 @@ Bu alanlarda yapılacak değişiklikler yeni değerlendirme ve hesapları etkile
 7. “Sunucu kabul etti” mesajı tek başına gelen kutusuna teslim garantisi değildir. Gelen kutusu ve istenmeyen postaları kontrol edin. Sonuç doğrulanamadıysa ileti yine de ulaşmış olabilir; hemen tekrar tekrar göndermeyin.
 8. Hazır olduğunuzda genel gönderimi açıp kaydedin. Görev, konuşma ve yeni paylaşılan rapor iletileri için alıcının **Bildirimler** bölümündeki ilgili tercihinin de açık olması gerekir. Müşteri raporları yalnız doğru markaya erişimi olan etkin müşteri hesaplarına bildirilir; marka kartında bir e-posta bulunması tek başına izin değildir.
 
-**Örnek:** Lale markasının iki yetkilisi olsun. Biri “Markam için paylaşılan yeni raporlar” tercihini açmış, diğeri kapatmış olsun. E-posta hizmeti hazırken yeni kapalı dönem raporunu ayrıca yayımlarsanız uygun bildirim yalnız tercihi açık kişiye hazırlanır. Bu sürüm raporu kendiliğinden yayımlamaz; her ay belirli tarihte otomatik rapor veya PDF eki göndermez. E-posta, giriş gerektiren portal bağlantısı içerir.
+**Örnek:** Lale markasının iki yetkilisi olsun. Biri “Markam için paylaşılan yeni raporlar” tercihini açmış, diğeri kapatmış olsun. E-posta hizmeti hazırken ve Lale'nin marka düzeyindeki rapor izni açıkken yeni kapalı dönem raporunu ayrıca yayımlarsanız uygun bildirim yalnız tercihi açık kişiye hazırlanır. Bu sürüm raporu kendiliğinden yayımlamaz. Aylık zamanlanmış gönderim varsayılan olarak kapalıdır; açsanız yalnız bir önceki ayın paylaşılmış raporunu ayın belirli gününde gönderir ve e-posta her zaman giriş gerektiren portal bağlantısı içerir.
+
+### Marka bazlı rapor e-postası ve alıcı ön izlemesi
+
+**Ne işe yarar?** Genel e-posta hizmetini kapatmadan yalnız bir markanın rapor iletilerini durdurmanızı sağlar. Bu markaya bağlı kişilerin kendi bildirim tercihlerini değiştirmez; raporların portalda görünmesini de kapatmaz.
+
+**Nereden açılır?** Yönetici hesabıyla **Müşteri portalı → marka seçimi → Rapor e-postası izni ve alıcı kontrolü** bölümüne girin. Ortak ve çalışan hesapları bu ayarı veya alıcı listesini yönetemez.
+
+1. İlk açılışta marka izni kapalıdır; mevcut markalar da yönetici tarafından ayrıca açılmalıdır. Genel e-posta hizmetinin hazır olduğunu kontrol edin.
+2. Markayla iletişim planı netleştiyse **Bu markanın rapor e-postalarına izin ver** seçeneğini açın. Bu işlem kişinin kapalı tercihini açmaz.
+3. Konu ve mesajı düzenleyebilirsiniz. `{marka}` marka adını, `{donem}` raporun ayını, `{baglanti}` giriş gerektiren portal adresini yerleştirir. Mesajda bağlantı zorunludur. HTML, dış bağlantı ve iç finansal bilgi eklemeyin; sadece raporun hazır olduğunu haber verin.
+4. Neden değiştirdiğinizi yazıp kaydedin. Kim, ne zaman ve hangi gerekçeyle değiştirdiği işlem geçmişinde tutulur. Kaydetmek yeni rapor veya e-posta üretmez; uygun bekleyen gönderimler işlenebilir.
+5. **Alıcı kontrolü yapılacak rapor** alanından yayımlanmış bir sürüm seçin. Konu, mesaj ve o markaya bağlı hesapların durumu görünür. Başka marka hesapları veya yalnız adres defterine yazılmış kişiler listelenmez.
+6. “Koşullar uygun” gönderildi demek değildir. Tercihi kapalı, daveti tamamlanmamış veya hesabı kapalı kişiler için nedenler ayrı gösterilir. Geri çekilmiş, süresi geçmiş, daha önce gönderilmiş ya da sonucu belirsiz rapor bildirimleri de açıklanır. **Alıcı durumunu yenile** ile tekrar kontrol edin.
+
+**Üç koşul birlikte gerekir:** Genel e-posta hizmeti hazır + markanın rapor izni açık + kişinin rapor tercihi açık. Kişinin etkin hesabı ve doğru marka erişimi de korunmalıdır. İzinler gönderimden hemen önce tekrar kontrol edilir.
+
+#### Aylık zamanlanmış gönderim
+
+**Ne işe yarar?** Ayda bir kez elle uğraşmadan, bir önceki ayın paylaşılmış raporunu seçtiğiniz gün ve saatte marka yetkililerine ulaştırır.
+
+1. Aynı bölümdeki **Aylık zamanlanmış gönderim** kutusunu açıp **Ayın günü** ile **Saat (Türkiye)** değerlerini seçin. Varsayılan ayın 5'i saat 09:00'dur ve ilk açılışta kapalıdır.
+2. Zamanlanmış gönderim yalnız rapor izni açık markalarda çalışır. Önce **Bu markanın rapor e-postalarına izin ver** seçeneğini açın.
+3. Kaydettikten sonra ekranda sıradaki gönderim tarihi ve hangi dönemin beklendiği görünür. Örnek: 5 Kasım'daki gönderimin kapsamı Ekim ayıdır (10/2026). O rapor henüz paylaşılmamışsa “10/2026 raporu henüz paylaşılmadı” uyarısını görürsünüz; sistem daha eski bir ayı sessizce göndermez.
+4. Kapsam yalnız **bir önceki takvim ayının**, müşteri portalında paylaşılmış **kapanmış** dönem raporudur. Zamanlama hiçbir raporu kendiliğinden yayımlamaz veya onaylamaz.
+5. Aynı rapor aynı kişiye en fazla bir kez e-posta ile gider. Rapor paylaşıldığı anda e-posta gittiyse takvim gününde ikinci bir ileti üretilmez.
+6. Gönderim günü kaçırıldığında (sunucu kapalıydı veya rapor geç paylaşıldı) takip eden **3 gün** içinde yetişen gönderimler yapılır. Bu sürenin sonunda kalan dönemler geriye dönük olarak toplu gönderilmez.
+7. Aynı dönem için tekrar planlama yapmak ikinci ileti üretmez. Rapor geri çekildiğinde, marka izni kapatıldığında veya kişinin tercihi kapalıyken bekleyen ileti durur.
+8. E-posta dosya eklemez; giriş gerektiren portal adresini içerir. PDF eki ayrıca ayrı bir karar gerektirir.
+
+**Dikkat:** Zamanlanmış gönderim açıkken yayımlanan raporun e-postası takvim gününde gider. Takvim gününden önce zamanlamayı kapatırsanız o dönem için e-posta gönderilmez; rapor yine de portalda görünür.
+
+**Önemli:** Eski raporlara toplu gönderim yapılmaz. Bildirim oluşurken e-posta istenmemişse ve zamanlanmış gönderim kapalıysa sonradan izin açmak onu göndermez. Yeni rapor bildirimi için 24 saatlik süre vardır; bu ekran yeniden gönderme düğmesi değildir. Markanın iznini kapatmak sonraki rapor gönderimlerini engeller; başlamış veya gönderilmiş ileti geri alınamaz. Görev, konuşma, davet ve şifre yenileme bu marka anahtarından etkilenmez.
 
 Hesap daveti ve şifre yenileme kişinin istediği hesap işlemleridir; görev/rapor tercihinden bağımsızdır, ancak genel e-posta hizmetinin açık olması gerekir. Gelecekte eklenecek gönderim türleri ayrı planlanacaktır.
 
 **Gönderimi durdurmak:** Genel gönderimi kapatıp kaydedin. Şifreyi de kaldıracaksanız ilgili kutuyu işaretleyin; yeniden kullanmak için şifreyi tekrar girmeniz gerekir. Gmail tarafındaki uygulama şifresini iptal etmez; gerekirse Google hesabından ayrıca iptal edin. Başlamış veya gönderilmiş ileti geri alınamaz. Tekrar açarsanız hâlâ geçerli bekleyen iletiler işlenebilir; daha önce e-posta istenmemiş eski bildirimler topluca yeniden gönderilmez.
 
 **“Sunucu ayarları kullanılıyor” mesajı:** Henüz panel kaydı yoktur. İlk panel kaydı eski sunucu ayarlarının önüne geçer; sunucudaki şifre otomatik taşınmaz. Teknik ekip için ayrıntılar `docs/SMTP_KURULUMU.md` içindedir. “Sunucu bütün gönderimleri durdurmuş” görünüyorsa teknik sorumluya başvurun; panelden bu güvenlik durdurması aşılamaz. Yerel ve canlı uygulama aynı veritabanını kullanıyorsa paneldeki ayar ortaktır; ayrı ortam sanarak deneme yapmayın.
+
+#### Gönderim merkezi
+
+**Ne işe yarar?** Davet, şifre yenileme, görev/konuşma/rapor bildirimi ve deneme iletilerini tek ekranda görmenizi, durumlarını izlemenizi ve gerekçeli yeniden gönderim yapmanızı sağlar. Yalnız yöneticiye açıktır; sol menüde **Gönderim merkezi** olarak görünür.
+
+1. Üstteki kutulardan **Tür**, **Durum**, **Başlangıç**, **Bitiş** ve **Alıcı ara** filtrelerini kullanın. **Listeyi yenile** ile son durumları tekrar çekin.
+2. Her iletide alıcı adresi, durum ve gönderim tarihi görünür. Karar verirken **durumun altındaki açıklama** satırını okuyun; buradaki metin durumun ne anlama geldiğini ve ne yapmanız gerektiğini söyler.
+3. Sağ üstteki sayılar durumların dağılımıdır. Liste 500 kayıtla sınırlıdır; geniş tarih aralığı yerine daraltarak arayın. Kayıt saklama süresi gerçek kullanıma göre belirlenir.
+4. Davet iletisi **Önceki daveti geçersiz kıl ve yenisini gönder** ile tekrarlanır; eski bağlantı geçersiz kalır ve işlem günlüğe gerekçesiyle yazılır.
+5. Bildirim iletileri için **Yeniden gönder** düğmesi bir gerekçe ister; gerekçe işlem geçmişinde saklanır. Gönderimden önce alıcının hesabı, marka erişimi, kişisel tercihi ve rapor durumu yeniden kontrol edilir; artık uygun değilse gönderim yapılmaz.
+6. **Gönderim deneniyor** durumundaki bir iletiye ikinci gönderim verilmez; bitmesini bekleyin. **Gönderilmeye başladı** ile **Gönderildi** aynı şey değildir.
+7. **Şifre yenileme** iletileri yeniden gönderilemez. Kişi giriş ekranındaki **Şifremi unuttum** bağlantısından yeni ister.
+
+**Önemli:** “E-posta sunucusu kabul etti” gelen kutusuna teslim veya okundu anlamına gelmez; dış sağlayıcıdan kanıt gelmeden teslim/açılma oranı gösterilmez. Gönderim sunucu anahtarı veya e-posta içeriği bu ekranda hiçbir zaman gösterilmez. Zamanlanmış rapor gönderimi de bu ekrandan izlenir; bir raporun aynı kişiye iki kez gitmediğini durum ve tarihden kontrol edebilirsiniz.
+
+**Ayrıntı:** “Hesap e-postaları” ekranı artık bu merkezin bir görünümüdür; davet formundaki **Gönderim durumları ve bekleyen davetler** bağlantısı da sizi buraya götürür.
 
 ## 19. İşlem geçmişi
 
@@ -1073,7 +1146,7 @@ Bağlantıyı kimseyle paylaşmayın. Şifre ekranını yenilerseniz bağlantıy
 
 ### Davet ve şifre e-postalarının durumunu izleme
 
-Yönetici davet formundaki **Gönderim durumları ve bekleyen davetler** bağlantısıyla **Hesap e-postaları** ekranını açar. Son 100 gönderim görünür. Bu ekran bağlantı veya şifre göstermez.
+Yönetici davet formundaki **Gönderim durumları ve bekleyen davetler** bağlantısıyla **Gönderim merkezi** ekranını açar. Davet, şifre yenileme, bildirim, rapor ve deneme iletileri aynı listede görünür ve durumlarına göre filtrelenir. Bu ekran bağlantı, şifre veya ileti gövdesi göstermez. Ayrıntılı kullanım 18. bölümdeki **Gönderim merkezi** alt başlığında anlatılmıştır.
 
 - **Gönderim sırası bekliyor:** İleti hazırlanmıştır; hizmet açıkken sırayla denenir.
 - **Gönderim deneniyor:** Sunucu gönderimi başlatmıştır.
@@ -1617,6 +1690,89 @@ Bu üç tutarla söz takviminin haftalarını topladığınızda incelenebilir k
 
 Ödeme sözü geldi diye **Gerçekleşmiş ödeme ekle** formuna kayıt girmeyin veya sırf takvim değişsin diye belgede yazılı vadeyi değiştirmeyin.
 
+## Hizmet kapsamı, gerçekleşen saat ve yenileme özeti
+
+Bu bölüm üç ayrı soruyu yanıtlar: anlaşmanın içinde hangi işler var, görevlerde gerçekten ne kadar saat harcandı ve yenileme toplantısı öncesi neye bakılır? Üçü birbirini tamamlar ama biri diğerinin yerine geçmez.
+
+<a id="hizmet-kapsami"></a>
+
+### Hizmet kapsamı
+
+**Nereden açılır?** **Anlaşmalar → ilgili anlaşma → Hizmet kapsamı** bölümü.
+
+1. Anlaşmanın içine giren işi **Kapsam kalemi ekle** ile başlığı ve açıklamasıyla yazın. Örneğin: "Aylık içerik planı ve paylaşımı".
+2. Bir iş artık verilmiyorsa ilgili kalemin yanındaki **Kapsamdan çıkar** düğmesine basın ve nedenini yazın. Kalem kaybolmaz; alttaki **Çıkarılan kapsam kalemleri** listesinde gerekçesiyle durur.
+3. Marka anlaşma dışında bir iş isterse önce **Paket dışı talep aç** ile talep oluşturun. Talep **Bekleyen** durumda kalır.
+4. Yönetici veya iş ortağı talebi karar notu yazarak **Onayla** ya da **Reddet** düğmesiyle sonuçlandırır. Onaylanan talep kendiliğinden kapsam kalemine dönüşür; aynı başlıkla ikinci bir kalem oluşmaz.
+5. Kapsam yalnız anlaşma açıkken değiştirilebilir. Anlaşma kapandıysa bölüm değişikliğe izin vermez.
+
+Kapsam kalemi ve paket dışı talep müşteri portalında paylaşılmaz. Ekleme, çıkarma ve karar yalnız yönetici veya iş ortağı içindir; analist kapsamı okuyabilir.
+
+<a id="gerceklesen-saat"></a>
+
+### Gerçekleşen saatler
+
+**Nereden açılır?** **İşlerim** veya marka sayfasındaki görev listesinden ilgili görev → **Haftalık saat planı** düğmesi → panelin altındaki **Gerçekleşen saatler** alanı.
+
+1. Üstte dört sayı yan yana durur: **Planlanan**, **Gerçekleşen**, **İptal edilen** ve **Kalan** saat. Bu iki sayı birbirinden hesaplanmaz: plan gerçek saat değildir, gerçekleşen saati plana yazamazsınız.
+2. Saat eklerken haftanın pazartesi gününü, çalışılan saati ve kısa notu girin. Saat sıfırdan büyük olmalı, bir haftada en fazla 168 olabilir.
+3. Yanlış giren saati **Saati iptal et** ile gerekçeyle iptal edin. Kayıt silinmez, iptalli hâlde listede kalır.
+4. Bir saati **Hizmet maliyetine aktar** ile yalnız yönetici, yalnız **kapanmış** bir aylık döneme yazabilir. Dönem, gider tarihi, saat ücreti, gider referansı ve açıklama istenir; onay kutusu işaretilmeden gönderim yapılmaz.
+5. Aynı saat ikinci kez maliyete aktarılamaz. Saat maliyete aktarıldıysa saati iptal etmek için önce o maliyet kaydını yönetici gerekçeyle iptal etmelidir.
+
+Saat kaydı bordro veya çalışan performans puanı üretmez. Saat ücreti ve çalışan başına maliyet yalnız ilgili kapalı dönemin maliyet ekranında yönetici görünümünde kalır. Kendi görevinize saat ekleyebilirsiniz; atamadığınız bir görevde saat kaydedemezsiniz. Saatleri yalnız yönetici veya iş ortağı maliyete aktarabilir.
+
+<a id="yenileme-ozeti"></a>
+
+### Yenileme toplantısı özeti
+
+**Nereden açılır?** **Anlaşmalar → ilgili anlaşma → Yenileme toplantısı özeti** bölümü. Bu bölüm yalnız yönetici ve iş ortağı hesaplarında açılır.
+
+Tek ekranda şunları görürsünüz: anlaşmanın süresi, başlangıcı, bitişi, aylık sabit ücret, aylık güvence ve gelir payı; kapsam kalemi sayısı ile bekleyen ve reddedilen paket dışı talepler; varsa yenileme görevi, sorumlusu ve son tarihi; varsa devam anlaşması; son ayların hedefi, gerçekleşeni, alacağı ve tahsilatı; kayıtlı hizmet maliyeti, maliyete giren saat ve kapanan maliyet dönemi; görev sayısı ile planlanan ve gerçekleşen saat.
+
+Bu özet **yalnız bilgi verir**. Otomatik ücret artışı yapmaz, hiçbir anlaşma koşulunu değiştirmez, yenileme veya sonlandırma oluşturmaz; yenileme kararı ayrı bir adımda ayrıca verilir. Tahsilat tutarları yalnız kapalı dönemlere göre yazılır; açık dönemde alacak sayılmaz. Planlanan ve gerçekleşen saat yan yana gösterilir, biri diğerinden türetilmez. Bu ekran saat ücreti veya çalışan başına maliyet döndürmez.
+
+## Aday hattı: aşama geçmişi, kaynak ve kayıp kaydı
+
+Bu bölüm bir markanın ilk temastan anlaşmaya kadar hangi aşamalarda beklediğini, adayın hangi kanaldan geldiğini ve anlaşma yapılmayan markaların neden kapandığını kaydeder. Takip aşaması yalnız aday hattını ilgilendirir; markanın değerlendirme, anlaşma veya durumunu değiştirmez.
+
+<a id="aday-hatti-ozeti"></a>
+
+### Aday hattı özeti
+
+**Nereden açılır?** **Potansiyel markalar** ekranı.
+
+1. Sayfanın üstündeki **Aday hattı özeti** kartında dört sayı yan yana durur: açık aday, kayıp kaydı, dönüşüm oranı ve ölçülmeyen aday.
+2. **Aşamalarda bekleme süreleri** yalnız o aşamada duran markaları gösterir. **Ölçülen gün** ile **Bilinmeyen** ayrı sütunlardır; bilinmeyen gün asla tahmin edilmez.
+3. **Kaynak dağılımı** adayların hangi kanaldan geldiğini, **Kayıp nedenleri** hangi gerekçeyle kapandığını, **Yenileme öncesi görüşmeler** mevcut yenileme görevlerini listeler. Yenileme listesi yeni bir görev oluşturmaz.
+4. **Önemli notlar** bölümünde hesabın sınırları yazılıdır; okumadan yorum yapmayın.
+
+Dönüşüm oranı, **ölçüm başlangıcından sonra** kaydedilen ve anlaşmaya ulaşan markalara göre hesaplanır. Ölçüm başlangıcından önce anlaşma yapılan markalar ayrı sayılarak **ölçüm başlangıcı öncesi** gösterilir; henüz hiç ölçülmeyen adaylar oranı etkilemez. Bu oranlar satış garantisi değildir ve çalışan performans puanı olarak kullanılmaz.
+
+<a id="asama-ve-kaynak"></a>
+
+### Aşama geçmişi ve kaynak
+
+**Nereden açılır?** **Markalar → ilgili marka → Sorumlu ve görüşme takibi → Takip bilgilerini düzenle**.
+
+1. **Kaynak kanalı** ile adayın nereden geldiğini seçin (referans, web sitesi, dışarıdan yapılan temas, etkinlik, iş ortağı, diğer). **Kaynak notu** kısa serbest metindir; öneren kişi veya kampanya adı gibi bilgileri buraya yazın.
+2. **Takip aşaması** her değiştirildiğinde geçmiş kendiliğinden kaydedilir. Aynı kartın altındaki **Aşama geçmişi** bölümünde her satır giriş ve çıkış tarihleri, bekleme süresi ve kaydeden kişiyle görünür.
+3. Bir markanın **ilk satırı ölçüm başlangıcıdır**; markanın gerçekten o aşamaya girdiği tarih değildir. Bu yüzden ilk satırın süresi bekleme zamanı olarak sayılmaz ve özet kartta o günler **Bilinmeyen** sütununa yazılır.
+4. Aşama yalnız aday hattını etkiler; marka durumu ve anlaşma kaydı değişmez, yeni anlaşma oluşmaz.
+
+<a id="kayip-kaydi"></a>
+
+### Kayıp kaydı
+
+1. **Potansiyel markalar** ekranında ilgili satırın sonundaki **Kaybı kaydet** düğmesine basın.
+2. Açılan kutuya kaybetme nedenini yazın. Boş bırakılan nedenle kayıt yapılmaz; en fazla 1000 karakter yazabilirsiniz.
+3. Kayıttan sonra satırda **Kayıp** rozeti ve neden görünür, özet karttaki **Kayıp** sayısı artar.
+4. Yanlışlıkla kaydedildiyse **Kaybı geri al** ile kayıt temizlenir; nedeniyle birlikte işlem geçmişte kalır.
+5. Anlaşması olan bir marka kayıp olarak işaretlenemez; sistem bu isteği reddeder ve nedenini söyler.
+6. Kayıp işlemi yalnız yönetici veya iş ortağı içindir; analist özeti okuyabilir.
+
+Kayıp kaydı markayı silmez veya arşivlemez. Aynı marka iki kez kayıp sayılmaz ve dönüşüm oranına kayıp olarak girmez.
+
 ## 27. Şu anda sistemin dışında kalan işler
 
 OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akışını çalıştırır. Ancak aşağıdaki işler henüz tam otomatik değildir:
@@ -1625,7 +1781,7 @@ OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akış�
 - Muhasebe veya fatura sistemi entegrasyonu
 - Sözleşme belgesi oluşturma ve elektronik imza
 - Kurumsal tek oturum açma ve çok şirketli kullanım (yönetici için isteğe bağlı iki aşamalı giriş; e-posta hizmeti açıksa davet ve şifre yenileme mevcuttur)
-- Sunucuda otomatik PDF üretme ve zamanlanmış rapor gönderimi (marka raporları ve müşteri portalında tarayıcıdan PDF kaydetme/yazdırma mevcuttur)
+- Sunucuda otomatik PDF üretme ve e-postaya dosya ekleme (aylık zamanlanmış rapor e-postası marka bazında açılır, yalnız giriş gerektiren portal bağlantısı gönderir; marka raporları ve müşteri portalında tarayıcıdan PDF kaydetme/yazdırma mevcuttur)
 - Bankadan otomatik ödeme okuma, panelden gerçek para gönderme/iade etme, fazla ödeme veya mahsup yönetimi
 - WhatsApp/SMS ve pazarlama iletileri (görev, rapor ve konuşma e-postaları kişisel tercihle kullanılabilir)
 - Müşteri portalından veri girişi, dönem onayı, sözleşme kabulü veya ödeme yapma

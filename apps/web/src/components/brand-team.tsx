@@ -8,8 +8,10 @@ import { DocumentsPanel } from '@/components/record-panels';
 import { WorkTasks, dayText, todayText, type TeamMember, type Paged } from '@/components/work-tasks';
 
 export const leadStages: Record<string, string> = { New: 'Yeni aday', Contacted: 'İlk görüşme yapıldı', WaitingForInformation: 'Bilgi bekleniyor', MeetingPlanned: 'Görüşme planlandı', ProposalFollowUp: 'Teklif takibi', OnHold: 'Beklemeye alındı' };
-type FollowUp = { ownerId: string | null; stage: string; waitingReason: string; nextContactOn: string | null; nextStep: string; revision: number };
+export const leadSources: Record<string, string> = { Unspecified: 'Belirtilmedi', Referral: 'Referans / tavsiye', InboundWebsite: 'Web sitesinden gelen talep', OutboundContact: 'Dışarıdan yapılan ilk temas', Event: 'Etkinlik / fuar', Partner: 'İş ortağı yönlendirmesi', Other: 'Diğer' };
+type FollowUp = { ownerId: string | null; stage: string; waitingReason: string; nextContactOn: string | null; nextStep: string; revision: number; sourceChannel?: string | null; sourceNote?: string | null; lostOn?: string | null; lostReason?: string | null };
 type Note = { id: string; text: string; contactOn: string; createdBy: string; createdAt: string };
+type StageRow = { id: string; stage: string; entryKnown: boolean; enteredAt: string; exitedAt: string | null; enteredBy: string; days: number | null };
 
 export function BrandTeam({ brandId }: { brandId: string }) {
   const [editing, setEditing] = useState(false);
@@ -22,6 +24,7 @@ export function BrandTeam({ brandId }: { brandId: string }) {
   const team = useQuery({ queryKey: ['team'], queryFn: () => api<TeamMember[]>('/api/team') });
   const follow = useQuery({ queryKey: ['follow-up', brandId], queryFn: () => api<{ followUp: FollowUp; lastContactOn: string | null }>(`/api/brands/${brandId}/follow-up`) });
   const notes = useQuery({ queryKey: ['contact-notes', brandId, page], queryFn: () => api<Paged<Note>>(`/api/brands/${brandId}/contact-notes?page=${page}`) });
+  const history = useQuery({ queryKey: ['stage-history', brandId], queryFn: () => api<{ items: StageRow[] }>(`/api/brands/${brandId}/stage-history`) });
   const saveNote = useMutation({ mutationFn: () => api(`/api/brands/${brandId}/contact-notes`, { method: 'POST', body: JSON.stringify(note) }), onSuccess: () => { setNote(null); setPage(1); setMessage('Görüşme notu eklendi.'); cache.invalidateQueries({ queryKey: ['contact-notes', brandId] }); cache.invalidateQueries({ queryKey: ['follow-up', brandId] }); cache.invalidateQueries({ queryKey: ['lead-follow-ups'] }); } });
   const owner = team.data?.find(person => person.id === follow.data?.followUp.ownerId);
   return <div id="team-work" className="mt-6 scroll-mt-20">
@@ -31,9 +34,12 @@ export function BrandTeam({ brandId }: { brandId: string }) {
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">{[
           ['Marka sorumlusu', owner ? `${owner.name}${!owner.isActive ? ' (kapalı hesap; yeni sorumlu seçin)' : ''}` : 'Atanmadı'],
           ['Takip aşaması', leadStages[follow.data.followUp.stage]], ['Son görüşme', dayText(follow.data.lastContactOn)],
-          ['Sonraki görüşme', dayText(follow.data.followUp.nextContactOn)], ['Bekleme nedeni', follow.data.followUp.waitingReason || 'Yok'], ['Sonraki adım', follow.data.followUp.nextStep || 'Belirlenmedi']
+          ['Sonraki görüşme', dayText(follow.data.followUp.nextContactOn)], ['Bekleme nedeni', follow.data.followUp.waitingReason || 'Yok'], ['Sonraki adım', follow.data.followUp.nextStep || 'Belirlenmedi'],
+          ['Kaynak kanal', leadSources[follow.data.followUp.sourceChannel ?? 'Unspecified']], ['Kaynak notu', follow.data.followUp.sourceNote || 'Yok'],
+          ['Kayıp kaydı', follow.data.followUp.lostOn ? `${dayText(follow.data.followUp.lostOn)} · ${follow.data.followUp.lostReason}` : 'Kayıp değil']
         ].map(([label, value]) => <div key={label}><dt className="text-[#6d7175]">{label}</dt><dd className="whitespace-pre-wrap break-words font-medium">{value}</dd></div>)}</dl>
-        {editing && <FollowUpForm key={follow.data.followUp.revision} brandId={brandId} initial={follow.data.followUp} team={team.data ?? []} onSaved={() => { setEditing(false); setMessage('Takip bilgileri kaydedildi.'); cache.invalidateQueries({ queryKey: ['follow-up', brandId] }); cache.invalidateQueries({ queryKey: ['lead-follow-ups'] }); cache.invalidateQueries({ queryKey: ['tasks'] }); }} />}
+        {history.data && history.data.items.length > 0 && <details className="mt-4"><summary className="cursor-pointer text-sm font-semibold">Aşama geçmişi</summary><p className="mt-2 text-xs text-[#6d7175]">İlk satır ölçüm başlangıcıdır; gerçek bekleme süresi olarak sayılmaz.</p><ol className="mt-3 space-y-2">{history.data.items.map(row => <li className="rounded-lg border p-3 text-sm" key={row.id}><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{leadStages[row.stage]}</span><span className="text-xs text-[#6d7175]">{row.exitedAt ? `${dayText(row.enteredAt.slice(0, 10))} – ${dayText(row.exitedAt.slice(0, 10))}` : `${dayText(row.enteredAt.slice(0, 10))} – devam ediyor`}</span></div><div className="mt-1 text-xs text-[#6d7175]">Bekleme: {row.days === null ? 'Ölçülmedi' : `${row.days} gün`} · Kaydeden: {row.enteredBy}</div></li>)}</ol></details>}
+        {editing && <FollowUpForm key={follow.data.followUp.revision} brandId={brandId} initial={follow.data.followUp} team={team.data ?? []} onSaved={() => { setEditing(false); setMessage('Takip bilgileri kaydedildi.'); cache.invalidateQueries({ queryKey: ['follow-up', brandId] }); cache.invalidateQueries({ queryKey: ['lead-follow-ups'] }); cache.invalidateQueries({ queryKey: ['tasks'] }); cache.invalidateQueries({ queryKey: ['stage-history', brandId] }); }} />}
       </>}
       {message && <p className="mt-3 text-sm" role="status">{message}</p>}
     </Card>
@@ -49,11 +55,13 @@ export function BrandTeam({ brandId }: { brandId: string }) {
 }
 
 function FollowUpForm({ brandId, initial, team, onSaved }: { brandId: string; initial: FollowUp; team: TeamMember[]; onSaved: () => void }) {
-  const [form, setForm] = useState({ ...initial, ownerId: initial.ownerId ?? '', nextContactOn: initial.nextContactOn ?? '' });
+  const [form, setForm] = useState({ ...initial, ownerId: initial.ownerId ?? '', nextContactOn: initial.nextContactOn ?? '', sourceChannel: initial.sourceChannel ?? 'Unspecified', sourceNote: initial.sourceNote ?? '' });
   const save = useMutation({ mutationFn: () => api(`/api/brands/${brandId}/follow-up`, { method: 'PUT', body: JSON.stringify({ ...form, ownerId: form.ownerId || null, nextContactOn: form.nextContactOn || null }) }), onSuccess: onSaved });
   return <form className="mt-4 rounded-lg border bg-[#f7f7f8] p-4" onSubmit={e => { e.preventDefault(); save.mutate(); }}><fieldset disabled={save.isPending} className="grid gap-3 sm:grid-cols-2">
     <label>Marka sorumlusu<select className="input mt-1" value={form.ownerId} onChange={e => setForm({ ...form, ownerId: e.target.value })}><option value="">Atanmamış</option>{team.map(person => <option disabled={!person.isActive} key={person.id} value={person.id}>{person.name}{!person.isActive ? ' (kapalı hesap)' : ''}</option>)}</select></label>
     <label>Takip aşaması<select className="input mt-1" value={form.stage} onChange={e => setForm({ ...form, stage: e.target.value })}>{Object.entries(leadStages).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+    <label>Kaynak kanalı<select className="input mt-1" value={form.sourceChannel} onChange={e => setForm({ ...form, sourceChannel: e.target.value })}>{Object.entries(leadSources).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
+    <label>Kaynak notu<input className="input mt-1" maxLength={200} placeholder="Öneren kişi, kampanya veya temas notu" value={form.sourceNote} onChange={e => setForm({ ...form, sourceNote: e.target.value })} /></label>
     <label>Sonraki görüşme<input className="input mt-1" type="date" required={form.stage === 'MeetingPlanned'} min="2020-01-01" max="2100-12-31" value={form.nextContactOn} onChange={e => setForm({ ...form, nextContactOn: e.target.value })} /></label>
     <label>Bekleme nedeni<textarea className="input mt-1" maxLength={1000} required={['OnHold', 'WaitingForInformation'].includes(form.stage)} value={form.waitingReason} onChange={e => setForm({ ...form, waitingReason: e.target.value })} /></label>
     <label className="sm:col-span-2">Sonraki adım<textarea className="input mt-1" required={!!form.nextContactOn} maxLength={1000} value={form.nextStep} onChange={e => setForm({ ...form, nextStep: e.target.value })} /></label>
