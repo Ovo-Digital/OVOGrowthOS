@@ -22,6 +22,7 @@ type E = {
     brandId: string;
     brand: {
         name: string;
+        currency: string;
         economics: {
             averageMonthlyRevenue: number;
             grossMarginRate: number;
@@ -156,14 +157,14 @@ export default function Page() {
                             </div>
                             {c ? (
                                 <div className="mt-5 space-y-3">
-                                    <Row l="OVO hakedişi" v={money(c.ovoFee)} />
+                                    <Row l="OVO hakedişi" v={money(c.ovoFee,e.data?.brand.currency ?? 'TRY')} />
                                     <Row
                                         l="Gerçekleşen oran"
                                         v={percent(c.effectiveRate)}
                                     />
                                     <Row
                                         l="OVO brüt kârı"
-                                        v={money(c.ovoGrossProfit)}
+                                        v={money(c.ovoGrossProfit,e.data?.brand.currency ?? 'TRY')}
                                     />
                                     <Row
                                         l="OVO brüt kâr marjı"

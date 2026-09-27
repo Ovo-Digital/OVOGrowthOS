@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using OvoGrowthOS.Api.Data;
 using OvoGrowthOS.Api.Auth;
@@ -86,6 +88,70 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
         Assert.NotEqual("{}", frozen.GetProperty("calculationSnapshotJson").GetString());
         Assert.NotEqual("{}", frozen.GetProperty("recommendationSnapshotJson").GetString());
         Assert.Equal(10, frozen.GetProperty("currentStep").GetInt32());
+    }
+
+    [Fact]
+    public async Task Reanalysis_keeps_resolved_conditions_and_drops_only_stale_pending_ones()
+    {
+        var brandId = await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        var draft = new
+        {
+            brandId, currentStep = 6, status = "InProgress", averageMonthlyRevenue = 1_000_000m,
+            revenueConfidence = "Verified", grossMarginRate = .55m, grossMarginConfidence = "Verified",
+            cogsRate = .45m, cogsConfidence = "Verified", averageOrderValue = 2_000m, aovConfidence = "ProvidedByBrand",
+            returnRate = .08m, returnRateConfidence = "Verified", currentAdSpend = 160_000m, adSpendConfidence = "Verified",
+            currentCac = 400m, cacConfidence = "Estimated", averageCustomerLtv = 4_000m, ltvConfidence = "Estimated",
+            stockCoverageDays = 75, stockCoverageConfidence = "ProvidedByBrand", monthlyOrders = 500,
+            monthlySessions = 35_000, newCustomers = 400, returningCustomers = 100, variableCostRate = .08m,
+            productMarketFit = 5, growthPotential = 4, operationalReadiness = 4, creativeCapability = 4,
+            founderCooperation = 5, dataMaturity = 4, internalMonthlyCost = 30_000m, setupInvestment = 250_000m
+        };
+        var created = await client.PostAsJsonAsync("/api/evaluations", draft);
+        var evaluation = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var evaluationId = evaluation.GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null)).StatusCode);
+        var engineIds = await ConditionIds(evaluationId);
+
+        Guid keptId;
+        Guid droppedId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var kept = new PartnershipCondition { EvaluationId = evaluationId, Code = "KEEP-CODE", Title = "Korunan koşul" };
+            var dropped = new PartnershipCondition { EvaluationId = evaluationId, Code = "DROP-CODE", Title = "Bekleyen koşul" };
+            db.PartnershipConditions.AddRange(kept, dropped);
+            await db.SaveChangesAsync();
+            keptId = kept.Id; droppedId = dropped.Id;
+        }
+
+        var resolved = await client.PutAsJsonAsync($"/api/conditions/{keptId}", new { status = "Satisfied", reason = "Erişim kontrol edildi", evidenceUrl = "https://example.test/evidence" });
+        Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null)).StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var kept = await db.PartnershipConditions.SingleAsync(x => x.Id == keptId);
+            Assert.Equal(ConditionStatus.Satisfied, kept.Status);
+            Assert.Equal("https://example.test/evidence", kept.EvidenceUrl);
+            Assert.Equal("admin@ovo.test", kept.ResolvedBy);
+            Assert.NotNull(kept.ResolvedAt);
+            Assert.False(await db.PartnershipConditions.AnyAsync(x => x.Id == droppedId));
+            var codes = await db.PartnershipConditions.Where(x => x.EvaluationId == evaluationId).Select(x => x.Code).ToListAsync();
+            Assert.Equal(codes.Count, codes.Distinct().Count());
+            var after = await ConditionIds(evaluationId);
+            Assert.All(engineIds, id => Assert.Contains(id, after));
+        }
+    }
+
+    private async Task<List<Guid>> ConditionIds(Guid evaluationId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.PartnershipConditions.Where(x => x.EvaluationId == evaluationId).Select(x => x.Id).ToListAsync();
     }
 
     [Fact]
@@ -253,6 +319,9 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
     private const string JwtKey = "local-development-key-change-before-production-32chars";
     private readonly string _databaseName = $"workflow-{Guid.NewGuid()}";
 
+    public readonly Dictionary<string, string?> ConfigurationOverrides = new();
+    public readonly ConcurrentQueue<string> CapturedLogLines = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -260,12 +329,13 @@ public sealed class WorkflowApiFactory : WebApplicationFactory<Program>
         {
             ["Jwt:Key"] = JwtKey, ["Jwt:Issuer"] = "ovo-growth-os", ["Jwt:Audience"] = "ovo-growth-os-web",
             ["DefaultAdmin:Email"] = "admin@ovo.test", ["DefaultAdmin:PasswordHash"] = JwtTokenService.HashPassword(TestPassword)
-        }));
+        }).AddInMemoryCollection(ConfigurationOverrides));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
             services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_databaseName));
+            services.AddLogging(options => options.AddProvider(new CapturedLogProvider(CapturedLogLines)));
         });
     }
 

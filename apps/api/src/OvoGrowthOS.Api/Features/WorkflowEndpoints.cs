@@ -20,6 +20,8 @@ public static partial class WorkflowEndpoints
         MapMonthlyTargets(app);
         MapWorkPlanning(app);
         MapAccountMail(app);
+        MapBrandApiSettings(app);
+        MapStoreOrders(app);
         MapNotifications(app);
         MapMailCenter(app);
         MapDataQuality(app);
@@ -109,7 +111,7 @@ public static partial class WorkflowEndpoints
     private static void MapEvaluations(WebApplication app)
     {
         var group = app.MapGroup("/api/evaluations").RequireAuthorization("EvaluationWrite");
-        group.MapGet("/", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,EvaluationStatus? status=null,string sort="recent") => {var q=db.Evaluations.AsNoTracking().Include(x=>x.Brand).AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};return Results.Ok(await Page(ordered,page,pageSize));}).RequireAuthorization("ReadAccess");
+        group.MapGet("/", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,EvaluationStatus? status=null,string sort="recent") => {var q=db.Evaluations.AsNoTracking().AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};var items=ordered.Select(x=>new{x.Id,x.BrandId,Brand=new{x.Brand!.Id,x.Brand!.Name},x.Status,x.CurrentStep,x.PartnershipScore,x.DataConfidenceScore,x.Decision,x.CreatedAt,x.UpdatedAt});return Results.Ok(await Page(items,page,pageSize));}).RequireAuthorization("ReadAccess");
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
             await db.Evaluations.AsNoTracking().Include(x => x.Brand)!.ThenInclude(x => x!.Economics).Include(x => x.Conditions)
                 .Include(x => x.Scenarios).FirstOrDefaultAsync(x => x.Id == id) is { } value ? Results.Ok(value) : Results.NotFound()).RequireAuthorization("ReadAccess");
@@ -164,8 +166,21 @@ public static partial class WorkflowEndpoints
         evaluation.CurrentStep = 10;
         evaluation.Status = result.Decision switch { DecisionStatus.NeedMoreData => EvaluationStatus.ReadyForAnalysis, DecisionStatus.Reject => EvaluationStatus.Rejected, _ => EvaluationStatus.Analyzed };
         evaluation.CompletedAt = result.Decision == DecisionStatus.NeedMoreData ? null : DateTimeOffset.UtcNow; evaluation.UpdatedAt = DateTimeOffset.UtcNow;
-        db.PartnershipConditions.RemoveRange(evaluation.Conditions);
-        db.PartnershipConditions.AddRange(result.RequiredConditions.Select(x => new PartnershipCondition { EvaluationId = id, Code = x.Code, Title = x.Title, Description = x.Description, Required = x.Required }));
+        var existing = evaluation.Conditions.ToList();
+        var kept = new List<PartnershipCondition>();
+        foreach (var wanted in result.RequiredConditions)
+        {
+            var match = existing.Find(x => x.Code == wanted.Code);
+            if (match is null)
+            {
+                db.PartnershipConditions.Add(new PartnershipCondition { EvaluationId = id, Code = wanted.Code, Title = wanted.Title, Description = wanted.Description, Required = wanted.Required });
+                continue;
+            }
+            match.Title = wanted.Title; match.Description = wanted.Description; match.Required = wanted.Required;
+            kept.Add(match);
+        }
+        foreach (var stale in existing.Where(x => !kept.Contains(x)))
+            if (stale.Status == ConditionStatus.Pending) db.PartnershipConditions.Remove(stale);
         Audit(db, user, "EvaluationAnalyzed", "Evaluation", id, null, result);
         await db.SaveChangesAsync(); return Results.Ok(result);
     }
@@ -225,7 +240,7 @@ public static partial class WorkflowEndpoints
     private static void MapDeals(WebApplication app)
     {
         var group = app.MapGroup("/api/deals").RequireAuthorization("ReadAccess");
-        group.MapGet("/", async (HttpRequest request,AppDbContext db,int page=1,int pageSize=20,string? search=null,DealStatus? status=null,string sort="recent") => {var q=db.Deals.AsNoTracking().Include(x=>x.Brand).AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Name,$"%{search}%")||EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Name),"nameDesc"=>q.OrderByDescending(x=>x.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};if(!request.Query.ContainsKey("page"))return Results.Ok(await ordered.Take(100).ToListAsync());return Results.Ok(await Page(ordered,page,pageSize));}).RequireAuthorization("ReadAccess");
+        group.MapGet("/", async (HttpRequest request,AppDbContext db,int page=1,int pageSize=20,string? search=null,DealStatus? status=null,string sort="recent") => {var q=db.Deals.AsNoTracking().AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Name,$"%{search}%")||EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Name),"nameDesc"=>q.OrderByDescending(x=>x.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};var items=ordered.Select(x=>new{x.Id,x.BrandId,x.EvaluationId,x.Name,x.Status,x.DealType,x.Currency,x.ContractMonths,x.StartDate,x.EndDate,x.StatusReason,x.MonthlyRetainer,x.MinimumMonthlyFee,x.RevenueShareRate,x.CreatedAt,x.UpdatedAt,Brand=new{x.Brand!.Id,x.Brand!.Name,x.Brand!.Currency}});if(!request.Query.ContainsKey("page"))return Results.Ok(await items.Take(100).ToListAsync());return Results.Ok(await Page(items,page,pageSize));}).RequireAuthorization("ReadAccess");
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) => await db.Deals.AsNoTracking().Include(x => x.Brand).Include(x => x.Conditions).FirstOrDefaultAsync(x => x.Id == id) is { } x ? Results.Ok(x) : Results.NotFound()).RequireAuthorization("ReadAccess");
         group.MapPost("/from-evaluation/{evaluationId:guid}", async (Guid evaluationId, DealRequest request, AppDbContext db, ClaimsPrincipal user) => { var e = await db.Evaluations.Include(x => x.Conditions).SingleOrDefaultAsync(x => x.Id == evaluationId); if (e is null) return Results.NotFound(); if (e.Status != EvaluationStatus.Approved) return Results.Conflict(new { error = "Önce değerlendirmeyi onaylayın." }); var d = ToDeal(e, request); db.Add(d); Audit(db, user, "DealCreated", "Deal", d.Id, null, d); await db.SaveChangesAsync(); return Results.Created($"/api/deals/{d.Id}", d); }).AddEndpointFilter<ValidationFilter<DealRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/compare", async (DealComparisonRequest request, AppDbContext db) => { var ids=request.DealIds.Distinct().ToList();if(ids.Count<2)return Results.ValidationProblem(new Dictionary<string,string[]>{{"dealIds",["Karşılaştırma için en az iki farklı anlaşma seçin."]}});var deals = await db.Deals.AsNoTracking().Where(x => ids.Contains(x.Id)).ToListAsync();if(deals.Count!=ids.Count)return Results.NotFound(new{error="Seçilen anlaşmalardan biri bulunamadı."});if(deals.Select(x=>x.BrandId).Distinct().Count()!=1||deals.Select(x=>x.EvaluationId).Distinct().Count()!=1||deals[0].EvaluationId!=request.Basis.EvaluationId)return Results.Conflict(new{error="Yalnızca aynı marka ve değerlendirmeye ait anlaşmalar karşılaştırılabilir."});var settings = await db.GeneralSettings.AsNoTracking().SingleAsync(); return Results.Ok(DealComparisonEngine.Compare(deals, request.Basis, settings)); }).RequireAuthorization("ReadAccess");
@@ -315,7 +330,7 @@ public static partial class WorkflowEndpoints
     {
         app.MapGet("/api/settings", async (AppDbContext db) => Results.Ok(await db.GeneralSettings.AsNoTracking().SingleAsync())).RequireAuthorization("ReadAccess");
         app.MapPut("/api/settings", async (SettingsRequest r, AppDbContext db, ClaimsPrincipal user) => {if(r.DefaultRuleSetId.HasValue&&!await db.RuleSets.AnyAsync(y=>y.Id==r.DefaultRuleSetId&&y.Status==RuleSetStatus.Published))return Results.ValidationProblem(new Dictionary<string,string[]>{{"defaultRuleSetId",["Varsayılan kural seti yayımlanmış olmalıdır."]}});var x=await db.GeneralSettings.SingleAsync();var old=JsonSerializer.Serialize(x,Json);x.DefaultCurrency=r.DefaultCurrency.ToUpperInvariant();x.DefaultVatRate=r.DefaultVatRate;x.DefaultContractMonths=r.DefaultContractMonths;x.DefaultSetupInvestment=r.DefaultSetupInvestment;x.TargetOvoGrossMargin=r.TargetOvoGrossMargin;x.TargetBrandContributionMargin=r.TargetBrandContributionMargin;x.MinimumFeeMultiplier=r.MinimumFeeMultiplier;x.ExistingRevenueThreshold=r.ExistingRevenueThreshold;x.ConcentrationRiskThreshold=r.ConcentrationRiskThreshold;x.MinimumPartnershipScore=r.MinimumPartnershipScore;x.ConditionalPartnershipScore=r.ConditionalPartnershipScore;x.MinimumDataConfidenceScore=r.MinimumDataConfidenceScore;x.MinimumRecommendedAdSpend=r.MinimumRecommendedAdSpend;x.DefaultRuleSetId=r.DefaultRuleSetId;x.UpdatedAt=DateTimeOffset.UtcNow;Audit(db,user,"SettingsChanged","Settings",x.Id,old,x);await db.SaveChangesAsync();return Results.Ok(x); }).AddEndpointFilter<ValidationFilter<SettingsRequest>>().RequireAuthorization("AdminOnly");
-        app.MapGet("/api/audit", async (AppDbContext db,int page=1,int pageSize=20,string? entityType=null,Guid? entityId=null,string? search=null,string sort="recent") => {var q=db.AuditRecords.AsNoTracking().AsQueryable();if(entityType is not null)q=q.Where(x=>x.EntityType==entityType);if(entityId.HasValue)q=q.Where(x=>x.EntityId==entityId.ToString());if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.UserId,$"%{search}%")||EF.Functions.ILike(x.Action,$"%{search}%"));var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.CreatedAt),"name"=>q.OrderBy(x=>x.UserId),"nameDesc"=>q.OrderByDescending(x=>x.UserId),_=>q.OrderByDescending(x=>x.CreatedAt)};return Results.Ok(await Page(ordered,page,pageSize));}).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/audit", async (AppDbContext db,int page=1,int pageSize=20,string? entityType=null,Guid? entityId=null,string? search=null,string sort="recent") => {var q=db.AuditRecords.AsNoTracking().AsQueryable();if(entityType is not null)q=q.Where(x=>x.EntityType==entityType);if(entityId.HasValue)q=q.Where(x=>x.EntityId==entityId.ToString());if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.UserId,$"%{search}%")||EF.Functions.ILike(x.Action,$"%{search}%"));var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.CreatedAt),"name"=>q.OrderBy(x=>x.UserId),"nameDesc"=>q.OrderByDescending(x=>x.UserId),_=>q.OrderByDescending(x=>x.CreatedAt)};var items=ordered.Select(x=>new{x.Id,x.UserId,x.Action,x.EntityType,x.EntityId,x.Reason,x.CreatedAt});return Results.Ok(await Page(items,page,pageSize));}).RequireAuthorization("ReadAccess");
     }
 
     private static async Task<object> Page<T>(IQueryable<T> query,int page,int pageSize)

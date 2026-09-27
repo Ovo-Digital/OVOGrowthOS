@@ -1,11 +1,11 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { api, money, type SessionUser } from '@/lib/api';
-import { Badge, Card, PageHeader, PrimaryLink } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader, PrimaryLink } from '@/components/ui/core';
 import {
-    EmptyState,
     ListControls,
     Pagination,
     Paged,
@@ -24,9 +24,13 @@ type P = {
     status: string;
 };
 export default function Page() {
+    return <Suspense fallback={<LoadingState label="Aylık sonuçlar yükleniyor…" />}><PerformancePage /></Suspense>;
+}
+function PerformancePage() {
+    const parameters = useSearchParams();
     const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
     const canWrite = me.data?.role === 'Admin' || me.data?.role === 'Partner';
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(parameters.get('search') ?? '');
     const [status, setStatus] = useState('');
     const [sort, setSort] = useState('recent');
     const [page, setPage] = useState(1);
@@ -74,12 +78,12 @@ export default function Page() {
                     ]}
                 />
                 {isLoading ? (
-                    <p className="p-5 text-sm">Yükleniyor…</p>
+                    <LoadingState />
                 ) : error ? (
-                    <p className="p-5 text-[#d72c0d]">{error.message}</p>
+                    <ErrorState message={error.message} />
                 ) : data?.items.length ? (
                     <div className="table-scroll">
-                        <table className="w-full min-w-[720px] text-left text-sm">
+                        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm">
                             <thead className="bg-[#f7f7f8] text-xs uppercase text-[#6d7175]">
                                 <tr>
                                     {[
@@ -135,12 +139,10 @@ export default function Page() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 ) : (
-                    <EmptyState>
-                        Arama ve filtrelere uygun aylık sonuç bulunamadı.
-                    </EmptyState>
+                    <EmptyState message="Arama ve filtrelere uygun aylık sonuç bulunamadı." />
                 )}
                 {data && <Pagination {...data} onPage={setPage} />}
             </Card>

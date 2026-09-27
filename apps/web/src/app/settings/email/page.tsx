@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { api, type SessionUser } from '@/lib/api';
-import { Card, PageHeader } from '@/components/ui/core';
+import { Card, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
 type Settings = { revision: number; source: string; enabled: boolean; host: string; port: number; secure: boolean;
@@ -14,13 +14,13 @@ export default function EmailSettingsPage() {
   const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
   const query = useQuery({ queryKey: ['mail-settings'], queryFn: () => api<Settings>('/api/account-mail/settings'), enabled: me.data?.role === 'Admin', refetchOnWindowFocus: false });
   const [notice, setNotice] = useState('');
-  if (me.isPending) return <p role="status">Hesap yetkisi kontrol ediliyor…</p>;
-  if (me.isError) return <p role="alert">Hesap bilgileri alınamadı.</p>;
+  if (me.isPending) return <LoadingState label="Hesap yetkisi kontrol ediliyor…" />;
+  if (me.isError) return <ErrorState message="Hesap bilgileri alınamadı." />;
   if (me.data.role !== 'Admin') return <Card className="p-5">E-posta ayarlarını yalnız yönetici değiştirebilir. <Link href="/settings" className="underline">Ayarlara dön</Link></Card>;
   return <>
     <PageHeader title="E-posta ayarları" description="OVO'nun bildirim ve hesap iletilerini göndereceği Gmail hesabını yönetin." action={<Link href="/settings" className={button}>Ayarlara dön</Link>} />
     {notice && <p role="status" className="mb-4 rounded-lg border bg-white p-4">{notice}</p>}
-    {query.isPending ? <p role="status">Ayarlar yükleniyor…</p> : query.isError ? <Card className="p-5"><p role="alert">Ayarlar alınamadı. {query.error.message}</p><button className={button} onClick={() => void query.refetch()}>Yeniden dene</button></Card> :
+    {query.isPending ? <LoadingState label="Ayarlar yükleniyor…" /> : query.isError ? <Card className="p-5"><ErrorState message={`Ayarlar alınamadı. ${query.error.message}`} /><div className="px-5"><button className={button} onClick={() => void query.refetch()}>Yeniden dene</button></div></Card> :
       <SettingsForm key={query.data.revision} initial={query.data} report={setNotice} reload={async () => { await query.refetch(); }} />}
     <Card className="mt-5 space-y-3 p-5 text-sm">
       <h2 className="font-semibold">Hangi iletiler gönderilir?</h2>

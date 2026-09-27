@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, API_URL, token } from '@/lib/api';
 import { notify } from '@/components/feedback';
 import { Badge, Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { turkce, turkceTarih } from '@/lib/turkish';
 export type Condition = {
     id: string;
@@ -18,16 +19,30 @@ export type Condition = {
 };
 export function ConditionsPanel({ conditions }: { conditions: Condition[] }) {
     const qc = useQueryClient();
+    const { prompt } = useDialog();
     async function resolve(id: string, status: 'Satisfied' | 'Waived') {
         const reason =
-            prompt(
-                status === 'Waived'
-                    ? 'Feragat nedenini yazın:'
-                    : 'Tamamlama notunu yazabilirsiniz:',
-            ) ?? '';
+            (await prompt({
+                title:
+                    status === 'Waived'
+                        ? 'Feragat gerekçesi'
+                        : 'Tamamlama notu',
+                message:
+                    status === 'Waived'
+                        ? 'Feragat nedenini yazın:'
+                        : 'Tamamlama notunu yazabilirsiniz:',
+                label:
+                    status === 'Waived'
+                        ? 'Feragat nedeni'
+                        : 'Tamamlama notu',
+            })) ?? '';
         if (status === 'Waived' && !reason.trim()) return;
         const evidenceUrl =
-            prompt('Varsa kanıt veya belge bağlantısını yapıştırın:') ?? '';
+            (await prompt({
+                title: 'Kanıt bağlantısı',
+                message: 'Varsa kanıt veya belge bağlantısını yapıştırın:',
+                label: 'Kanıt veya belge bağlantısı',
+            })) ?? '';
         await api('/api/conditions/' + id, {
             method: 'PUT',
             body: JSON.stringify({ status, reason, evidenceUrl }),

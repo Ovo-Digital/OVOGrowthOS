@@ -29,8 +29,8 @@ public static partial class WorkflowEndpoints
                 forceDisabled = provider.ForceDisabled, testRecipient = actor.FindFirstValue(ClaimTypes.Email), row?.UpdatedAt, row?.LastTestAt
             });
         });
-        group.MapPut("/settings", SaveMailSettings).RequireRateLimiting("login");
-        group.MapPost("/settings/test", TestMailSettings).RequireRateLimiting("login");
+        group.MapPut("/settings", SaveMailSettings).RequireRateLimiting("admin-action");
+        group.MapPost("/settings/test", TestMailSettings).RequireRateLimiting("admin-action");
     }
 
     private static async Task<IResult> SaveMailSettings(MailSettingsRequest r, AppDbContext db, SmtpSettingsProvider provider, ClaimsPrincipal actor)

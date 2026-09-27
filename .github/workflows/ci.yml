@@ -1,0 +1,63 @@
+name: Doğrulama kapıları
+
+on:
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: dogrulama-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API derleme ve test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v7
+
+      - name: .NET SDK hazırla
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Çözümü derle
+        run: dotnet build OvoGrowthOS.sln
+
+      - name: Backend testlerini çalıştır
+        run: dotnet test OvoGrowthOS.sln --no-build
+
+  web:
+    name: Web tip kontrolü, lint ve test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v7
+
+      - name: Node.js hazırla
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Bağımlılıkları kur
+        run: npm ci
+
+      - name: Tip kontrolü
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Web birim testleri
+        run: npm run test:unit
+
+      - name: Üretim derlemesi
+        run: npm run build

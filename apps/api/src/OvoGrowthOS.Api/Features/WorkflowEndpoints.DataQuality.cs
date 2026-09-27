@@ -73,7 +73,7 @@ public static partial class WorkflowEndpoints
             var owner = owners.TryGetValue(id, out var ownerId) ? ownerId : (Guid?)null;
             var responsible = Responsible(current, origin.user, owner, byEmail, byId);
             var task = taskByBrand.TryGetValue(id, out var existing) ? existing : null;
-            items.Add(DataQuality.Evaluate(new QualityInput(year, month, id, brand.Name, deal, current, previous,
+            items.Add(DataQuality.Evaluate(new QualityInput(year, month, id, brand.Name, brand.Currency, deal, current, previous,
                 origin.kind, origin.detail, responsible.name, responsible.id, task?.Id, task?.CompletedAt is not null, vatRate)));
         }
         items.Sort((a, b) => string.Compare(a.BrandName, b.BrandName, StringComparison.CurrentCultureIgnoreCase));

@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, money, percent } from '@/lib/api';
 import { notify } from '@/components/feedback';
-import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
 import {
-    EmptyState,
     ListControls,
     Pagination,
     Paged,
@@ -19,6 +18,7 @@ type D = {
     status: string;
     dealType: string;
     brand: { name: string };
+    currency: string;
     monthlyRetainer: number;
     minimumMonthlyFee: number;
     revenueShareRate: number;
@@ -76,12 +76,12 @@ export default function Page() {
                     ]}
                 />
                 {isLoading ? (
-                    <p className="p-5 text-sm">Yükleniyor…</p>
+                    <LoadingState />
                 ) : error ? (
-                    <p className="p-5 text-[#d72c0d]">{error.message}</p>
+                    <ErrorState message={error.message} />
                 ) : data?.items.length ? (
                     <div className="table-scroll">
-                        <table className="w-full min-w-[980px] text-left text-sm">
+                        <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm">
                             <thead className="bg-[#f7f7f8] text-xs uppercase text-[#6d7175]">
                                 <tr>
                                     {[
@@ -113,10 +113,10 @@ export default function Page() {
                                             {turkce(x.dealType)}
                                         </td>
                                         <td className="px-4">
-                                            {money(x.monthlyRetainer)}
+                                            {money(x.monthlyRetainer, x.currency)}
                                         </td>
                                         <td className="px-4">
-                                            {money(x.minimumMonthlyFee)}
+                                            {money(x.minimumMonthlyFee, x.currency)}
                                         </td>
                                         <td className="px-4">
                                             {percent(x.revenueShareRate)}
@@ -155,12 +155,10 @@ export default function Page() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 ) : (
-                    <EmptyState>
-                        Arama ve filtrelere uygun anlaşma bulunamadı.
-                    </EmptyState>
+                    <EmptyState message="Arama ve filtrelere uygun anlaşma bulunamadı." />
                 )}
                 {data && <Pagination {...data} onPage={setPage} />}
             </Card>

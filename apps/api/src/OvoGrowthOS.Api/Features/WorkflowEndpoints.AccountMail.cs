@@ -29,8 +29,8 @@ public static partial class WorkflowEndpoints
             orderby mail.CreatedAt descending
             select new { mail.Id, mail.UserId, account.Name, link.Email, link.Purpose, mail.Status, mail.CreatedAt, mail.AttemptedAt, mail.FinishedAt, mail.ErrorCode, link.ExpiresAt, account.InvitationPending }
         ).Take(100).ToListAsync()));
-        admin.MapPost("/invitations", CreateAccountInvitation).RequireRateLimiting("login");
-        admin.MapPost("/invitations/{id:guid}/resend", ResendAccountInvitation).RequireRateLimiting("login");
+        admin.MapPost("/invitations", CreateAccountInvitation).RequireRateLimiting("admin-action");
+        admin.MapPost("/invitations/{id:guid}/resend", ResendAccountInvitation).RequireRateLimiting("admin-action");
         app.MapPost("/api/auth/forgot-password", RequestPasswordLink).AllowAnonymous().RequireRateLimiting("login");
         app.MapPost("/api/auth/complete-account", CompleteAccountLink).AllowAnonymous().RequireRateLimiting("login");
     }

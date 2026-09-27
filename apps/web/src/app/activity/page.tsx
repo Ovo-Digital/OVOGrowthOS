@@ -3,10 +3,9 @@ import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
 import { turkce, turkceTarih } from '@/lib/turkish';
 import {
-    EmptyState,
     ListControls,
     Pagination,
     Paged,
@@ -22,7 +21,7 @@ type Audit = {
     createdAt: string;
 };
 export default function Page() {
-    return <Suspense fallback={<p>İşlem geçmişi yükleniyor…</p>}><ActivityPage /></Suspense>;
+    return <Suspense fallback={<LoadingState label="İşlem geçmişi yükleniyor…" />}><ActivityPage /></Suspense>;
 }
 function ActivityPage() {
     const parameters = useSearchParams();
@@ -76,12 +75,12 @@ function ActivityPage() {
                     ]}
                 />
                 {isLoading ? (
-                    <p className="p-5 text-sm">Yükleniyor…</p>
+                    <LoadingState />
                 ) : error ? (
-                    <p className="p-5 text-[#d72c0d]">{error.message}</p>
+                    <ErrorState message={error.message} />
                 ) : data?.items.length ? (
                     <div className="table-scroll">
-                        <table className="w-full min-w-[860px] text-left text-sm">
+                        <div className="overflow-x-auto"><table className="w-full min-w-[860px] text-left text-sm">
                             <thead className="bg-[#f7f7f8] text-xs uppercase text-[#6d7175]">
                                 <tr>
                                     {[
@@ -121,12 +120,10 @@ function ActivityPage() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 ) : (
-                    <EmptyState>
-                        Arama ve filtrelere uygun işlem bulunamadı.
-                    </EmptyState>
+                    <EmptyState message="Arama ve filtrelere uygun işlem bulunamadı." />
                 )}
                 {data && <Pagination {...data} onPage={setPage} />}
             </Card>

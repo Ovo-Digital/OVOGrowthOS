@@ -23,7 +23,7 @@ public sealed class SmtpSettings(IConfiguration configuration)
         && (uri.Scheme == "https" || uri.Scheme == "http" && uri.IsLoopback);
     public bool Ready => Enabled && Configured;
     public static bool IsAddress(string? address) => address is { Length: > 0 and <= 320 }
-        && !address.Contains('\r') && !address.Contains('\n') && MailboxAddress.TryParse(address, out var parsed)
+        && address.Contains('@') && !address.Contains('\r') && !address.Contains('\n') && MailboxAddress.TryParse(address, out var parsed)
         && parsed.Address == address;
 }
 

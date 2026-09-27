@@ -29,72 +29,85 @@ public static partial class WorkflowEndpoints
         status = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
         type = string.IsNullOrWhiteSpace(type) ? null : type.Trim().ToLowerInvariant();
         var match = string.IsNullOrWhiteSpace(q) ? null : q.Trim().ToLowerInvariant();
-        bool InRange(DateTimeOffset at) => (!from.HasValue || at >= from.Value) && (!to.HasValue || at <= to.Value);
+        var statusKnown = status is null or "Pending" or "Sending" or "Sent" or "Uncertain" or "Cancelled";
+        var mailStatus = status switch
+        {
+            "Pending" => MailDeliveryStatus.Pending,
+            "Sending" => MailDeliveryStatus.Sending,
+            "Sent" => MailDeliveryStatus.Sent,
+            "Uncertain" => MailDeliveryStatus.Uncertain,
+            "Cancelled" => MailDeliveryStatus.Cancelled,
+            _ => MailDeliveryStatus.Cancelled
+        };
+        var testAction = status switch { null => null, "Pending" => "MailTestRequested", "Sent" => "MailTestAccepted", "Uncertain" => "MailTestUncertain", _ => "" };
 
         var items = new List<MailCenterItem>();
         if (type is null or "invitation" or "password")
         {
             var rows = await db.MailDeliveries.AsNoTracking()
-                .Where(x => (!from.HasValue || x.CreatedAt >= from.Value) && (!to.HasValue || x.CreatedAt <= to.Value))
-                .OrderByDescending(x => x.CreatedAt).Take(MailCenterLimit).ToListAsync();
-            var linkIds = rows.Select(x => x.AccountLinkId).Distinct().ToArray();
-            var userIds = rows.Select(x => x.UserId).Distinct().ToArray();
-            var links = await db.AccountLinks.AsNoTracking().Where(x => linkIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-            var accounts = await db.UserAccounts.AsNoTracking().Where(x => userIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-            foreach (var row in rows)
+                .Join(db.AccountLinks.AsNoTracking(), row => row.AccountLinkId, link => link.Id, (row, link) => new { row, link })
+                .Join(db.UserAccounts.AsNoTracking(), x => x.row.UserId, account => account.Id, (x, account) => new { x.row, x.link, account })
+                .Where(x => (!from.HasValue || x.row.CreatedAt >= from.Value) && (!to.HasValue || x.row.CreatedAt <= to.Value)
+                    && (type == null || (type == "invitation") == (x.link.Purpose == AccountLinkPurpose.Invitation))
+                    && (status == null || (statusKnown && x.row.Status == mailStatus))
+                    && (match == null || x.link.Email.ToLower().Contains(match)))
+                .OrderByDescending(x => x.row.CreatedAt)
+                .Take(MailCenterLimit).ToListAsync();
+            foreach (var x in rows)
             {
-                if (!links.TryGetValue(row.AccountLinkId, out var link) || !accounts.TryGetValue(row.UserId, out var account)) continue;
-                var kind = link.Purpose == AccountLinkPurpose.Invitation ? "invitation" : "password";
-                if (type is not null && kind != type) continue;
-                if (status is not null && MailStatusKey(row.Status) != status) continue;
-                items.Add(new MailCenterItem(row.Id, "account", kind, link.Email, account.Name, account.Id,
-                    MailStatusKey(row.Status), MailReason(row.Status, row.ErrorCode), row.CreatedAt, row.AttemptedAt, row.FinishedAt,
-                    kind == "invitation" && account.IsActive && account.InvitationPending && row.Status != MailDeliveryStatus.Sending ? "invitation" : null));
+                var kind = x.link.Purpose == AccountLinkPurpose.Invitation ? "invitation" : "password";
+                items.Add(new MailCenterItem(x.row.Id, "account", kind, x.link.Email, x.account.Name, x.account.Id,
+                    MailStatusKey(x.row.Status), MailReason(x.row.Status, x.row.ErrorCode), x.row.CreatedAt, x.row.AttemptedAt, x.row.FinishedAt,
+                    kind == "invitation" && x.account.IsActive && x.account.InvitationPending && x.row.Status != MailDeliveryStatus.Sending ? "invitation" : null));
             }
         }
         if (type is null or "report" or "daily" or "task" or "conversation")
         {
             var rows = await db.UserNotifications.AsNoTracking()
-                .Where(x => x.EmailStatus != null && (!from.HasValue || x.CreatedAt >= from.Value) && (!to.HasValue || x.CreatedAt <= to.Value))
-                .OrderByDescending(x => x.CreatedAt).Take(MailCenterLimit).ToListAsync();
-            var userIds = rows.Select(x => x.UserId).Distinct().ToArray();
-            var accounts = await db.UserAccounts.AsNoTracking().Where(x => userIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-            foreach (var row in rows)
+                .Join(db.UserAccounts.AsNoTracking(), row => row.UserId, account => account.Id, (row, account) => new { row, account })
+                .Where(x => x.row.EmailStatus != null
+                    && (!from.HasValue || x.row.CreatedAt >= from.Value) && (!to.HasValue || x.row.CreatedAt <= to.Value)
+                    && (type == null
+                        || type == "report" && x.row.Kind == NotificationKind.PortalReport
+                        || type == "daily" && x.row.Kind == NotificationKind.DailyTasks
+                        || type == "task" && x.row.Kind == NotificationKind.TaskDue
+                        || type == "conversation" && x.row.Kind != NotificationKind.PortalReport && x.row.Kind != NotificationKind.DailyTasks && x.row.Kind != NotificationKind.TaskDue)
+                    && (status == null || (statusKnown && x.row.EmailStatus == mailStatus))
+                    && (match == null || x.row.Email.ToLower().Contains(match)))
+                .OrderByDescending(x => x.row.CreatedAt)
+                .Take(MailCenterLimit).ToListAsync();
+            foreach (var x in rows)
             {
-                if (!accounts.TryGetValue(row.UserId, out var account)) continue;
-                var kind = NotificationType(row.Kind);
-                if (type is not null && kind != type) continue;
-                if (status is not null && MailStatusKey(row.EmailStatus!.Value) != status) continue;
-                var blocked = row.Email != account.Email || row.AccountVersion != account.TokenVersion || !account.IsActive || account.InvitationPending;
-                items.Add(new MailCenterItem(row.Id, "notification", kind, row.Email, account.Name, row.UserId,
-                    MailStatusKey(row.EmailStatus!.Value), MailReason(row.EmailStatus!.Value, row.ErrorCode), row.CreatedAt, row.AttemptedAt, null,
-                    !blocked && row.EmailStatus is MailDeliveryStatus.Cancelled or MailDeliveryStatus.Uncertain ? "notification" : null));
+                var kind = NotificationType(x.row.Kind);
+                var blocked = x.row.Email != x.account.Email || x.row.AccountVersion != x.account.TokenVersion || !x.account.IsActive || x.account.InvitationPending;
+                items.Add(new MailCenterItem(x.row.Id, "notification", kind, x.row.Email, x.account.Name, x.row.UserId,
+                    MailStatusKey(x.row.EmailStatus!.Value), MailReason(x.row.EmailStatus!.Value, x.row.ErrorCode), x.row.CreatedAt, x.row.AttemptedAt, null,
+                    !blocked && x.row.EmailStatus is MailDeliveryStatus.Cancelled or MailDeliveryStatus.Uncertain ? "notification" : null));
             }
         }
         if (type is null or "test")
         {
             var tests = await db.AuditRecords.AsNoTracking()
                 .Where(x => (x.Action == "MailTestRequested" || x.Action == "MailTestAccepted" || x.Action == "MailTestUncertain")
-                    && (!from.HasValue || x.CreatedAt >= from.Value) && (!to.HasValue || x.CreatedAt <= to.Value))
+                    && (!from.HasValue || x.CreatedAt >= from.Value) && (!to.HasValue || x.CreatedAt <= to.Value)
+                    && (testAction == null || x.Action == testAction)
+                    && (match == null || x.UserId.ToLower().Contains(match)))
                 .OrderByDescending(x => x.CreatedAt).Take(MailCenterLimit).ToListAsync();
             foreach (var row in tests)
             {
                 var key = row.Action switch { "MailTestAccepted" => "Sent", "MailTestUncertain" => "Uncertain", _ => "Pending" };
-                if (status is not null && key != status) continue;
                 items.Add(new MailCenterItem(row.Id, "test", "test", row.UserId, "Deneme e-postası", Guid.Empty,
                     key, MailReason(key), row.CreatedAt, null, null, null));
             }
         }
 
-        var filtered = items.Where(x => InRange(x.CreatedAt))
-            .Where(x => match is null || x.Recipient.ToLowerInvariant().Contains(match))
-            .OrderByDescending(x => x.CreatedAt).ToList();
-        var summary = filtered.GroupBy(x => x.Status).ToDictionary(g => g.Key, g => g.Count());
+        var ordered = items.OrderByDescending(x => x.CreatedAt).ToList();
+        var summary = ordered.GroupBy(x => x.Status).ToDictionary(g => g.Key, g => g.Count());
         var size = Math.Clamp(pageSize ?? 25, 1, 100);
         var current = Math.Max(page ?? 1, 1);
         return Results.Ok(new
         {
-            items = filtered.Skip((current - 1) * size).Take(size), total = filtered.Count, page = current, pageSize = size, summary,
+            items = ordered.Skip((current - 1) * size).Take(size), total = ordered.Count, page = current, pageSize = size, summary,
             note = $"“E-posta sunucusu kabul etti” teslim edildiği veya okunduğu anlamına gelmez; dış sağlayıcıdan kanıt gelmeden teslim veya açılma oranı gösterilmez. Liste en fazla {MailCenterLimit} kayıtla sınırlıdır; saklama süresi gerçek kullanım verisiyle belirlenir ve ücretsiz Gmail sınırsız toplu gönderici kabul edilmez."
         });
     }

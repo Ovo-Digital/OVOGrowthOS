@@ -11,9 +11,9 @@ public static class SeedData
         ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
     };
 
-    public static async Task InitializeAsync(AppDbContext db, IConfiguration configuration)
+    public static async Task InitializeAsync(AppDbContext db, IConfiguration configuration, bool includeDemoData = false)
     {
-        await db.Database.MigrateAsync();
+        if (db.Database.IsRelational()) await db.Database.MigrateAsync();
         if (!await db.UserAccounts.AnyAsync())
         {
             var email = configuration["DefaultAdmin:Email"] ?? "admin@ovodigital.com";
@@ -35,7 +35,7 @@ public static class SeedData
                 new DealTemplate{Name="Seçenek B · Aylık ücret + sabit pay",Description="Aylık sabit ücret ve düşük oranlı gelir payı.",DisplayOrder=2,DealType=DealType.RetainerPlusRevenueShare,MonthlyRetainer=30_000,RevenueShareRate=.04m},
                 new DealTemplate{Name="Seçenek C · Büyüme farkı",Description="Aylık sabit ücret ve baz cironun üzerindeki büyümeden pay.",DisplayOrder=3,DealType=DealType.RetainerPlusIncrementalRevenueShare,MonthlyRetainer=50_000,IncrementalRate=.10m});
         }
-        await SeedPortfolioAsync(db, ruleSet, settings);
+        if (includeDemoData) await SeedPortfolioAsync(db, ruleSet, settings);
         await db.SaveChangesAsync();
     }
 

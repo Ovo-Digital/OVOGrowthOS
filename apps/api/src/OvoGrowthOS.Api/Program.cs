@@ -1,12 +1,14 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Security.Claims;
+using System.Net;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OvoGrowthOS.Api;
 using OvoGrowthOS.Api.Auth;
 using OvoGrowthOS.Api.Data;
 using OvoGrowthOS.Api.Features;
@@ -25,6 +27,8 @@ if (builder.Configuration["MAIL_KEY_PATH"] is { Length: > 0 } keyPath)
     protection.PersistKeysToFileSystem(new DirectoryInfo(keyPath));
 builder.Services.AddScoped<SmtpSettingsProvider>();
 builder.Services.AddScoped<ISmtpTestSender, SmtpTestSender>();
+builder.Services.AddScoped<OvoGrowthOS.Api.Integration.IStoreTokenClient, OvoGrowthOS.Api.Integration.StoreTokenClient>();
+builder.Services.AddScoped<OvoGrowthOS.Api.Integration.IStoreOrderClient, OvoGrowthOS.Api.Integration.StoreOrderClient>();
 builder.Services.AddScoped<IAccountMailSender, SmtpAccountMailSender>();
 builder.Services.AddScoped<AccountMailQueue>();
 builder.Services.AddScoped<NotificationService>();
@@ -45,18 +49,56 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(
     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "growth")));
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AccountSecurityService>();
+static bool IsTrustedProxy(IPAddress? peer)
+{
+    if (peer is null) return false;
+    if (peer.IsIPv4MappedToIPv6) peer = peer.MapToIPv4();
+    var octets = peer.GetAddressBytes();
+    if (octets.Length != 4) return false;
+    return octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31 || octets[0] == 192 && octets[1] == 168;
+}
+static string ClientIp(HttpContext context)
+{
+    var peer = context.Connection.RemoteIpAddress;
+    if (IsTrustedProxy(peer) && context.Request.Headers.TryGetValue("X-Forwarded-For", out var values))
+    {
+        var entries = values.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (entries.Length > 0) return entries[^1];
+    }
+    return peer?.ToString() ?? "unknown";
+}
+static string RatePartitionKey(HttpContext context)
+{
+    var uid = context.User.FindFirstValue("uid");
+    return string.IsNullOrEmpty(uid) ? "ip:" + ClientIp(context) : "user:" + uid;
+}
+StartupGuard.Ensure(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        RatePartitionKey(context), _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
         }));
+    options.AddPolicy("user-action", context => RateLimitPartition.GetFixedWindowLimiter(
+        RatePartitionKey(context), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+        }));
+    options.AddPolicy("admin-action", context => RateLimitPartition.GetFixedWindowLimiter(
+        RatePartitionKey(context), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+        }));
     options.OnRejected = async (context, cancellationToken) =>
     {
+        var path = context.HttpContext.Request.Path.Value ?? "";
+        var message = path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase)
+            ? "Çok sayıda giriş denemesi yapıldı. Bir dakika bekleyip yeniden deneyin."
+            : "Çok sık istek gönderildi. Bir dakika bekleyip yeniden deneyin.";
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.HttpContext.Response.Headers.RetryAfter = "60";
-        await context.HttpContext.Response.WriteAsJsonAsync(new { error = "Çok sayıda giriş denemesi yapıldı. Bir dakika bekleyip yeniden deneyin." }, cancellationToken);
+        await context.HttpContext.Response.WriteAsJsonAsync(new { error = message }, cancellationToken);
     };
 });
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -100,24 +142,32 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 app.UseExceptionHandler();
-app.UseSerilogRequestLogging();
+app.UseMiddleware<RequestLogMiddleware>();
+app.UseSerilogRequestLogging(options => options.IncludeQueryInRequestPath = false);
 app.UseCors();
-app.UseRateLimiter();
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/api/portal") || context.Request.Path.StartsWithSegments("/api/portal-management") || context.Request.Path.StartsWithSegments("/api/auth") || context.Request.Path.StartsWithSegments("/api/account-mail") || context.Request.Path.StartsWithSegments("/api/notifications"))
+    if (context.Request.Path.StartsWithSegments("/api/portal") || context.Request.Path.StartsWithSegments("/api/portal-management") || context.Request.Path.StartsWithSegments("/api/auth") || context.Request.Path.StartsWithSegments("/api/account-mail") || context.Request.Path.StartsWithSegments("/api/notifications") || (context.Request.Path.Value?.Contains("/api-settings", StringComparison.OrdinalIgnoreCase) ?? false) || (context.Request.Path.Value?.Contains("/store-orders", StringComparison.OrdinalIgnoreCase) ?? false))
     {
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     }
     await next(context);
 });
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+app.MapGet("/health/ready", async (AppDbContext db) =>
+    await db.Database.CanConnectAsync()
+        ? Results.Ok(new { status = "ready" })
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
 app.MapPost("/api/auth/login", (LoginRequest request, AccountSecurityService security) => security.Login(request))
     .AddEndpointFilter<ValidationFilter<LoginRequest>>().RequireRateLimiting("login").AllowAnonymous();
 app.MapPost("/api/auth/second-factor", (SecondFactorRequest request, AccountSecurityService security) => security.CompleteLogin(request))
@@ -132,7 +182,7 @@ foreach (var action in new[] { "setup", "enable", "disable", "recovery-codes" })
 {
     var operation = action;
     app.MapPost($"/api/auth/security/{operation}", (SecurityProof request, ClaimsPrincipal actor, AccountSecurityService security) => security.Manage(operation, request, actor))
-        .RequireAuthorization("SessionAccess").RequireRateLimiting("login");
+        .RequireAuthorization("SessionAccess").RequireRateLimiting("user-action");
 }
 app.MapGet("/api/auth/me", async (ClaimsPrincipal user, AppDbContext db) =>
 {
@@ -145,8 +195,10 @@ app.MapWorkflowEndpoints();
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
+    var configuration = app.Services.GetRequiredService<IConfiguration>();
+    var includeDemoData = app.Environment.IsDevelopment() || configuration.GetValue<bool>("Seed:DemoData");
     using var scope = app.Services.CreateScope();
-    await SeedData.InitializeAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>(), scope.ServiceProvider.GetRequiredService<IConfiguration>());
+    await SeedData.InitializeAsync(scope.ServiceProvider.GetRequiredService<AppDbContext>(), configuration, includeDemoData);
 }
 app.Run();
 

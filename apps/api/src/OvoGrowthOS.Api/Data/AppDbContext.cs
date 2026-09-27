@@ -51,11 +51,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<AccountSecurity> AccountSecurities => Set<AccountSecurity>();
     public DbSet<MailConfiguration> MailConfigurations => Set<MailConfiguration>();
+    public DbSet<BrandApiSettings> BrandApiSettings => Set<BrandApiSettings>();
     public DbSet<BrandMailPolicy> BrandMailPolicies => Set<BrandMailPolicy>();
     public DbSet<DealScopeItem> DealScopeItems => Set<DealScopeItem>();
     public DbSet<DealScopeRequest> DealScopeRequests => Set<DealScopeRequest>();
     public DbSet<TaskTimeEntry> TaskTimeEntries => Set<TaskTimeEntry>();
     public DbSet<BrandStageHistory> BrandStageHistories => Set<BrandStageHistory>();
+    public DbSet<StoreOrderStaging> StoreOrderStagings => Set<StoreOrderStaging>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,6 +82,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.User).HasMaxLength(320); e.Property(x => x.FromAddress).HasMaxLength(320);
             e.Property(x => x.FromName).HasMaxLength(160);
             e.ToTable(t => t.HasCheckConstraint("CK_MailConfigurations_Values", "\"Id\" = 1 AND \"Revision\" > 0 AND ((\"Port\" = 465 AND \"Secure\") OR (\"Port\" = 587 AND NOT \"Secure\"))"));
+        });
+        modelBuilder.Entity<BrandApiSettings>(e =>
+        {
+            e.HasKey(x => x.BrandId);
+            e.HasOne<Brand>().WithOne().HasForeignKey<BrandApiSettings>(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.StoreUrl).HasMaxLength(300);
+            e.Property(x => x.ApiUser).HasMaxLength(320);
+            e.Property(x => x.Revision).IsConcurrencyToken();
+            e.ToTable(t => t.HasCheckConstraint("CK_BrandApiSettings_Revision", "\"Revision\" > 0"));
+        });
+        modelBuilder.Entity<StoreOrderStaging>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.SourceOrderId).HasMaxLength(64);
+            e.Property(x => x.SourceStoreId).HasMaxLength(64);
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.HasIndex(x => new { x.BrandId, x.SourceOrderId }).IsUnique();
+            e.HasIndex(x => new { x.BrandId, x.PlacedOnUtc });
+            e.ToTable(t => t.HasCheckConstraint("CK_StoreOrderStaging_Amounts", "\"OrderTotal\" >= 0 AND \"PaidAmount\" >= 0 AND \"RefundedAmount\" >= 0"));
         });
         modelBuilder.Entity<AccountSecurity>(e =>
         {

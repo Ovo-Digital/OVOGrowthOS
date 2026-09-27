@@ -232,3 +232,7 @@ Her fazda: dar kapsam → güvenlik/rol kontrolü → otomatik test → gerekli 
 - `OVO_GROWTH_OS_KULLANIM_REHBERI.md`, `docs/GELISIM_PLANI_V2.md`, `docs/GELISIM_PLANI_V3.md`: mevcut kapsam ve ertelenen işler.
 
 Gmail uygulama şifresi koşulları: [Google resmi yardım](https://support.google.com/accounts/answer/185833?hl=tr). Kaynakları incelemek canlı ortamda bu özelliklerin yayımlandığı anlamına gelmez.
+
+## Sonraki plan
+
+Bu belgedeki Faz 0–6 tamamlandı. Sıradaki işler ve Faz A uygulama kaydı `docs/GELISIM_PLANI_V5.md` dosyasındadır (Faz C ertelendi).

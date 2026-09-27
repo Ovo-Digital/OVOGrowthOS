@@ -26,7 +26,7 @@ public sealed class DataQualityTests
         };
 
     private static QualityInput Input(int year, int month, Deal? deal, MonthlyPerformance? current, MonthlyPerformance? previous = null,
-        decimal vatRate = .20m) => new(year, month, Guid.NewGuid(), "Lale", deal, current, previous, "manual", "", "", null, null, false, vatRate);
+        decimal vatRate = .20m) => new(year, month, Guid.NewGuid(), "Lale", "TRY", deal, current, previous, "manual", "", "", null, null, false, vatRate);
 
     private static QualityAlert Find(BrandQuality quality, string code) => quality.Alerts.Single(x => x.Code == code);
 
@@ -155,7 +155,7 @@ public sealed class DataQualityTests
     public void Summary_counts_each_readiness_state_once()
     {
         BrandQuality Item(string readiness, bool withTask = false) => new(
-            Guid.NewGuid(), readiness, Guid.NewGuid(), "expected", Guid.NewGuid(), MonthlyPerformanceStatus.Draft,
+            Guid.NewGuid(), readiness, "TRY", Guid.NewGuid(), "expected", Guid.NewGuid(), MonthlyPerformanceStatus.Draft,
             "manual", "", "", null, null, [], [], readiness, withTask ? Guid.NewGuid() : null, false);
         var summary = DataQuality.Summarize([Item("ready"), Item("attention"), Item("attention"), Item("missing"), Item("notApplicable"), Item("missing", true)]);
         Assert.Equal(6, summary.Total);

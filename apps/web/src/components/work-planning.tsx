@@ -7,6 +7,7 @@ import { planningHours } from '@/lib/period-input';
 import { planningWeek } from '@/lib/planning-week';
 import { turkceTarih } from '@/lib/turkish';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { notify } from '@/components/feedback';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
@@ -45,10 +46,11 @@ export function WeeklyPlanning() {
 
 function CapacityForm({ row, week, onSaved, onClose }: { row: Row; week: string; onSaved: () => void; onClose: () => void }) {
   const [dirty, setDirty] = useState(false); const [error, setError] = useState(''); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const save = useMutation({ mutationFn: (body: object) => api(`/api/team/${row.user.id}/capacity`, { method: 'PUT', body: JSON.stringify(body) }), onSuccess: () => { setDirty(false); onSaved(); } });
   return <Card className="mb-4 p-5"><h2 className="font-semibold">{row.user.name} · {week} haftası</h2><p className="my-3 text-sm">İzin, başka projeler ve toplantılar için kullanılamayan toplam saati ayırın; özel izin nedeni veya sağlık bilgisi yazmayın. Bilgi yoksa sıfırla doldurmayın.</p>
     <form onChange={() => setDirty(true)} onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); setError(''); try { save.mutate({ weekStart: week, workingHours: planningHours(String(f.get('working'))), unavailableHours: planningHours(String(f.get('unavailable'))), reason: f.get('reason'), revision: row.capacity?.revision ?? 0 }); } catch (e) { setError(e instanceof Error ? e.message : 'Saatleri kontrol edin.'); } }}>
-      <fieldset disabled={save.isPending} className="grid gap-3 sm:grid-cols-2"><label>Haftalık çalışma saati<input className="input mt-1" name="working" inputMode="decimal" required defaultValue={row.capacity ? number(row.capacity.workingHours) : ''} /></label><label>Kullanılamayan saat<input className="input mt-1" name="unavailable" inputMode="decimal" required defaultValue={row.capacity ? number(row.capacity.unavailableHours) : ''} /></label><label className="sm:col-span-2">Planlama açıklaması<textarea className="input mt-1" name="reason" required minLength={5} maxLength={1000} /></label><div className="flex gap-3"><button className={button}>Kapasiteyi kaydet</button><button className={button} type="button" onClick={() => { if (!dirty || confirm('Kaydetmeden kapatmak istiyor musunuz?')) onClose(); }}>Vazgeç</button></div></fieldset>
+      <fieldset disabled={save.isPending} className="grid gap-3 sm:grid-cols-2"><label>Haftalık çalışma saati<input className="input mt-1" name="working" inputMode="decimal" required defaultValue={row.capacity ? number(row.capacity.workingHours) : ''} /></label><label>Kullanılamayan saat<input className="input mt-1" name="unavailable" inputMode="decimal" required defaultValue={row.capacity ? number(row.capacity.unavailableHours) : ''} /></label><label className="sm:col-span-2">Planlama açıklaması<textarea className="input mt-1" name="reason" required minLength={5} maxLength={1000} /></label><div className="flex gap-3"><button className={button}>Kapasiteyi kaydet</button><button className={button} type="button" onClick={async () => { if (dirty && !(await confirm({ title: 'Kaydetmeden kapatılsın mı?', message: 'Kaydetmeden kapatmak istiyor musunuz?' }))) return; onClose(); }}>Vazgeç</button></div></fieldset>
       {(error || save.error) && <p role="alert" className="mt-3 text-red-700">{error || save.error?.message}</p>}
     </form></Card>;
 }
@@ -65,9 +67,10 @@ export function TaskHourPanel({ taskId, canManage, onClose }: { taskId: string; 
 
 function TaskHourEditor({ baseline: loaded, week, onSaved, onClose }: { baseline: TaskPlan; week: string; onSaved: () => void; onClose: () => void }) {
   const [baseline] = useState(loaded); const [dirty, setDirty] = useState(false); const [error, setError] = useState(''); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const save = useMutation({ mutationFn: (body: object) => api(`/api/work-tasks/${baseline.task.id}/hour-plan`, { method: 'PUT', body: JSON.stringify(body) }), onSuccess: () => { setDirty(false); onSaved(); } });
   return <form className="mt-4" onChange={() => setDirty(true)} onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); setError(''); try { save.mutate({ weekStart: week, hours: planningHours(String(f.get('hours'))), reason: f.get('reason'), revision: baseline.plan?.revision ?? 0, taskRevision: baseline.task.revision }); } catch (e) { setError(e instanceof Error ? e.message : 'Saati kontrol edin.'); } }}>
-    <fieldset disabled={save.isPending} className="space-y-3"><label className="block">Bu haftaya planlanan saat<input className="input mt-1" name="hours" inputMode="decimal" required defaultValue={baseline.plan ? number(baseline.plan.hours) : ''} /></label><label className="block">Planlama nedeni<textarea className="input mt-1" name="reason" required minLength={5} maxLength={1000} /></label><div className="flex gap-3"><button className={button}>Saat planını kaydet</button><button className={button} type="button" onClick={() => { if (!dirty || confirm('Kaydetmeden kapatmak istiyor musunuz?')) onClose(); }}>Vazgeç</button></div></fieldset>{(error || save.error) && <p role="alert" className="mt-3 text-red-700">{error || save.error?.message}</p>}
+    <fieldset disabled={save.isPending} className="space-y-3"><label className="block">Bu haftaya planlanan saat<input className="input mt-1" name="hours" inputMode="decimal" required defaultValue={baseline.plan ? number(baseline.plan.hours) : ''} /></label><label className="block">Planlama nedeni<textarea className="input mt-1" name="reason" required minLength={5} maxLength={1000} /></label><div className="flex gap-3"><button className={button}>Saat planını kaydet</button><button className={button} type="button" onClick={async () => { if (dirty && !(await confirm({ title: 'Kaydetmeden kapatılsın mı?', message: 'Kaydetmeden kapatmak istiyor musunuz?' }))) return; onClose(); }}>Vazgeç</button></div></fieldset>{(error || save.error) && <p role="alert" className="mt-3 text-red-700">{error || save.error?.message}</p>}
   </form>;
 }
 

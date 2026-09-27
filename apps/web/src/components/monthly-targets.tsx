@@ -6,6 +6,7 @@ import { api, moneyPrecise, percent, type SessionUser } from '@/lib/api';
 import { periodNumber, targetMargin } from '@/lib/period-input';
 import { turkce } from '@/lib/turkish';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { todayText, dayText, type TeamMember, type Paged } from '@/components/work-tasks';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
@@ -63,6 +64,7 @@ function TargetForm({ path, target, onSaved, onClose }: { path: string; target: 
   const [baseline] = useState(target); const [dirty, setDirty] = useState(false); const [error, setError] = useState('');
   const team = useQuery({ queryKey: ['team'], queryFn: () => api<TeamMember[]>('/api/team') });
   useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const save = useMutation({ mutationFn: (body: object) => api(path, { method: 'PUT', body: JSON.stringify(body) }), onSuccess: () => { setDirty(false); onSaved(); } });
   return <Card className="mt-4 p-5"><form onChange={() => setDirty(true)} onSubmit={e => { e.preventDefault(); setError(''); const form = new FormData(e.currentTarget); try {
     save.mutate({ netRevenueGoal: periodNumber(String(form.get('revenue'))), adBudget: periodNumber(String(form.get('budget'))), contributionMarginGoal: targetMargin(String(form.get('margin'))), ownerId: form.get('owner'), reason: form.get('reason'), revision: baseline?.revision ?? 0 });
@@ -75,18 +77,19 @@ function TargetForm({ path, target, onSaved, onClose }: { path: string; target: 
       <label>Hedef sorumlusu<select className="input mt-1" name="owner" required defaultValue={baseline?.ownerId ?? ''}><option value="">Çalışan seçin</option>{team.data?.map(p => <option value={p.id} key={p.id} disabled={!p.isActive}>{p.name}{!p.isActive && ' (kapalı hesap)'}</option>)}</select></label>
       <label className="sm:col-span-2">Belirleme veya değişiklik nedeni<textarea className="input mt-1" name="reason" required minLength={5} maxLength={1000} rows={3} /></label>
       <label className="sm:col-span-2 flex items-start gap-2"><input type="checkbox" required className="mt-1" /> Hedefleri kontrol ettim. Değişiklik geçmişe kaydedilecek; hakediş ve gerçekleşen rakamlar değişmeyecek.</label>
-      <div className="flex gap-3"><button className={button} disabled={!team.data || team.isError}>{save.isPending ? 'Kaydediliyor…' : 'Hedefi kaydet'}</button><button type="button" className={button} onClick={() => { if (!dirty || confirm('Değişiklikleri kaydetmeden kapatmak istiyor musunuz?')) onClose(); }}>Vazgeç</button></div>
+      <div className="flex gap-3"><button className={button} disabled={!team.data || team.isError}>{save.isPending ? 'Kaydediliyor…' : 'Hedefi kaydet'}</button><button type="button" className={button} onClick={async () => { if (dirty && !(await confirm({ title: 'Kaydetmeden kapatılsın mı?', message: 'Değişiklikleri kaydetmeden kapatmak istiyor musunuz?' }))) return; onClose(); }}>Vazgeç</button></div>
     </fieldset>{(error || save.error || team.error) && <p className="mt-3 text-red-700" role="alert">{error || save.error?.message || team.error?.message}</p>}
   </form></Card>;
 }
 
 function ActionForm({ data, metric, onSaved, onClose }: { data: TargetData; metric: Metric; onSaved: () => void; onClose: () => void }) {
   const [dirty, setDirty] = useState(false); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const team = useQuery({ queryKey: ['team'], queryFn: () => api<TeamMember[]>('/api/team') });
   const save = useMutation({ mutationFn: (body: object) => api(`/api/targets/${data.target!.id}/actions`, { method: 'POST', body: JSON.stringify(body) }), onSuccess: () => { setDirty(false); onSaved(); } });
   return <Card className="mt-4 p-5"><form onChange={() => setDirty(true)} onSubmit={e => { e.preventDefault(); const form = new FormData(e.currentTarget); save.mutate({ metric, targetRevision: data.target!.revision, performanceUpdatedAt: data.comparison!.performanceUpdatedAt, assigneeId: form.get('assignee'), dueOn: form.get('due'), description: form.get('description') }); }}>
     <h2 className="mb-3 font-semibold">{labels[metric]} için takip işi</h2><p className="mb-4 text-sm">Hedef sürümü {data.target!.revision} ve şu anki {data.comparison?.isClosed ? 'kapanmış' : 'geçici'} sonuç göreve not edilir. İş zaten varsa yenisi açılmaz; tamamlanan işi gerekirse yeniden açın.</p>
-    <fieldset disabled={save.isPending} className="grid gap-4 sm:grid-cols-2"><label>Takip sorumlusu<select className="input mt-1" name="assignee" required defaultValue={data.target!.ownerId}><option value="">Çalışan seçin</option>{team.data?.map(p => <option value={p.id} key={p.id} disabled={!p.isActive}>{p.name}{!p.isActive && ' (kapalı hesap)'}</option>)}</select></label><label>Son tarih<input className="input mt-1" type="date" name="due" required min="2020-01-01" max="2100-12-31" /></label><label className="sm:col-span-2">Ne yapılacak?<textarea className="input mt-1" name="description" required minLength={5} maxLength={2000} rows={3} /></label><div className="flex gap-3"><button className={button} disabled={!team.data || team.isError}>{save.isPending ? 'Oluşturuluyor…' : 'Takip işini kaydet'}</button><button className={button} type="button" onClick={() => { if (!dirty || confirm('Yazdıklarınızı kaydetmeden kapatmak istiyor musunuz?')) onClose(); }}>Vazgeç</button></div></fieldset>{(save.error || team.error) && <p className="mt-3 text-red-700" role="alert">{save.error?.message || team.error?.message}</p>}
+    <fieldset disabled={save.isPending} className="grid gap-4 sm:grid-cols-2"><label>Takip sorumlusu<select className="input mt-1" name="assignee" required defaultValue={data.target!.ownerId}><option value="">Çalışan seçin</option>{team.data?.map(p => <option value={p.id} key={p.id} disabled={!p.isActive}>{p.name}{!p.isActive && ' (kapalı hesap)'}</option>)}</select></label><label>Son tarih<input className="input mt-1" type="date" name="due" required min="2020-01-01" max="2100-12-31" /></label><label className="sm:col-span-2">Ne yapılacak?<textarea className="input mt-1" name="description" required minLength={5} maxLength={2000} rows={3} /></label><div className="flex gap-3"><button className={button} disabled={!team.data || team.isError}>{save.isPending ? 'Oluşturuluyor…' : 'Takip işini kaydet'}</button><button className={button} type="button" onClick={async () => { if (dirty && !(await confirm({ title: 'Kaydetmeden kapatılsın mı?', message: 'Yazdıklarınızı kaydetmeden kapatmak istiyor musunuz?' }))) return; onClose(); }}>Vazgeç</button></div></fieldset>{(save.error || team.error) && <p className="mt-3 text-red-700" role="alert">{save.error?.message || team.error?.message}</p>}
   </form></Card>;
 }
 

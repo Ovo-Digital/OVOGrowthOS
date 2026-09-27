@@ -72,8 +72,9 @@ Coolify'ın **Environment Variables** alanında aşağıdaki değerleri girin. G
 | `WEB_ORIGIN` | API'nin izin vereceği web adresi | Zorunlu, runtime; web adresiyle birebir aynı |
 | `JWT_ISSUER` | Oturum belirteci yayıncısı | Varsayılan bırakılabilir |
 | `JWT_AUDIENCE` | Oturum belirteci hedefi | Varsayılan bırakılabilir |
+| `SEED_DEMO_DATA` | Örnek marka portföyü yüklenip yüklenmeyeceği | Varsayılan `false`; canlıda `true` yapmayın |
 
-`SERVICE_BASE64_64_JWT` Coolify tarafından otomatik üretilen kalıcı JWT anahtarıdır. İlk yayın sonrasında değiştirilirse açık oturumlar kapanır.
+`SERVICE_BASE64_64_JWT` Coolify tarafından otomatik üretilen kalıcı JWT anahtarıdır. İlk yayın sonrasında değiştirilirse açık oturumlar kapanır. Bu değer tanımlı değilse, repodaki varsayılan anahtarla ya da 32 karakterden kısa bir anahtarla API **açılmaz**: loglarda `Jwt:Key` ve `JWT_KEY` uyarısı görünür ve konteyner durar. Aynı durum repodaki varsayılan yönetici parola özeti (`DEFAULT_ADMIN_PASSWORD_HASH`) için de geçerlidir. API açıldıktan sonra örnek marka portföyü yalnız `SEED_DEMO_DATA=true` ise yüklenir; sistem tohum verileri (kurallar, ayarlar, şablonlar, yönetici hesabı) bayraktan bağımsız olarak yüklenir.
 
 `PUBLIC_API_URL` artık Coolify ortam değişkeni değildir; GitHub repository variable olarak imaj hazırlanırken kullanılır. `WEB_ORIGIN` örneği:
 
@@ -99,7 +100,7 @@ Coolify arayüzünde ayrıca CPU veya bellek sınırı girilirse compose değerl
 - API: `/health`
 - Web: `/login`
 
-Yeni konteyner bu kontrolleri geçmeden sağlıklı kabul edilmez.
+Yeni konteyner bu kontrolleri geçmeden sağlıklı kabul edilmez. API ayrıca `GET /health/ready` sunar: veritabanına ulaşabiliyorsa 200, ulaşamıyorsa 503 döner. `/health` yalnız sürecin ayakta olduğunu söyler; yük dengeleyici veya izleme aracı veritabanı durumunu görmek isterse `/health/ready` adresini kullanmalıdır (konteyner sağlık kontrolü `/health` üzerinde bırakılmıştır, kesinti durumunda konteyneri kendiliğinden yeniden başlatmasın diye).
 
 ## 7. İlk manuel yayın
 

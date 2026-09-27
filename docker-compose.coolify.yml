@@ -19,6 +19,7 @@ services:
       DefaultAdmin__Email: ${DEFAULT_ADMIN_EMAIL:-admin@ovodigital.com}
       DefaultAdmin__PasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:?Yönetici parola özeti zorunludur}
       WebOrigin: ${WEB_ORIGIN:?Web adresi zorunludur}
+      Seed__DemoData: ${SEED_DEMO_DATA:-false}
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
       MAIL_FORCE_DISABLED: ${MAIL_FORCE_DISABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}

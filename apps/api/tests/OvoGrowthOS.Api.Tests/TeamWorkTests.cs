@@ -137,4 +137,37 @@ public sealed class TeamWorkTests
         var request = new FollowUpRequest(Admin, stage, reason, date is null ? null : DateOnly.Parse(date), nextStep, 0);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"/api/brands/{brandId}/follow-up", request)).StatusCode);
     }
+
+    [Fact]
+    public async Task Lead_list_filters_by_search_text_and_stage()
+    {
+        await using var factory = new WorkflowApiFactory(); var seeded = await factory.SeedAsync(); using var client = Client(factory);
+        var created = await client.PostAsJsonAsync("/api/brands", new Brand { Name = "Kuzey Gıda", ContactName = "Ayşe Demir" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var second = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var secondId = second.GetProperty("id").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/brands/{seeded}/follow-up",
+            new FollowUpRequest(Admin, LeadStage.Contacted, "", DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(3)), "Görüşme talebi gönderildi", 0))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/brands/{secondId}/follow-up",
+            new FollowUpRequest(Admin, LeadStage.MeetingPlanned, "", DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(7)), "Görüşme planla", 0))).StatusCode);
+
+        var byName = await client.GetFromJsonAsync<JsonElement>("/api/lead-follow-ups?search=kuzey");
+        Assert.Equal(1, byName.GetProperty("total").GetInt32());
+        Assert.Equal(secondId, byName.GetProperty("items").EnumerateArray().Single().GetProperty("id").GetGuid());
+
+        var byContact = await client.GetFromJsonAsync<JsonElement>("/api/lead-follow-ups?search=ay%C5%9Fe");
+        Assert.Equal(1, byContact.GetProperty("total").GetInt32());
+        Assert.Equal(secondId, byContact.GetProperty("items").EnumerateArray().Single().GetProperty("id").GetGuid());
+
+        var byStage = await client.GetFromJsonAsync<JsonElement>("/api/lead-follow-ups?stage=MeetingPlanned");
+        Assert.Equal(1, byStage.GetProperty("total").GetInt32());
+        Assert.Equal(secondId, byStage.GetProperty("items").EnumerateArray().Single().GetProperty("id").GetGuid());
+
+        var contacted = await client.GetFromJsonAsync<JsonElement>("/api/lead-follow-ups?stage=Contacted");
+        Assert.Equal(1, contacted.GetProperty("total").GetInt32());
+        Assert.Equal(seeded, contacted.GetProperty("items").EnumerateArray().Single().GetProperty("id").GetGuid());
+
+        var missing = await client.GetFromJsonAsync<JsonElement>("/api/lead-follow-ups?search=bulunmaz");
+        Assert.Equal(0, missing.GetProperty("total").GetInt32());
+    }
 }

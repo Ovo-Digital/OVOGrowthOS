@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
 const button = 'rounded-lg border px-3 py-2 text-sm disabled:opacity-50';
@@ -14,6 +15,7 @@ export function PortalReading({ reportId }: { reportId: string }) {
   const root = `/api/portal/reports/${reportId}`;
   const query = useQuery({ queryKey: key, queryFn: () => api<Reading>(root + '/reading'), refetchInterval: 30000 });
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const { confirm } = useDialog();
   useEffect(() => {
     let active = true;
     void api<Reading>(`/api/portal/reports/${reportId}/viewed`, { method: 'POST' }).then(data => {
@@ -22,7 +24,7 @@ export function PortalReading({ reportId }: { reportId: string }) {
     return () => { active = false; };
   }, [reportId, qc]);
   async function reviewed() {
-    if (busy || !confirm('Bu rapor sürümünü incelediğiniz kaydedilsin mi? Bu işlem tutarları kabul etmek, ödeme yapmak veya dönem onaylamak değildir.')) return;
+    if (busy || !(await confirm({ title: 'İnceleme kaydedilsin mi?', message: 'Bu rapor sürümünü incelediğiniz kaydedilsin mi? Bu işlem tutarları kabul etmek, ödeme yapmak veya dönem onaylamak değildir.' }))) return;
     setBusy(true); setError('');
     try { qc.setQueryData(key, await api<Reading>(root + '/reviewed', { method: 'POST' })); }
     catch (e) { setError(e instanceof Error ? e.message : 'İnceleme kaydedilemedi.'); } finally { setBusy(false); }
@@ -49,14 +51,15 @@ export function PortalRequests({ brandId }: { brandId?: string }) {
 
 function RequestCreate({ root, done, cancel }: { root: string; done: () => void; cancel: () => void }) {
   const [dirty, setDirty] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); if (busy) return; const data = new FormData(e.currentTarget);
-    if (!confirm('Bu talep metni markanın tüm müşteri hesaplarına gösterilsin mi?')) return;
+    if (!(await confirm({ title: 'Talep müşteriye gösterilsin mi?', message: 'Bu talep metni markanın tüm müşteri hesaplarına gösterilsin mi?', tone: 'danger', confirmLabel: 'Göster' }))) return;
     setBusy(true); setError('');
     try { await api(root + '/requests', { method: 'POST', body: JSON.stringify({ title: data.get('title'), instructions: data.get('instructions'), dueOn: data.get('dueOn') || null }) }); done(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Talep oluşturulamadı.'); } finally { setBusy(false); }
   }
-  return <form className="space-y-3 border-t pt-3 text-sm" onSubmit={submit} onChange={() => setDirty(true)}>{error && <p role="alert">{error}</p>}<label className="block">İstenen bilgi veya belge<input name="title" maxLength={200} required className="input mt-1" disabled={busy} /></label><label className="block">Müşteriye açıklama ve teslim yolu<textarea name="instructions" rows={3} maxLength={2000} required className="input mt-1" disabled={busy} /></label><label className="block">İstenen son tarih (isteğe bağlı)<input name="dueOn" type="date" min="2020-01-01" max="2100-12-31" className="input mt-1" disabled={busy} /></label><div className="flex flex-wrap gap-2"><button className={button} disabled={busy}>Talebi müşteriye göster</button><button type="button" className={button} disabled={busy} onClick={() => { if (!dirty || confirm('Talep taslağı kaydedilmeyecek. Vazgeçilsin mi?')) cancel(); }}>Vazgeç</button></div></form>;
+  return <form className="space-y-3 border-t pt-3 text-sm" onSubmit={submit} onChange={() => setDirty(true)}>{error && <p role="alert">{error}</p>}<label className="block">İstenen bilgi veya belge<input name="title" maxLength={200} required className="input mt-1" disabled={busy} /></label><label className="block">Müşteriye açıklama ve teslim yolu<textarea name="instructions" rows={3} maxLength={2000} required className="input mt-1" disabled={busy} /></label><label className="block">İstenen son tarih (isteğe bağlı)<input name="dueOn" type="date" min="2020-01-01" max="2100-12-31" className="input mt-1" disabled={busy} /></label><div className="flex flex-wrap gap-2"><button className={button} disabled={busy}>Talebi müşteriye göster</button><button type="button" className={button} disabled={busy} onClick={async () => { if (dirty && !(await confirm({ title: 'Talep oluşturma vazgeçilsin mi?', message: 'Talep taslağı kaydedilmeyecek. Vazgeçilsin mi?' }))) return; cancel(); }}>Vazgeç</button></div></form>;
 }
 
 function RequestItem({ item, root, staff }: { item: DataRequest; root: string; staff: boolean }) {
@@ -67,11 +70,12 @@ function RequestItem({ item, root, staff }: { item: DataRequest; root: string; s
 function RequestStatusEditor({ item, root, done, cancel }: { item: DataRequest; root: string; done: () => void; cancel: () => void }) {
   const qc = useQueryClient(); const [revision, setRevision] = useState(item.revision); const [status, setStatus] = useState(item.status); const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   useUnsavedChanges(!!reason || status !== item.status);
+  const { confirm } = useDialog();
   async function submit(e: FormEvent) { e.preventDefault(); if (busy) return; setBusy(true); setError('');
     try { await api(root + '/requests/' + item.id, { method: 'PUT', body: JSON.stringify({ status, reason, revision }) }); await qc.invalidateQueries({ queryKey: ['portal-requests', root] }); done(); }
     catch (e) { setError(e instanceof Error ? e.message : 'Durum kaydedilemedi.'); await qc.invalidateQueries({ queryKey: ['portal-requests', root] }); } finally { setBusy(false); }
   }
-  return <form onSubmit={submit} className="space-y-2">{error && <p role="alert">{error}</p>}{revision !== item.revision && <p role="alert">Talep başka bir kişi tarafından değiştirildi. Üstteki yeni durumu kontrol edin. <button type="button" className="underline" disabled={busy} onClick={() => { setRevision(item.revision); setStatus(item.status); }}>Gerekçemi koruyup güncel durumu al</button></p>}<label className="block">Teslim durumu<select className="input mt-1" value={status} disabled={busy} onChange={e => setStatus(e.target.value as RequestStatus)}>{Object.entries(requestLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label className="block">İç işlem gerekçesi<textarea className="input mt-1" rows={2} required maxLength={1000} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} /></label><p>Durum müşteriye görünür; gerekçe yalnız iç işlem geçmişinde tutulur.</p><div className="flex flex-wrap gap-2"><button className={button} disabled={busy || revision !== item.revision}>Durumu kaydet</button><button type="button" className={button} disabled={busy} onClick={() => { if (!reason || confirm('Kaydedilmemiş gerekçe silinsin mi?')) cancel(); }}>Vazgeç</button></div></form>;
+  return <form onSubmit={submit} className="space-y-2">{error && <p role="alert">{error}</p>}{revision !== item.revision && <p role="alert">Talep başka bir kişi tarafından değiştirildi. Üstteki yeni durumu kontrol edin. <button type="button" className="underline" disabled={busy} onClick={() => { setRevision(item.revision); setStatus(item.status); }}>Gerekçemi koruyup güncel durumu al</button></p>}<label className="block">Teslim durumu<select className="input mt-1" value={status} disabled={busy} onChange={e => setStatus(e.target.value as RequestStatus)}>{Object.entries(requestLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label className="block">İç işlem gerekçesi<textarea className="input mt-1" rows={2} required maxLength={1000} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} /></label><p>Durum müşteriye görünür; gerekçe yalnız iç işlem geçmişinde tutulur.</p><div className="flex flex-wrap gap-2"><button className={button} disabled={busy || revision !== item.revision}>Durumu kaydet</button><button type="button" className={button} disabled={busy} onClick={async () => { if (reason && !(await confirm({ title: 'Gerekçe silinsin mi?', message: 'Kaydedilmemiş gerekçe silinsin mi?' }))) return; cancel(); }}>Vazgeç</button></div></form>;
 }
 
 export function PortalReportFollowup({ brandId }: { brandId: string }) {

@@ -3,9 +3,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, money, percent } from '@/lib/api';
-import { Badge, Card, PageHeader, PrimaryLink } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader, PrimaryLink } from '@/components/ui/core';
 import {
-    EmptyState,
     ListControls,
     Pagination,
     Paged,
@@ -18,6 +17,7 @@ type Brand = {
     industry: string;
     platform: string;
     status: string;
+    currency?: string;
     economics?: { averageMonthlyRevenue: number; grossMarginRate: number };
 };
 export default function Brands() {
@@ -70,14 +70,12 @@ export default function Brands() {
                     ]}
                 />
                 {isLoading ? (
-                    <p className="p-6 text-sm">Yükleniyor…</p>
+                    <LoadingState />
                 ) : error ? (
-                    <p className="p-6 text-sm text-[#d72c0d]">
-                        {error.message}
-                    </p>
+                    <ErrorState message={error.message} />
                 ) : data?.items.length ? (
                     <div className="table-scroll">
-                        <table className="w-full min-w-[760px] text-left text-sm">
+                        <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm">
                             <thead className="bg-[#f7f7f8] text-xs uppercase text-[#6d7175]">
                                 <tr>
                                     {[
@@ -130,6 +128,7 @@ export default function Brands() {
                                                 b.economics
                                                     ?.averageMonthlyRevenue ??
                                                     0,
+                                                b.currency,
                                             )}
                                         </td>
                                         <td className="px-5">
@@ -141,12 +140,10 @@ export default function Brands() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 ) : (
-                    <EmptyState>
-                        Arama ve filtrelere uygun marka bulunamadı.
-                    </EmptyState>
+                    <EmptyState message="Arama ve filtrelere uygun marka bulunamadı." />
                 )}{' '}
                 {data && <Pagination {...data} onPage={setPage} />}
             </Card>

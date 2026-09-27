@@ -3,15 +3,17 @@ import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useDialog } from '@/components/ui/modal';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
 export type MailStatus = { enabled: boolean; configured: boolean; ready: boolean };
 export function AccountInvitation({brandId}: {brandId?: string}) {
   const status = useQuery({queryKey:['account-mail-status'],queryFn:()=>api<MailStatus>('/api/account-mail/status')});
   const qc=useQueryClient(); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [notice,setNotice]=useState(''); const [dirty,setDirty]=useState(false); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   async function submit(e:FormEvent<HTMLFormElement>) {
     e.preventDefault(); if(busy)return; const form=e.currentTarget; const fields=new FormData(form);
-    if(!confirm(`${fields.get('email')} adresine ${brandId ? 'bu markanın müşteri hesabı' : 'seçtiğiniz ekip rolü'} için davet gönderilsin mi? Adresi ve yetkiyi kontrol edin.`))return;
+    if(!(await confirm({ title:'Davet gönderilsin mi?', message:`${fields.get('email')} adresine ${brandId ? 'bu markanın müşteri hesabı' : 'seçtiğiniz ekip rolü'} için davet gönderilsin mi? Adresi ve yetkiyi kontrol edin.`, tone:'danger', confirmLabel:'Daveti gönder' })))return;
     setBusy(true);setError('');setNotice('');
     try {await api('/api/account-mail/invitations',{method:'POST',body:JSON.stringify({email:fields.get('email'),name:fields.get('name'),role:brandId?'BrandClient':fields.get('role'),brandId:brandId||null})});form.reset();setDirty(false);setNotice('Davet sıraya alındı. Kişi kendi şifresini belirleyince giriş yapabilir.');await Promise.all([qc.invalidateQueries({queryKey:['users']}),qc.invalidateQueries({queryKey:['portal-admin',brandId]}),qc.invalidateQueries({queryKey:['account-mail-deliveries']})]);}
     catch(e){setError(e instanceof Error?e.message:'Davet oluşturulamadı.');}finally{setBusy(false);}

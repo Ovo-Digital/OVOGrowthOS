@@ -3,6 +3,7 @@ import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type SessionUser } from '@/lib/api';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
+import { ErrorState, LoadingState } from '@/components/ui/core';
 
 type Setup = { secret: string; recoveryCodes: string[]; expiresAt: string };
 type Result = { token: string; user: SessionUser; recoveryCodes: string[] | null };
@@ -37,8 +38,8 @@ export default function Security() {
     } catch (e) { setMessage(e instanceof Error ? e.message : 'İşlem tamamlanamadı.'); }
     finally { setBusy(false); }
   }
-  if (state.isPending) return <p role="status">Güvenlik bilgisi yükleniyor…</p>;
-  if (state.isError) return <div role="alert">Bilgiler alınamadı. <button onClick={() => void state.refetch()} className="underline">Yeniden dene</button></div>;
+  if (state.isPending) return <LoadingState label="Güvenlik bilgisi yükleniyor…" />;
+  if (state.isError) return <div><ErrorState message="Bilgiler alınamadı." /><div className="px-5 pb-5"><button onClick={() => void state.refetch()} className="underline">Yeniden dene</button></div></div>;
   const password = <label className="block text-sm font-semibold">Mevcut şifreniz<input name="password" type="password" autoComplete="current-password" maxLength={256} required disabled={busy} className="input mt-1" /></label>;
   const proof = <label className="block text-sm font-semibold">Doğrulama veya kurtarma kodu<input name="code" autoComplete="one-time-code" maxLength={64} required disabled={busy} className="input mt-1" /></label>;
   return <div className="max-w-2xl space-y-5"><h1 className="text-2xl font-bold">Hesap güvenliği</h1>

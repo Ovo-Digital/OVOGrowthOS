@@ -53,22 +53,45 @@ public sealed class AccountSecurityService(AppDbContext db, IDataProtectionProvi
     { token = tokens.Create(user), expiresAt = DateTimeOffset.UtcNow.AddHours(8), user = new { user.Id, user.Email, user.Name, user.Role }, recoveryCodes };
     private static void ClearChallenge(AccountSecurity state) { state.ChallengeHash = ""; state.ChallengeExpiresAt = null; }
     private static void Success(AccountSecurity state) { state.FailedAttempts = 0; state.LockedUntil = null; state.Revision++; }
-    private void Audit(UserAccount user, string action) => db.AuditRecords.Add(new AuditRecord
-    { UserId = user.Email, Action = action, EntityType = "UserAccount", EntityId = user.Id.ToString() });
+    private void Audit(UserAccount user, string action) => Audit(user.Id, user.Email, action);
+    private void Audit(Guid userId, string email, string action) => db.AuditRecords.Add(new AuditRecord
+    { UserId = email, Action = action, EntityType = "UserAccount", EntityId = userId.ToString() });
+    private static IResult LoginLocked() => Results.Problem(statusCode: 401, title: "Çok fazla hatalı deneme yapıldı. Beş dakika sonra yeniden deneyin.");
+    private async Task RegisterLoginFailure(Guid userId, string email)
+    {
+        var state = await db.AccountSecurities.SingleOrDefaultAsync(x => x.UserId == userId);
+        if (state is null) { state = new AccountSecurity { UserId = userId }; db.Add(state); }
+        Failed(state); Audit(userId, email, "LoginFailed");
+        await db.SaveChangesAsync();
+    }
 
     public async Task<IResult> Login(LoginRequest request)
     {
         var email = request.Email.Trim().ToLowerInvariant();
         var candidate = await db.UserAccounts.AsNoTracking().SingleOrDefaultAsync(x => x.Email == email);
+        if (candidate is not null)
+        {
+            var existing = await db.AccountSecurities.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == candidate.Id);
+            if (existing is not null && Locked(existing)) return LoginLocked();
+        }
         if (!JwtTokenService.VerifyPassword(request.Password, candidate?.PasswordHash ?? JwtTokenService.DummyPasswordHash) || !Allowed(candidate))
+        {
+            if (candidate is not null) await RegisterLoginFailure(candidate.Id, candidate.Email);
             return Results.Problem(statusCode: 401, title: "E-posta adresi veya şifre hatalı");
+        }
         await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
         if (tx is not null) await NotificationService.LockUser(db, candidate!.Id);
         var user = await db.UserAccounts.AsNoTracking().SingleAsync(x => x.Id == candidate!.Id);
-        if (!Allowed(user) || user.PasswordHash != candidate!.PasswordHash || user.TokenVersion != candidate.TokenVersion ||
+        if (!Allowed(user) || user.PasswordHash != candidate.PasswordHash || user.TokenVersion != candidate.TokenVersion ||
             user.Role == "BrandClient" && !await db.PortalAccesses.AnyAsync(x => x.UserId == user.Id)) return Results.Unauthorized();
         var state = await db.AccountSecurities.SingleOrDefaultAsync(x => x.UserId == user.Id);
-        if (state?.Enabled != true) return Results.Ok(Session(user));
+        if (state is not null) Success(state);
+        if (state?.Enabled != true)
+        {
+            Audit(user, "Login");
+            await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync();
+            return Results.Ok(Session(user));
+        }
         if (Locked(state)) return Invalid();
         var challenge = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         state.ChallengeHash = Hash(challenge); state.ChallengeExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5);

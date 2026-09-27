@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
 type Status = 'Open' | 'AwaitingCustomer' | 'Resolved';
@@ -53,9 +54,10 @@ function ConversationEditor({ item: q, root, staff, owners, ownersError, done, c
   const qc = useQueryClient(); const [revision, setRevision] = useState(q.revision); const [text, setText] = useState('');
   const [status, setStatus] = useState(q.status); const [ownerId, setOwnerId] = useState(q.ownerId ?? ''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const dirty = !!text || status !== q.status || ownerId !== (q.ownerId ?? ''); useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   async function save(message: boolean) {
     if (busy) return;
-    if (message && !confirm(staff ? 'Bu mesaj soruyu açan müşteriye gönderilsin mi? Sonradan değiştirilemez.' : 'Bu mesaj OVO ekibine gönderilsin mi? Sonradan değiştirilemez.')) return;
+    if (message && !(await confirm({ title: 'Mesaj gönderilsin mi?', message: staff ? 'Bu mesaj soruyu açan müşteriye gönderilsin mi? Sonradan değiştirilemez.' : 'Bu mesaj OVO ekibine gönderilsin mi? Sonradan değiştirilemez.', tone: 'danger', confirmLabel: 'Gönder' }))) return;
     setBusy(true); setError('');
     try { await api(root + `/questions/${q.id}/` + (message ? 'messages' : 'tracking'), { method: message ? 'POST' : 'PUT', body: JSON.stringify(message ? { text, revision } : { status, ownerId: ownerId || null, revision }) });
       await qc.invalidateQueries({ queryKey: ['portal-conversations', root] }); done();
@@ -66,6 +68,6 @@ function ConversationEditor({ item: q, root, staff, owners, ownersError, done, c
     {revision !== q.revision && <p role="alert">Konuşmaya yeni bilgi geldi. Üstteki güncel mesajları okuyun. <button className="underline" disabled={busy} onClick={() => { setRevision(q.revision); setStatus(q.status); setOwnerId(q.ownerId ?? ''); }}>Metnimi koruyup güncel takip bilgilerini al</button></p>}
     {!q.report.revokedAt && <form onSubmit={submit} className="space-y-2"><label className="block">Yeni mesaj<textarea className="input mt-1" rows={3} maxLength={4000} required value={text} onChange={e => setText(e.target.value)} disabled={busy} /></label><p>Yeni müşteri mesajı konuyu yeniden açar; OVO mesajı müşteri yanıtını beklemeye alır.</p><button className={button} disabled={busy || revision !== q.revision}>Mesajı gönder</button></form>}
     {staff && <div className="space-y-2 border-t pt-3"><label className="block">Takip sorumlusu<select className="input mt-1" value={ownerId} onChange={e => setOwnerId(e.target.value)} disabled={busy || ownersError}><option value="">Atanmadı</option>{ownerId && !owners.some(o => o.id === ownerId) && <option value={ownerId}>{q.ownerName || 'Önceki sorumlu'} · yeniden seçin</option>}{owners.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>{ownersError && <p role="alert">Sorumlu listesi alınamadı; sayfayı yenileyin.</p>}<label className="block">Yeni konu durumu<select className="input mt-1" value={status} onChange={e => setStatus(e.target.value as Status)} disabled={busy}>{Object.entries(labels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><button className={button} disabled={busy || ownersError || revision !== q.revision || !!text.trim()} onClick={() => void save(false)}>Takip bilgisini kaydet</button>{text.trim() && <p>Önce yazdığınız mesajı gönderin veya temizleyin; takip kaydı mesajı göndermez.</p>}</div>}
-    <button className={button} disabled={busy} onClick={() => { if (!dirty || confirm('Yazdığınız değişiklikler kaydedilmeyecek. Vazgeçilsin mi?')) cancel(); }}>Vazgeç</button>
+    <button className={button} disabled={busy} onClick={async () => { if (dirty && !(await confirm({ title: 'Vazgeçilsin mi?', message: 'Yazdığınız değişiklikler kaydedilmeyecek. Vazgeçilsin mi?' }))) return; cancel(); }}>Vazgeç</button>
   </div>;
 }

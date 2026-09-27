@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type SessionUser } from '@/lib/api';
 import { Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { todayText, type TeamMember } from '@/components/work-tasks';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
@@ -22,6 +23,7 @@ export function WorkTemplates({ brandId }: { brandId: string }) {
   const team = useQuery({ queryKey: ['team'], queryFn: () => api<TeamMember[]>('/api/team'), enabled: open && canManage });
   const brand = useQuery({ queryKey: ['work-brand', brandId], queryFn: () => api<{ deals: { id: string; name: string }[] }>(`/api/brands/${brandId}`), enabled: open && canManage });
   useUnsavedChanges(!!preview);
+  const { confirm } = useDialog();
   const prepare = useMutation({ mutationFn: (scope: Scope) => api<Preview>(`/api/brands/${brandId}/work-template/preview`, { method: 'POST', body: JSON.stringify(scope) }), onSuccess: data => {
     setPreview(data); setConfirmed(false); setItems(data.items.map(x => ({ step: x.key, assigneeId: x.existing?.assigneeId ?? '', dueOn: x.existing?.dueOn ?? x.dueOn, existingTaskId: x.existing?.id ?? null, existingTaskRevision: x.existing?.revision ?? null })));
   } });
@@ -42,7 +44,7 @@ export function WorkTemplates({ brandId }: { brandId: string }) {
       <fieldset disabled={save.isPending} className="space-y-4">{preview.items.map((step, index) => <article className="rounded-lg border p-4" key={step.key}><h4 className="font-semibold">{step.existing?.title ?? step.title}</h4><p className="my-2 text-sm">{step.description}</p>{step.existing && <p className="mb-3 text-sm">Mevcut görev {step.existing.completedAt ? '(tamamlanmış)' : '(açık)'} kullanılacak; başlığı, sorumlusu, tarihi ve durumu değişmeyecek. Gerekirse görev alanından düzenleyin.</p>}
         <div className="grid gap-3 sm:grid-cols-2"><label>Sorumlu — {step.title}<select required disabled={!!step.existing} className="input mt-1" value={items[index].assigneeId} onChange={e => { setConfirmed(false); setItems(items.map((x, i) => i === index ? { ...x, assigneeId: e.target.value } : x)); }}><option value="">Çalışan seçin</option>{team.data?.map(p => <option value={p.id} key={p.id} disabled={!p.isActive}>{p.name}{!p.isActive && ' (kapalı hesap)'}</option>)}</select></label><label>Son tarih — {step.title}<input type="date" required min="2020-01-01" max="2100-12-31" disabled={!!step.existing} className="input mt-1" value={items[index].dueOn} onChange={e => { setConfirmed(false); setItems(items.map((x, i) => i === index ? { ...x, dueOn: e.target.value } : x)); }} /></label></div></article>)}
         <label className="flex items-start gap-2"><input type="checkbox" className="mt-1" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} /> Sorumluları ve son tarihleri kontrol ettim; yeni görevler bu plana göre oluşturulsun.</label>
-        <div className="flex flex-wrap gap-3"><button className={button} disabled={!confirmed}>{save.isPending ? 'Oluşturuluyor…' : 'Kontrol ettim, görevleri oluştur'}</button><button type="button" className={button} onClick={() => { if (confirm('Ön izlemeyi kapatmak istiyor musunuz? Henüz görevler oluşturulmadı.')) setPreview(null); }}>Ön izlemeyi kapat</button></div>
+        <div className="flex flex-wrap gap-3"><button className={button} disabled={!confirmed}>{save.isPending ? 'Oluşturuluyor…' : 'Kontrol ettim, görevleri oluştur'}</button><button type="button" className={button} onClick={async () => { if (!(await confirm({ title: 'Ön izleme kapatılsın mı?', message: 'Ön izlemeyi kapatmak istiyor musunuz? Henüz görevler oluşturulmadı.' }))) return; setPreview(null); }}>Ön izlemeyi kapat</button></div>
       </fieldset></form>}
     {(prepare.error || save.error || team.error || brand.error) && <p role="alert" className="mt-3 text-red-700">{prepare.error?.message || save.error?.message || team.error?.message || brand.error?.message}</p>}
   </Card>;

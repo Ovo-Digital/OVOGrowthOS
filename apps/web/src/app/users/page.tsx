@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, logout, type SessionUser } from '@/lib/api';
 import { turkce } from '@/lib/turkish';
 import { notify } from '@/components/feedback';
-import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { AccountInvitation } from '@/components/account-invitation';
 
 type User = SessionUser & { isActive: boolean; invitationPending: boolean; createdAt: string };
@@ -12,6 +13,7 @@ const initial = { email: '', name: '', role: 'Analyst', password: '', isActive: 
 
 export default function Page() {
   const qc = useQueryClient();
+  const { confirm } = useDialog();
   const me = useQuery({ queryKey: ['session-user'], queryFn: () => api<SessionUser>('/api/auth/me') });
   const users = useQuery({ queryKey: ['users'], queryFn: () => api<User[]>('/api/users'), enabled: me.data?.role === 'Admin' });
   const [form, setForm] = useState(initial);
@@ -28,7 +30,7 @@ export default function Page() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (saving) return;
-    if (editing && !window.confirm(`${form.name} adlı kullanıcının bilgileri güncellenecek ve açık oturumları kapatılacak.${!form.isActive ? ' Bu kişi yeniden giriş yapamayacak.' : ''} Devam edilsin mi?`)) return;
+    if (editing && !(await confirm({ title: 'Kullanıcıyı güncelle', message: `${form.name} adlı kullanıcının bilgileri güncellenecek ve açık oturumları kapatılacak.${!form.isActive ? ' Bu kişi yeniden giriş yapamayacak.' : ''} Devam edilsin mi?`, tone: 'danger', confirmLabel: 'Güncelle' }))) return;
     setSaving(true); setError('');
     try {
       await api(editing ? `/api/users/${editing}` : '/api/users', { method: editing ? 'PUT' : 'POST', body: JSON.stringify(form) });
@@ -40,8 +42,8 @@ export default function Page() {
     finally { setSaving(false); }
   }
 
-  if (me.isPending) return <p role="status">Hesap yetkileriniz kontrol ediliyor…</p>;
-  if (me.isError) return <p role="alert">Hesap bilgileriniz alınamadı. Sayfayı yenileyip yeniden deneyin.</p>;
+  if (me.isPending) return <LoadingState label="Hesap yetkileriniz kontrol ediliyor…" />;
+  if (me.isError) return <ErrorState message="Hesap bilgileriniz alınamadı. Sayfayı yenileyip yeniden deneyin." />;
   if (me.data.role !== 'Admin') return <Card className="p-5"><h1 className="font-semibold">Bu alan yöneticiler içindir</h1><p className="mt-2 text-sm">Hesap değişiklikleri için yöneticinizle görüşün.</p></Card>;
 
   return <>
@@ -49,9 +51,9 @@ export default function Page() {
     <div className="mb-4"><AccountInvitation /></div>
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <div className="space-y-3">
-        {users.isPending && <p role="status">Kullanıcılar yükleniyor…</p>}
+        {users.isPending && <LoadingState label="Kullanıcılar yükleniyor…" />}
         {users.isError && <p role="alert">Kullanıcılar yüklenemedi. <button className="underline" onClick={() => users.refetch()}>Yeniden dene</button></p>}
-        {users.data?.length === 0 && <Card className="p-5">Henüz kullanıcı bulunmuyor.</Card>}
+        {users.data?.length === 0 && <Card><EmptyState message="Henüz kullanıcı bulunmuyor." /></Card>}
         {users.data?.map(user => <Card key={user.id} className="flex flex-wrap items-center justify-between gap-3 p-5">
           <div className="min-w-0"><h2 className="font-semibold">{user.name}{user.id === me.data.id && ' (Siz)'}</h2><p className="break-all text-sm text-[#6d7175]">{user.email}</p>{user.invitationPending&&<p className="text-sm">Davet bekleniyor; kişi henüz giriş yapamaz.</p>}</div>
           <div className="flex items-center gap-3"><div className="text-right"><Badge tone={user.isActive ? 'green' : 'neutral'}>{user.isActive ? 'Etkin' : 'Kapalı'}</Badge><div className="mt-1 text-xs text-[#6d7175]">{turkce(user.role)}</div></div><button disabled={saving} onClick={() => edit(user)} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50" aria-label={`${user.name} hesabını düzenle`}>Düzenle</button></div>

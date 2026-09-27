@@ -57,10 +57,10 @@ dotnet ef migrations add MigrationName --project apps/api/src/OvoGrowthOS.Api --
 
 ```bash
 dotnet test OvoGrowthOS.sln
-cd apps/web && npm run lint && npm run build
+cd apps/web && npm run typecheck && npm run lint && npm run test:unit && npm run build
 ```
 
-Current verification: 37 domain tests and 9 authenticated API integration tests pass; frontend lint and production build pass; the complete migration chain generates valid PostgreSQL SQL. The API has also completed a live startup, migration check, and idempotent seed run against the configured Supabase PostgreSQL database.
+Current verification: 154 domain tests and 274 authenticated API integration tests (428 total) pass; frontend typecheck, lint, 9 unit tests, and production build pass; the complete migration chain generates valid PostgreSQL SQL. The API has also completed a live startup, migration check, and idempotent seed run against the configured Supabase PostgreSQL database. A local PostgreSQL 17 rehearsal applied all 22 migrations, restored a 169,850-byte pg_dump backup into a fresh database with zero errors and identical schema, migration history and row counts, then reverted and re-applied the latest migration; the live database was only read during that rehearsal. Every pull request runs the same checks through `.github/workflows/ci.yml`, and production images are published only after those gates pass.
 
 ## Security status
 

@@ -41,6 +41,32 @@ public sealed class AuthenticationTests
     }
 
     [Fact]
+    public async Task Five_failed_logins_lock_password_entry_until_the_lock_expires()
+    {
+        await using var factory = new WorkflowApiFactory();
+        using var client = factory.CreateClient();
+        var email = "partner@ovo.test";
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Wrong-password" })).StatusCode);
+        var locked = await client.PostAsJsonAsync("/api/auth/login", new { email, password = WorkflowApiFactory.TestPassword });
+        Assert.Equal(HttpStatusCode.Unauthorized, locked.StatusCode);
+        Assert.Contains("hatalı deneme", await locked.Content.ReadAsStringAsync());
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var state = await db.AccountSecurities.SingleAsync(x => x.UserId == WorkflowApiFactory.AccountId(email));
+        Assert.True(state.LockedUntil > DateTimeOffset.UtcNow);
+        Assert.Equal(5, state.FailedAttempts);
+        Assert.Equal(5, await db.AuditRecords.CountAsync(x => x.Action == "LoginFailed"));
+        state.LockedUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login", new { email, password = WorkflowApiFactory.TestPassword })).StatusCode);
+        await db.Entry(state).ReloadAsync();
+        Assert.Equal(0, state.FailedAttempts);
+        Assert.Null(state.LockedUntil);
+        Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "Login"));
+    }
+
+    [Fact]
     public async Task Legacy_or_mismatched_role_tokens_are_rejected()
     {
         await using var factory = new WorkflowApiFactory();

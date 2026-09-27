@@ -8,7 +8,7 @@ public sealed record QualityAlert(string Code, string Severity, string Finding, 
 public sealed record QualityApproval(string? PreparedBy, string? ReviewedBy, bool Complete);
 
 public sealed record BrandQuality(
-    Guid BrandId, string BrandName, Guid? DealId, string Expectation, Guid? PerformanceId,
+    Guid BrandId, string BrandName, string Currency, Guid? DealId, string Expectation, Guid? PerformanceId,
     MonthlyPerformanceStatus? Status, string Origin, string OriginDetail,
     string Responsible, Guid? ResponsibleId, QualityApproval? Approval,
     IReadOnlyList<QualitySource> Sources, IReadOnlyList<QualityAlert> Alerts,
@@ -18,7 +18,7 @@ public sealed record QualitySummary(int Total, int Ready, int Attention, int Mis
 public sealed record QualityReport(QualityPeriod Period, string Label, QualitySummary Summary, IReadOnlyList<BrandQuality> Brands);
 
 public sealed record QualityInput(
-    int Year, int Month, Guid BrandId, string BrandName, Deal? Deal, MonthlyPerformance? Current, MonthlyPerformance? Previous,
+    int Year, int Month, Guid BrandId, string BrandName, string Currency, Deal? Deal, MonthlyPerformance? Current, MonthlyPerformance? Previous,
     string Origin, string OriginDetail, string Responsible, Guid? ResponsibleId,
     Guid? TaskId, bool TaskCompleted, decimal VatRate);
 
@@ -70,7 +70,7 @@ public static class DataQuality
                 "Anlaşma başlangıç tarihi girilmediği için bu ayın kapsamı belirlenemiyor.",
                 "Kapsam tahmin edilemediği için kayıt olsa da olmasa da sonuç yorumlanamaz.",
                 "Anlaşmada başlangıç ve bitiş tarihlerini netleştirin."));
-            return new BrandQuality(input.BrandId, input.BrandName, input.Deal?.Id, expectation, null, null,
+            return new BrandQuality(input.BrandId, input.BrandName, input.Currency, input.Deal?.Id, expectation, null, null,
                 "none", "", input.Responsible, input.ResponsibleId, null,
                 Sources(null, missing ? "missing" : "notApplicable"), alerts,
                 missing ? "missing" : "notApplicable", input.TaskId, input.TaskCompleted);
@@ -154,7 +154,7 @@ public static class DataQuality
                 "Ürün ve operasyon maliyeti girilmediyse kâr hesabını güvenilir değildir.",
                 "Gider raporunu kontrol edin; maliyet yoksa bunu ekipte teyit edin."));
 
-        return new BrandQuality(input.BrandId, input.BrandName, input.Deal?.Id, expectation, current.Id, current.Status,
+        return new BrandQuality(input.BrandId, input.BrandName, input.Currency, input.Deal?.Id, expectation, current.Id, current.Status,
             input.Origin, input.OriginDetail, input.Responsible, input.ResponsibleId, approval,
             Sources(current, "auto"), alerts2, alerts2.Count > 0 ? "attention" : "ready",
             input.TaskId, input.TaskCompleted);

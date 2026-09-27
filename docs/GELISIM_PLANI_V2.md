@@ -1,7 +1,7 @@
 # OVO Growth OS — Yeni Gelişim Planı
 
 Tarih: 6 Eylül 2026  
-Durum: **Faz 1, Faz 3, Faz 4, Faz 5 (5A + 5B), Faz 6, Faz 7 ve Faz 9 tamamlandı. Faz 2 ve Faz 8 kullanıcı isteğiyle ertelendi. Geliştirme ve doğrulamalar yerelde tamamlandı; commit, push ve canlı yayın yapılmadı.**
+Durum: **Faz 1, Faz 3, Faz 4, Faz 5 (5A + 5B), Faz 6, Faz 7 ve Faz 9 tamamlandı. Faz 2 ertelendi. Faz 8 ertelendi; 27 Eylül 2026'da bağlantı yüzeyi (marka API ayarları + jeton doğrulaması) kuruldu, canlı jeton için panelde API kullanıcısı bekleniyor. Geliştirme ve doğrulamalar yerelde tamamlandı; commit, push ve canlı yayın yapılmadı.**
 İncelenen sürüm: `5212a78`
 
 Bu belge, mevcut sistemi geliştirmek için hazırlanmış ikinci yol haritasıdır. `ROADMAP.md` içindeki önceki fazların devamı niteliğindedir; buradaki “Faz 1” yeni geliştirme döneminin ilk fazıdır.
@@ -284,6 +284,10 @@ Hazırlık bulguları ve devam kapısı:
 
 **Erteleme onayı — 11 Eylül 2026:** Kullanıcı erişim bilgilerinin bulunmadığını belirtti ve fazın atlanmasına izin verdi. Faz 8 ertelendi; sahte bağlantı veya gerçekmiş gibi gösterilen mağaza verisi eklenmedi. Sıradaki onaylı Faz 9'a geçildi. Erişimler sağlandığında Faz 8'in doğrulama kapıları aynen korunarak dönülecek.
 
+**Güncelleme — 27 Eylül 2026 (V5 Faz F, 3. adım):** Faz 8'in bağlantı yüzeyi kuruldu: marka detayındaki **Mağaza API ayarları** bölümü (`growth.BrandApiSettings`, migration `20260927083033_BrandApiSettings`) mağaza adresi, API kullanıcısı e-postası ve korunan şifreyi tutar; `POST /api/brands/{id}/api-settings/test` şifreyi base64 çevirip `POST /Api/Token/Create` üzerinden geçici jeton ister, sonucu yalnız genel Türkçe mesajla bildirir (yanıt/üretim günlüklerinde şifre veya jeton yok, 1 dakika tekrar sınırı). Uçlar AdminOnly + `admin-action` hız sınırında; denetim kayıtları işlem adından ibaret. Pilot için panel adresi `https://admin.ovodigi.com/` (GrandNode) canlı bulundu; verilen kimlik hem panelde hem API'de reddedildi (tek deneme, kilit riskine karşı tekrar yok). **Devam kapısı:** kullanıcı panelin Ayarlar → API Kullanıcılar (`/Admin/ApiUser`) bölümünde e-postayla etkin API kullanıcısı oluşturacak; jeton gelince 8A (Ağustos 2026 dönemi, salt hazırlık + uzlaştırma, değiştirici uçlar yasak) başlayacak. Otomatik yazma yok; şifre panelde saklanır, sohbete değil ve pilot sonrası yenilenmeli.
+
+**Güncelleme — 27 Eylül 2026 (Faz 8A uygulandı):** Devam kapısı kapandı: paneldeki hazır API kullanıcısının şifresindeki son nokta bulundu, jeton alındı ve **Ağustos 2026 dönemi (Türkiye saati sınırları) salt okunur çekme canlı GrandNode ile uçtan uca çalıştı**. `growth.StoreOrderStaging` (migration `20260927093733_StoreOrderStaging`, `BrandId + SourceOrderId` tekliği, `numeric(18,4)`, negatif tutar kontrolü) üzerine `GET /api/brands/{id}/store-orders` ve `POST .../store-orders/sync` eklendi; istemci yalnız seçili alanları çeker (PII yok), OData `CreatedOnUtc` filtresi + sayfalama kullanır, yasaklı değiştirici uçlara dokunmaz. Tekrar senkron "0 yeni, 8 güncellenen" ile idempotent; dönem dışı senkron mevcut kayıtlara dokunmaz; hatalı kaynak (dönem dışı/negatif/para birimi) 400 döner ve yazım yapılmaz. Denetim yalnız dönem/sayı özeti taşır. Arayüzde marka detayında **Mağaza siparişleri** kartı (dönem seçimi, özet, aylık sonuç karşılaştırması, tablo) hazır. Sınır korunuyor: veriler yalnız hazırlık/uzlaştırma içindir; hakedişe, aylık sonuca veya anlaşma kaydına otomatik yazılmaz. **Canlı göç:** kullanıcının onayıyla `BrandApiSettings` ve `StoreOrderStaging` migration'ları 27 Eylül 2026'da Supabase'e uygulandı, bekleyen migration kalmadı ve uygulama canlı bağlantıyla sağlık kontrolünden geçti. Kalan kapı: API şifresi rotasyonu; Shopify/reklam platformları ile Faz F 4–5 adımları kapsam dışı.
+
 ### Faz 9 — Markaya özel güvenli müşteri portalı
 
 **Kullanıcıya faydası:** Marka yetkilisi kendi raporunu ve kendisiyle paylaşılan belgeleri görür; her şeyi ayrı mesajla göndermek gerekmez.
@@ -334,7 +338,7 @@ Bunlar yukarıdaki fazlara dahil değildir; ayrı ihtiyaç ve kapsam onayı iste
 6. Tamamlananlar, test kanıtları ve kalan sorunlar sunulur. Başarısız kontrol veya zorunlu eksik varsa faz tamamlandı sayılmaz.
 7. Canlı yayın senin manuel yayın tercihinle yürütülür. Tamamlanan fazın kanıtları sunulduktan sonra sıradaki faza geçilir; kapsam dışı işlemler için ayrıca onay alınır.
 
-**Güncel sıra:** Faz 2 ve Faz 8 kullanıcı onayıyla ertelendi. Faz 1, 3, 4, 5A, 5B, 6, 7 ve 9 tamamlandı. Bu plandaki ertelenmeyen fazların geliştirme ve doğrulamaları bitti; yeni fikirler ayrıca kapsam onayı ister. Faz 8 için canlı API adresi, mağaza kimliği ve sınırlandırılmış erişim sağlandığında Kozabiat / GrandNode pilotuna dönülecek; erteleme tamamlanma değildir.
+**Güncel sıra:** Faz 2 ertelendi; Faz 8'in bağlantı yüzeyi 27 Eylül 2026'da kuruldu, canlı doğrulama panelde API kullanıcısı bekliyor. Faz 1, 3, 4, 5A, 5B, 6, 7 ve 9 tamamlandı. Bu plandaki ertelenmeyen fazların geliştirme ve doğrulamaları bitti; yeni fikirler ayrıca kapsam onayı ister. Faz 8 için canlı API adresi, mağaza kimliği ve sınırlandırılmış erişim sağlandığında Kozabiat / GrandNode pilotuna dönülecek; erteleme tamamlanma değildir.
 
 ## 5. İnceleme dayanakları
 

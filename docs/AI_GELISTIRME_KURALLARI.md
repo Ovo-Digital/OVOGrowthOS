@@ -66,7 +66,8 @@ Kullanıcının gördüğü özellik, ekran, rol, hesaplama, terim veya iş akı
 Değişikliğe göre ilgili kontrolleri çalıştır:
 
 - Backend/domain: `dotnet build OvoGrowthOS.sln` ve `dotnet test OvoGrowthOS.sln`.
-- Web: `npm run typecheck`, `npm run lint` ve `npm run build` (`apps/web` içinde).
+- Web: `npm run typecheck`, `npm run lint`, `npm run test:unit` ve `npm run build` (`apps/web` içinde).
+- CI: `.github/workflows/ci.yml` her pull request'te aynı backend/web kontrollerini çalıştırır; `Üretim imajlarını hazırla` işi bu kapı geçmeden imaj üretmez.
 - Migration: migration listesi ve gerçek Supabase bağlantısında sağlık kontrolü.
 - Kullanıcı akışı: ilgili sayfanın hata vermeden açılması ve ana kabul senaryosunun çalışması.
 - Rehber etkisi varsa `/guide` sayfasının derlenmesi.

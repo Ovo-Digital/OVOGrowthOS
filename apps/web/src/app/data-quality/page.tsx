@@ -4,12 +4,13 @@ import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {api,money,type SessionUser} from '@/lib/api';
-import {Badge,Card,PageHeader} from '@/components/ui/core';
+import {Badge,Card,EmptyState,ErrorState,LoadingState,PageHeader} from '@/components/ui/core';
+import {useDialog} from '@/components/ui/modal';
 
 type Source={key:string;label:string;state:'entered'|'zero'|'missing'|'notApplicable';amount:number;note:string};
 type Alert={code:string;severity:'warning'|'info';finding:string;whyItMatters:string;nextStep:string};
 type Approval={preparedBy:string|null;reviewedBy:string|null;complete:boolean};
-type Brand={brandId:string;brandName:string;dealId:string|null;expectation:string;performanceId:string|null;status:string|null;origin:string;originDetail:string;responsible:string;responsibleId:string|null;approval:Approval|null;sources:Source[];alerts:Alert[];readiness:'ready'|'attention'|'missing'|'notApplicable';taskId:string|null;taskCompleted:boolean};
+type Brand={brandId:string;brandName:string;currency:string;dealId:string|null;expectation:string;performanceId:string|null;status:string|null;origin:string;originDetail:string;responsible:string;responsibleId:string|null;approval:Approval|null;sources:Source[];alerts:Alert[];readiness:'ready'|'attention'|'missing'|'notApplicable';taskId:string|null;taskCompleted:boolean};
 type Report={period:{year:number;month:number};label:string;summary:{total:number;ready:number;attention:number;missing:number;notApplicable:number;withOpenTask:number};brands:Brand[]};
 
 const readinessLabels:Record<Brand['readiness'],string>={ready:'Hazır',attention:'İncelenecek',missing:'Kayıt yok',notApplicable:'Kapsam dışı'};
@@ -21,7 +22,7 @@ const originLabels:Record<string,string>={manual:'Elle giriş',import:'Dosyadan 
 const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const monthInput=(year:number,month:number)=>`${year}-${String(month).padStart(2,'0')}`;
 
-export default function Page(){return <Suspense fallback={<p role="status">Sayfa hazırlanıyor…</p>}><Board/></Suspense>;}
+export default function Page(){return <Suspense fallback={<LoadingState label="Sayfa hazırlanıyor…" />}><Board/></Suspense>;}
 
 function Board(){
   const params=useSearchParams();
@@ -30,6 +31,7 @@ function Board(){
     return y>=2020&&y<=2100&&m>=1&&m<=12?monthInput(y,m):null;
   },[params]);
   const me=useQuery({queryKey:['session-user'],queryFn:()=>api<SessionUser>('/api/auth/me')});
+  const{confirm}=useDialog();
   const canWrite=me.data?.role==='Admin'||me.data?.role==='Partner';
   const current=monthInput(new Date().getFullYear(),new Date().getMonth()+1);
   const[picked,setPicked]=useState<string|null>(null);
@@ -40,7 +42,8 @@ function Board(){
   const report=useQuery({queryKey:['data-quality',qs],queryFn:()=>api<Report>(`/api/data-quality?${qs}`),enabled:me.isSuccess,refetchInterval:60000});
   const qc=useQueryClient();const[busy,setBusy]=useState<string|null>(null);const[notice,setNotice]=useState('');const[error,setError]=useState('');
   async function createTask(item:Brand){
-    if(busy||!confirm(`${item.brandName} için ${months[month-1]} ${year} dönemi takip işi açılsın mı?`))return;
+    if(busy)return;
+    if(!(await confirm({title:'Takip işi aç',message:`${item.brandName} için ${months[month-1]} ${year} dönemi takip işi açılsın mı?`,confirmLabel:'Takip işi aç'})))return;
     setBusy(item.brandId);setError('');setNotice('');
     try{
       await api('/api/data-quality/track-task',{method:'POST',body:JSON.stringify({brandId:item.brandId,year,month})});
@@ -48,8 +51,8 @@ function Board(){
       await qc.invalidateQueries({queryKey:['data-quality']});await qc.invalidateQueries({queryKey:['tasks']});await qc.invalidateQueries({queryKey:['work-approvals']});
     }catch(e){setError(e instanceof Error?e.message:'Takip işi açılamadı.');}finally{setBusy(null);}
   }
-  if(me.isPending)return <p role="status">Yetki kontrol ediliyor…</p>;
-  if(me.isError)return <p role="alert">Hesap bilgisi alınamadı.</p>;
+  if(me.isPending)return <LoadingState label="Yetki kontrol ediliyor…" />;
+  if(me.isError)return <ErrorState message="Hesap bilgisi alınamadı." />;
   const s=report.data?.summary;
   return <><PageHeader title="Kapanış hazırlığı ve veri kalitesi" description="Bu ay hangi markanın hangi kaynağı eksik, hangi kayıt incelenmeli ve ay kapanmaya hazır mı? Uyarılar sonucu kendiliğinden değiştirmez."/>
     <Card className="mb-4 space-y-3 p-5">
@@ -66,7 +69,7 @@ function Board(){
       <p className="text-sm">Bu ekranda şifre, bağlantı, ileti gövdesi ve kişisel finansal olmayan gizli alan gösterilmez. Kapanış için yine de iki kişi onayı ve kilitleme adımı gerekir.</p>
     </Card>
     {error&&<p role="alert" className="mb-3">{error}</p>}{notice&&<p role="status" className="mb-3">{notice}</p>}
-    {report.isPending?<p role="status">Kayıtlar yükleniyor…</p>:report.isError?<p role="alert">Veri kalitesi listesi alınamadı. Yeniden deneyin.</p>:!report.data.brands.length?<p>Bu dönemde incelenecek marka bulunamadı. Marka ve anlaşma kayıtlarını kontrol edin.</p>:
+    {report.isPending?<LoadingState label="Kayıtlar yükleniyor…" />:report.isError?<ErrorState message="Veri kalitesi listesi alınamadı. Yeniden deneyin." />:!report.data.brands.length?<EmptyState message="Bu dönemde incelenecek marka bulunamadı. Marka ve anlaşma kayıtlarını kontrol edin." />:
     <div className="space-y-3">{report.data.brands.map(item=><Card key={item.brandId} className="space-y-3 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><h2 className="font-semibold">{item.brandName}</h2>
@@ -77,7 +80,7 @@ function Board(){
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{item.sources.map(source=><div key={source.key} className="rounded-lg border p-3">
         <div className="text-sm font-semibold">{source.label}</div>
-        <div className="mt-1 text-lg font-bold">{source.state==='missing'||source.state==='notApplicable'?'—':money(source.amount)}</div>
+        <div className="mt-1 text-lg font-bold">{source.state==='missing'||source.state==='notApplicable'?'—':money(source.amount,item.currency)}</div>
         <div className="text-xs text-[#6d7175]">{stateLabels[source.state]}</div>
         <p className="mt-1 text-xs text-[#4a4d50]">{source.note}</p></div>)}</div>
       {item.alerts.length>0&&<div className="space-y-2">{item.alerts.map(alert=><div key={alert.code} className={`rounded-lg border p-3 ${alert.severity==='warning'?'border-[#f4c7b0] bg-[#fff6f2]':'border-[#dfe3e8] bg-[#f7f7f8]'}`}>

@@ -15,7 +15,7 @@ public static partial class WorkflowEndpoints
     {
         var group = app.MapGroup("/api/notifications").RequireAuthorization("SessionAccess");
         group.MapPost("/refresh", async (ClaimsPrincipal actor, NotificationService service, CancellationToken ct) =>
-        { await service.Refresh(Guid.Parse(actor.FindFirstValue("uid")!), DateTimeOffset.UtcNow, ct); return Results.NoContent(); }).RequireRateLimiting("login");
+        { await service.Refresh(Guid.Parse(actor.FindFirstValue("uid")!), DateTimeOffset.UtcNow, ct); return Results.NoContent(); }).RequireRateLimiting("user-action");
         group.MapGet("/", async (ClaimsPrincipal actor, AppDbContext db, NotificationService service, SmtpSettingsProvider provider) =>
         {
             var settings = await provider.GetAsync();
@@ -24,10 +24,11 @@ public static partial class WorkflowEndpoints
             var pref = await db.NotificationPreferences.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == id);
             var cutoff = DateTimeOffset.UtcNow.AddDays(-30);
             var rows = await db.UserNotifications.AsNoTracking().Where(x => x.UserId == id && x.CreatedAt >= cutoff).OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync();
+            var contents = await service.ResolveMany(rows, user, DateTimeOffset.UtcNow);
             var visible = new List<object>();
-            foreach (var n in rows)
+            for (var i = 0; i < rows.Count; i++)
             {
-                var content = await service.Resolve(n, user, DateTimeOffset.UtcNow);
+                var n = rows[i]; var content = contents[i];
                 if (content is not null) visible.Add(new { n.Id, n.Kind, content.Title, content.Href, n.CreatedAt, n.ReadAt, n.EmailStatus, n.ErrorCode });
             }
             return Results.Ok(new { items = visible, preferences = pref is null ? null : new { pref.DailyTasksEmail, pref.TaskDueEmail, pref.PortalMessagesEmail, pref.PortalReportsEmail, pref.Revision }, emailReady = settings.Ready });

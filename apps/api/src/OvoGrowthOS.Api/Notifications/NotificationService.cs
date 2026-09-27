@@ -76,41 +76,166 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
     }
 
     // Resolve again at read/send time. No stored message, report snapshot or financial text is exposed.
-    public async Task<NotificationContent?> Resolve(UserNotification n, UserAccount user, DateTimeOffset now, bool lockSource = false, CancellationToken ct = default)
+    public Task<NotificationContent?> Resolve(UserNotification n, UserAccount user, DateTimeOffset now, bool lockSource = false, CancellationToken ct = default) =>
+        ResolveCore(n, user, now, lockSource, new ResolveCache(db, user.Id, ct), ct);
+
+    // One cache for a whole page: shared lookups run once instead of once per notification.
+    public async Task<List<NotificationContent?>> ResolveMany(IReadOnlyList<UserNotification> rows, UserAccount user, DateTimeOffset now, CancellationToken ct = default)
+    {
+        var cache = new ResolveCache(db, user.Id, ct);
+        if (user.IsActive && !user.InvitationPending)
+        {
+            if (Staff(user) && rows.Any(x => x.Kind == NotificationKind.DailyTasks)) await cache.PrefetchDailyDates();
+            if (Staff(user) && rows.Any(x => x.Kind == NotificationKind.TaskDue))
+                await cache.PrefetchTasks(rows.Where(x => x.Kind == NotificationKind.TaskDue).Select(x => x.SourceId));
+            var others = rows.Where(x => x.Kind is not (NotificationKind.DailyTasks or NotificationKind.TaskDue)).ToList();
+            if (others.Count > 0)
+            {
+                var brand = await cache.Brand();
+                var reports = others.Where(x => x.Kind == NotificationKind.PortalReport).Select(x => x.SourceId).OfType<Guid>().ToList();
+                if (reports.Count > 0 && brand.HasValue) await cache.PrefetchReports(reports.Select(x => (x, brand.Value)));
+                var questions = others.Where(x => x.Kind != NotificationKind.PortalReport).Select(x => x.SourceId).ToList();
+                if (questions.Count > 0)
+                {
+                    await cache.PrefetchQuestions(questions);
+                    await cache.PrefetchReportsFor(cache.LoadedQuestions());
+                }
+            }
+        }
+        var result = new List<NotificationContent?>(rows.Count);
+        foreach (var n in rows) result.Add(await ResolveCore(n, user, now, false, cache, ct));
+        return result;
+    }
+
+    private async Task<NotificationContent?> ResolveCore(UserNotification n, UserAccount user, DateTimeOffset now, bool lockSource, ResolveCache cache, CancellationToken ct)
     {
         if (!user.IsActive || user.InvitationPending || n.UserId != user.Id) return null;
         if (n.Kind == NotificationKind.DailyTasks)
         {
             if (!Staff(user) || n.Day != TeamWork.Today(now)) return null;
-            var dates = await db.WorkTasks.Where(x => x.AssigneeId == user.Id && x.CompletedAt == null).Select(x => x.DueOn).ToListAsync(ct);
+            var dates = await cache.DailyDates();
             var today = TeamWork.Today(now);
-            return dates.Count > 0 ? new($"Günlük görev özeti: {dates.Count} açık, {dates.Count(x => x == today)} bugün, {dates.Count(x => x < today)} gecikmiş", "/work") : null;
+            return dates.Length > 0 ? new($"Günlük görev özeti: {dates.Length} açık, {dates.Count(x => x == today)} bugün, {dates.Count(x => x < today)} gecikmiş", "/work") : null;
         }
         if (n.Kind == NotificationKind.TaskDue)
         {
             if (!Staff(user)) return null;
             if (lockSource && db.Database.IsRelational()) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"WorkTasks\" WHERE \"Id\" = {n.SourceId} FOR SHARE", ct);
-            var task = await db.WorkTasks.AsNoTracking().SingleOrDefaultAsync(x => x.Id == n.SourceId && x.AssigneeId == user.Id && x.CompletedAt == null, ct);
+            var task = await cache.TaskFor(n.SourceId);
             return task is not null && task.DueOn == n.Day && task.DueOn <= TeamWork.Today(now).AddDays(1)
                 ? new($"Görevinizin son tarihi: {task.DueOn:dd.MM.yyyy}", $"/brands/{task.BrandId}#team-work") : null;
         }
-        var brand = await db.PortalAccesses.Where(x => x.UserId == user.Id).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
+        var brand = await cache.Brand();
         if (n.Kind == NotificationKind.PortalReport)
         {
             if (user.Role != "BrandClient" || brand is null) return null;
             if (lockSource && db.Database.IsRelational()) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"PortalReports\" WHERE \"Id\" = {n.SourceId} FOR SHARE", ct);
-            return await db.PortalReports.AnyAsync(x => x.Id == n.SourceId && x.BrandId == brand && x.RevokedAt == null, ct)
+            return await cache.ReportActive(n.SourceId ?? Guid.Empty, brand.Value)
                 ? new("Markanız için yeni bir rapor paylaşıldı", "/portal") : null;
         }
         if (lockSource && db.Database.IsRelational()) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"PortalQuestions\" WHERE \"Id\" = {n.SourceId} FOR SHARE", ct);
-        var question = await db.PortalQuestions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == n.SourceId, ct);
+        var question = await cache.QuestionFor(n.SourceId);
         if (question is null) return null;
         if (lockSource && db.Database.IsRelational()) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"PortalReports\" WHERE \"Id\" = {question.ReportId} FOR SHARE", ct);
-        if (!await db.PortalReports.AnyAsync(x => x.Id == question.ReportId && x.BrandId == question.BrandId && x.RevokedAt == null, ct)) return null;
+        if (!await cache.QuestionReportActive(question)) return null;
         if (n.Kind == NotificationKind.PortalReply)
             return user.Role == "BrandClient" && question.UserId == user.Id && question.BrandId == brand
                 ? new("Sorunuza yeni bir yanıt geldi", "/portal") : null;
         return Manager(user) && (question.OwnerId == user.Id || question.OwnerId is null && user.Role == "Admin")
             ? new("Müşteri konuşmasında yeni bir mesaj var", "/portal-management") : null;
+    }
+
+    // Memoised lookups: a single Resolve call fills them one by one, ResolveMany fills them in bulk.
+    private sealed class ResolveCache(AppDbContext db, Guid userId, CancellationToken ct)
+    {
+        private bool _brandLoaded; private Guid? _brand;
+        private bool _dailyLoaded; private DateOnly[] _daily = [];
+        private readonly Dictionary<Guid, WorkTask?> _tasks = new();
+        private readonly HashSet<Guid> _knownTasks = [];
+        private readonly Dictionary<Guid, PortalQuestion?> _questions = new();
+        private readonly HashSet<Guid> _knownQuestions = [];
+        private readonly Dictionary<(Guid ReportId, Guid BrandId), bool> _reports = new();
+        private readonly HashSet<(Guid ReportId, Guid BrandId)> _knownReports = [];
+
+        public async Task<Guid?> Brand()
+        {
+            if (!_brandLoaded)
+            {
+                _brand = await db.PortalAccesses.Where(x => x.UserId == userId).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
+                _brandLoaded = true;
+            }
+            return _brand;
+        }
+
+        public async Task<DateOnly[]> DailyDates()
+        {
+            if (!_dailyLoaded)
+            {
+                _daily = await db.WorkTasks.Where(x => x.AssigneeId == userId && x.CompletedAt == null).Select(x => x.DueOn).ToArrayAsync(ct);
+                _dailyLoaded = true;
+            }
+            return _daily;
+        }
+
+        public Task PrefetchDailyDates() => DailyDates();
+
+        public async Task<WorkTask?> TaskFor(Guid? id)
+        {
+            if (id is null) return null;
+            if (_knownTasks.Contains(id.Value)) return _tasks[id.Value];
+            var task = await db.WorkTasks.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.AssigneeId == userId && x.CompletedAt == null, ct);
+            _tasks[id.Value] = task; _knownTasks.Add(id.Value);
+            return task;
+        }
+
+        public async Task PrefetchTasks(IEnumerable<Guid?> ids)
+        {
+            var wanted = ids.OfType<Guid>().Distinct().Where(x => !_knownTasks.Contains(x)).ToList();
+            if (wanted.Count == 0) return;
+            var found = await db.WorkTasks.AsNoTracking().Where(x => wanted.Contains(x.Id) && x.AssigneeId == userId && x.CompletedAt == null).ToListAsync(ct);
+            foreach (var id in wanted) { _tasks[id] = found.FirstOrDefault(x => x.Id == id); _knownTasks.Add(id); }
+        }
+
+        public async Task<PortalQuestion?> QuestionFor(Guid? id)
+        {
+            if (id is null) return null;
+            if (_knownQuestions.Contains(id.Value)) return _questions[id.Value];
+            var question = await db.PortalQuestions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+            _questions[id.Value] = question; _knownQuestions.Add(id.Value);
+            return question;
+        }
+
+        public async Task PrefetchQuestions(IEnumerable<Guid?> ids)
+        {
+            var wanted = ids.OfType<Guid>().Distinct().Where(x => !_knownQuestions.Contains(x)).ToList();
+            if (wanted.Count == 0) return;
+            var found = await db.PortalQuestions.AsNoTracking().Where(x => wanted.Contains(x.Id)).ToListAsync(ct);
+            foreach (var id in wanted) { _questions[id] = found.FirstOrDefault(x => x.Id == id); _knownQuestions.Add(id); }
+        }
+
+        public IReadOnlyList<PortalQuestion> LoadedQuestions() => _questions.Values.OfType<PortalQuestion>().ToList();
+
+        public async Task<bool> ReportActive(Guid reportId, Guid brandId)
+        {
+            var key = (reportId, brandId);
+            if (_knownReports.Contains(key)) return _reports[key];
+            var active = await db.PortalReports.AsNoTracking().AnyAsync(x => x.Id == reportId && x.BrandId == brandId && x.RevokedAt == null, ct);
+            _reports[key] = active; _knownReports.Add(key);
+            return active;
+        }
+
+        public async Task PrefetchReports(IEnumerable<(Guid ReportId, Guid BrandId)> pairs)
+        {
+            var wanted = pairs.Distinct().Where(x => !_knownReports.Contains(x)).ToList();
+            if (wanted.Count == 0) return;
+            var ids = wanted.Select(x => x.ReportId).ToList();
+            var active = await db.PortalReports.AsNoTracking().Where(x => ids.Contains(x.Id) && x.RevokedAt == null).Select(x => new { x.Id, x.BrandId }).ToListAsync(ct);
+            foreach (var pair in wanted) { _reports[pair] = active.Any(x => x.Id == pair.ReportId && x.BrandId == pair.BrandId); _knownReports.Add(pair); }
+        }
+
+        public Task PrefetchReportsFor(IReadOnlyList<PortalQuestion> questions) =>
+            PrefetchReports(questions.Select(x => (x.ReportId, x.BrandId)));
+
+        public Task<bool> QuestionReportActive(PortalQuestion question) => ReportActive(question.ReportId, question.BrandId);
     }
 }

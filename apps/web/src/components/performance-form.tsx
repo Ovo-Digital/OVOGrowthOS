@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, moneyPrecise, type SessionUser } from '@/lib/api';
 import { periodGroups, periodLabels, periodNumber, type PeriodField, type PeriodInput, type PeriodSnapshot } from '@/lib/period-input';
 import { Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
 type Deal = { id: string; brandId: string; name: string; currency: string; status: string; brand: { name: string } };
@@ -21,6 +22,7 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
   const allowed = me.data?.role === 'Admin' || me.data?.role === 'Partner';
   const deals = useQuery({ queryKey: ['deals'], queryFn: () => api<Deal[]>('/api/deals'), enabled: allowed && !baseline });
   useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const headers = baseline ? { 'If-Match': `"${baseline.updatedAt}"` } : undefined;
   async function preview() {
     if (inFlight.current || !form.current?.reportValidity()) return;
@@ -66,7 +68,7 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
     </Card>
     <fieldset disabled={busy} className="space-y-4">{periodGroups.map(g => <Card className="p-5" key={g.title}><h3 className="mb-4 font-semibold">{g.title}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{g.fields.map(key => <label key={key} className="text-sm">{periodLabels[key]}<input name={key} required inputMode="decimal" autoComplete="off" className="input mt-1" defaultValue={baseline ? String(baseline[key]).replace('.', ',') : ''}/></label>)}</div></Card>)}</fieldset>
     {error && <p role="alert" className="text-red-700">{error}</p>}
-    <div className="flex flex-wrap gap-3"><button type="submit" disabled={busy} className={button}>{busy ? 'İşlem yapılıyor…' : 'Hesabı kontrol et'}</button>{onCancel && <button type="button" disabled={busy} className={button} onClick={() => { if (!dirty || confirm('Değişiklikler kaydedilmedi. Düzenlemeden çıkmak istiyor musunuz?')) onCancel(); }}>Düzenlemeden çık</button>}</div>
+    <div className="flex flex-wrap gap-3"><button type="submit" disabled={busy} className={button}>{busy ? 'İşlem yapılıyor…' : 'Hesabı kontrol et'}</button>{onCancel && <button type="button" disabled={busy} className={button} onClick={async () => { if (dirty && !(await confirm({ title: 'Düzenlemeden çıksın mı?', message: 'Değişiklikler kaydedilmedi. Düzenlemeden çıkmak istiyor musunuz?' }))) return; onCancel(); }}>Düzenlemeden çık</button>}</div>
     {review && <Card className="space-y-3 border-green-700 p-5"><h3 className="font-semibold">Kaydetmeden önce son kontrol</h3><p>{review.name} · {review.input.month}/{review.input.year} · {review.currency}</p>
       <dl className="space-y-2">{[['Net ciro', review.result.netRevenue], ['Reklam gideri', review.result.totalAdSpend], ['OVO hakedişi', review.result.ovoFee], ['Markaya kalan katkı', review.result.brandContributionProfit]].map(([label, value]) => <div key={label} className="flex flex-wrap justify-between gap-2"><dt>{label}</dt><dd>{moneyPrecise(Number(value), review.currency)}</dd></div>)}</dl>
       <p className="text-sm">Bilgileri kaynak raporla kontrol ettiyseniz aşağıdaki düğmeyle taslağı kaydedin. Sonraki adım incelemeye göndermektir; onay ve kilit ayrıca yapılır.</p>

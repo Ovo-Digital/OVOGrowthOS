@@ -16,14 +16,16 @@ public static partial class WorkflowEndpoints
         group.MapGet("/", async (AppDbContext db, int page = 1, int pageSize = 20, string? search = null,
             MonthlyPerformanceStatus? status = null, int? year = null, int? month = null, string sort = "recent") =>
         {
-            var q = db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).Include(x => x.Adjustments).AsQueryable();
+            var q = db.MonthlyPerformances.AsNoTracking().AsQueryable();
             if (!string.IsNullOrWhiteSpace(search)) q = q.Where(x => EF.Functions.ILike(x.Brand!.Name, $"%{search}%"));
             if (status.HasValue) q = q.Where(x => x.Status == status);
             if (year.HasValue) q = q.Where(x => x.Year == year);
             if (month.HasValue) q = q.Where(x => x.Month == month);
             var ordered = sort switch { "oldest" => q.OrderBy(x => x.Year).ThenBy(x => x.Month), "name" => q.OrderBy(x => x.Brand!.Name),
                 "nameDesc" => q.OrderByDescending(x => x.Brand!.Name), _ => q.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month) };
-            return Results.Ok(await Page(ordered, page, pageSize));
+            var items = ordered.Select(x => new { x.Id, x.Year, x.Month, x.Status, x.NetRevenue, x.OvoFee, x.Mer, x.DealId,
+                Brand = new { x.Brand!.Id, x.Brand!.Name }, Deal = new { x.Deal!.Id, x.Deal!.Currency } });
+            return Results.Ok(await Page(items, page, pageSize));
         });
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
             await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).Include(x => x.Adjustments)

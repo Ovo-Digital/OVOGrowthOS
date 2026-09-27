@@ -4,7 +4,7 @@ Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi he
 
 Rehberde; uygulamanın ne işe yaradığı, hangi ekranda ne yapılması gerektiği, kararların nasıl oluştuğu ve bir markanın ilk görüşmeden aylık kapanış, tahsilat ve müşteriyle rapor paylaşımına kadar nasıl yönetildiği anlatılır.
 
-**İçerik güncellemesi: 26 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, aday hattında aşama geçmişi, kaynak ve kayıp takibini, görev şablonlarını ve haftalık ekip kapasitesini, hizmet kapsamını ve paket dışı talepleri, gerçekleşen saat girişini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, yenileme toplantı özetini, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini ve panelden e-posta ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
+**İçerik güncellemesi: 27 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, aday hattında aşama geçmişi, kaynak ve kayıp takibini, görev şablonlarını ve haftalık ekip kapasitesini, hizmet kapsamını ve paket dışı talepleri, gerçekleşen saat girişini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, yenileme toplantı özetini, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini, panelden e-posta ayarlarını ve marka bazında mağaza API ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
 
 Kullanım rehberi iç ekip içindir. Yönetici, iş ortağı ve analist hesapları giriş yaptıktan sonra açabilir; marka yetkilileri bu iç rehbere erişemez. Rehber yüklenemiyorsa güncel hesabınızla yeniden giriş yapın ve bağlantınızı kontrol edin. Sistem hesabınızı doğrulayamıyorsa içeriği göstermez.
 
@@ -147,6 +147,12 @@ Hesabınız kapatıldığında veya hesap bilgileriniz güncellendiğinde eski o
 
 Yönetici, **Ayarlar → Kullanıcılar** alanından her çalışan için kişiye özel hesap oluşturabilir. Ortak şifre kullanmayın. Rolünüz hangi ekranlarda değişiklik yapabileceğinizi belirler.
 
+### Onay pencereleri, liste durumları ve klavye kullanımı
+
+Riskli veya geri alınamaz bir işlem yaptığınızda (silme, arşivleme, anlaşmayı sonlandırma, yeniden davet gönderme, raporu yayından kaldırma gibi) tarayıcının küçük bildirim kutusu yerine uygulamanın kendi onay penceresi açılır. Pencerede **Vazgeç** ve işlemin adını taşıyan bir düğme bulunur; **Esc** tuşu da vazgeçmek için çalışır. Gerekçe, neden veya yeni bir değer girmeniz istenen yerlerde de aynı biçimde uygulamanın kendi penceresi açılır; boş bırakılamayacak alanlar varsa pencere sizi uyarır.
+
+Listelerde **yükleniyor**, **kayıt yok** ve **hata** durumları tüm ekranlarda aynı görünür. Geniş tablolar dar ekranlarda (telefonda) tablonun kendisi kaydırılarak taşmaz. Klavyeyle gezinirken **Tab** tuşu alanlar arasında sırayla ilerler ve seçili düğme veya bağlantı mavi bir çerçeveyle görünür.
+
 ### Hazır örnek portföyü kullanma
 
 Sistemi tanıyabilmeniz için farklı iş durumlarını gösteren gerçekçi bir örnek portföy hazırlanmıştır. Mevcut kayıtlar korunur; hazırlanan örnekler yeni gerçek marka kayıtlarından ayrı değerlendirilmelidir. Marka sayısı yeni kayıtlarla değişebilir; rehberdeki örnekleri güncel müşteri listeniz sanmayın.
@@ -215,9 +221,10 @@ Bu ekranı şu amaçlarla kullanın:
 - Yeni görüşülen markaları takip etmek,
 - sorumlu kişiyi ve iletişim bilgisini görmek,
 - son görüşmeyi, sonraki görüşme tarihini, takip adımını ve bekleme nedenini izlemek,
-- marka adına basarak takip bilgilerini düzenlemek veya marka sayfasından değerlendirmeyi başlatmak.
+- marka adına basarak takip bilgilerini düzenlemek veya marka sayfasından değerlendirmeyi başlatmak,
+- listede arama ve **takip aşaması** filtresiyle yalnız ilgilendiğiniz adayları görmek.
 
-“Bilgi bekleniyor” gibi **takip aşamaları**, markanın ticari durumundan ayrıdır. Takip aşamasını değiştirmek bir değerlendirmeyi onaylamaz ve anlaşmayı etkinleştirmez.
+“Bilgi bekleniyor” gibi **takip aşaması**, markanın ticari durumundan ayrıdır. Takip aşamasını değiştirmek bir değerlendirmeyi onaylamaz ve anlaşmayı etkinleştirmez. Arama ve aşama filtresi yalnız listeyi daraltır, hiçbir kaydı değiştirmez; sonuçlar sayfa sayfa gösterilir ve alttaki **Önceki** / **Sonraki** ile gezilir.
 
 ### Marka sorumlusu ve görüşme notları
 
@@ -280,6 +287,27 @@ Marka adına tıklandığında markanın özet sayfası açılır. Burada:
 görülebilir.
 
 Bu ekran, marka hakkında hızlı bir yönetim özeti almak için kullanılır.
+
+Aşağıdaki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın mağazasından (örneğin GrandNode panelinden) sipariş listesini okumak için gereken bağlantı bilgilerini kaydeder:
+
+- Mağaza adresi (https ile başlayan panel adresi),
+- Mağaza panelinde API Kullanıcılar bölümünde oluşturulan API kullanıcısının e-postası,
+- Bu API kullanıcısının şifresi.
+
+Şifre sunucuda şifreli saklanır, kayıttan sonra ekranda bir daha görünmez; alanı boş bırakmak kayıtlı şifreyi korur. **API ayarlarını kaydet** yalnız bilgileri saklar, bağlantıyı doğrulamaz. **Bağlantıyı doğrula** ise mağazadan geçici bir erişim jetonu isteyip sonucu bildirir; bir dakika içinde tekrar denenemez. Doğrulama yalnız bağlantıyı sınamaktan ibarettir, sipariş getirmez. Siparişlerin kendisi aşağıdaki **Mağaza siparişleri** bölümünden ayrıca getirilir; bu ayarlar bölümü hakediş veya dönem kapanışını etkilemez.
+
+### Mağaza siparişleri
+
+Aynı sayfadaki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgileri kullanılarak markanın mağazasından seçilen dönemin siparişleri salt okunur olarak getirilir:
+
+- Üstteki açılır listeden dönem (yıl ve ay) seçilir; dönem sınırları Türkiye saatiyle hesaplanır.
+- Siparişleri yenileme yalnız yönetici içindir; yönetici, iş ortağı ve analist aynı bilgileri okuyabilir.
+- Özet alanında sipariş sayısı, iptal hariç toplam tutar, iptal edilen siparişlerin adedi ve tutarı ile iade tutarı görünür. Panelde o ay için kayıtlı bir aylık sonuç varsa mağaza toplamıyla fark da gösterilir; bu fark yalnızca bilgilendirme amaçlıdır, otomatik hesap yapmaz.
+- Tabloda her siparişin numarası, tarihi, sipariş durumu, ödeme durumu ve tutarı yer alır; çok sayıda kayıtta sayfa değiştirilerek gezilir.
+- Aynı dönem ikinci kez getirildiğinde siparişler tekrarlanmaz, yalnız güncellenir; dönem dışında senkronizasyon o dönemin kayıtlarına dokunmaz.
+- Müşterinin adı, e-postası, adresi veya sipariş içeriği bu bölüme hiç çekilmez; yalnız sipariş numarası, tarih, durum ve tutar gibi bilgiler saklanır.
+- Getirilen siparişler **yalnız bilgi ve kontrol içindir**: hakedişe, aylık sonuca, marka hedeflerine veya anlaşma kayıtlarına otomatik yazılmaz. Dönem onayı ve kapanış ayrı ekranlardan elle yapılır.
+- Mağaza bağlantısı yanıt vermezse bölüm bir hata gösterir, var olan kayıtlar değişmez ve "Yeniden dene" ile tekrar denenebilir.
 
 ---
 
@@ -554,6 +582,8 @@ Performans payı olmadan yalnızca sabit aylık ücret uygulanır.
 Etkin bir anlaşması bulunan marka için her ay **Aylık sonuç gir** işlemi yapılır.
 
 Bu ekranda muhasebe, e-ticaret ve reklam platformlarındaki gerçekleşen değerler girilir.
+
+Önceki ayların listesinde marka adıyla arayabilir, duruma göre süzebilirsiniz. Bir bağlantı paylaşıldığında bağlantı içindeki arama kelimesi de uygulanır; sonuçlar sayfa sayfa gösterilir.
 
 ### Dönem bilgileri
 
@@ -1043,9 +1073,9 @@ Hesap daveti ve şifre yenileme kişinin istediği hesap işlemleridir; görev/r
 
 **Ne işe yarar?** Davet, şifre yenileme, görev/konuşma/rapor bildirimi ve deneme iletilerini tek ekranda görmenizi, durumlarını izlemenizi ve gerekçeli yeniden gönderim yapmanızı sağlar. Yalnız yöneticiye açıktır; sol menüde **Gönderim merkezi** olarak görünür.
 
-1. Üstteki kutulardan **Tür**, **Durum**, **Başlangıç**, **Bitiş** ve **Alıcı ara** filtrelerini kullanın. **Listeyi yenile** ile son durumları tekrar çekin.
+1. Üstteki kutulardan **Tür**, **Durum**, **Başlangıç**, **Bitiş** ve **Alıcı ara** filtrelerini kullanın. Filtreler tüm arşiv üzerinde arar; ekranda en fazla 500 eşleşen kayıt listelenir. **Listeyi yenile** ile son durumları tekrar çekin.
 2. Her iletide alıcı adresi, durum ve gönderim tarihi görünür. Karar verirken **durumun altındaki açıklama** satırını okuyun; buradaki metin durumun ne anlama geldiğini ve ne yapmanız gerektiğini söyler.
-3. Sağ üstteki sayılar durumların dağılımıdır. Liste 500 kayıtla sınırlıdır; geniş tarih aralığı yerine daraltarak arayın. Kayıt saklama süresi gerçek kullanıma göre belirlenir.
+3. Sağ üstteki sayılar durumların dağılımıdır. Kayıtlar sayfa sayfa gelir; alttaki **Önceki** / **Sonraki** ile gezinin, geniş tarih aralığı yerine filtreleri daraltarak arayın. Kayıt saklama süresi gerçek kullanıma göre belirlenir.
 4. Davet iletisi **Önceki daveti geçersiz kıl ve yenisini gönder** ile tekrarlanır; eski bağlantı geçersiz kalır ve işlem günlüğe gerekçesiyle yazılır.
 5. Bildirim iletileri için **Yeniden gönder** düğmesi bir gerekçe ister; gerekçe işlem geçmişinde saklanır. Gönderimden önce alıcının hesabı, marka erişimi, kişisel tercihi ve rapor durumu yeniden kontrol edilir; artık uygun değilse gönderim yapılmaz.
 6. **Gönderim deneniyor** durumundaki bir iletiye ikinci gönderim verilmez; bitmesini bekleyin. **Gönderilmeye başladı** ile **Gönderildi** aynı şey değildir.
@@ -1175,6 +1205,8 @@ Yönetici hesabınızda **Ayarlar → Hesap güvenliği** yolunu açın. Bu koru
 **Şifremi unuttum:** Şifre yenileme yalnız şifreyi değiştirir; iki aşamalı girişi kaldırmaz. Şifrenizi yeniledikten sonra telefon kodu veya kurtarma kodu gerekir. Rolünüz sonradan değişse de açılmış koruma girişte aranır.
 
 **Tek yöneticiysem:** Kurtarma kodları olmadan korumayı açmayın. Telefon ve bütün kurtarma kodları birlikte kaybolursa e-posta üzerinden güvenlik atlama yolu yoktur. Sunucu sorumlusunun kimlik/sahiplik doğrulaması yaptığı, yalnız bu hesaba yönelik kayıtlı bir kurtarma müdahalesi gerekir; teknik ekip için süreç `docs/HESAP_GUVENLIGI.md` dosyasında açıklanır. Veritabanını veya kullanıcıları silmek çözüm değildir.
+
+**Hatalı şifre denemeleri:** Yanlış şifre art arda beş kez girilirse hesap beş dakika kilitlenir; bu süre boyunca doğru şifre de kabul edilmez ve “Çok fazla hatalı deneme yapıldı” uyarısı görünür. Süre dolunca giriş kendiliğinden açılır; bildirmeniz veya ayrıca bir işlem yapmanız gerekmez. Kilit yalnız şifreyle girişi etkiler, açık oturumunuzu kapatmaz. Bir dakika içinde en fazla 10 giriş denemesi yapılabilir; bu sınırı aşarsanız “Çok sayıda giriş denemesi yapıldı” mesajını görürsünüz, bir dakika bekleyip yeniden deneyin. Sınır yalnız giriş denemelerini kapsar; açık oturumunuzdaki günlük işlemler devam eder.
 
 ### Bildirimler ve kişisel e-posta tercihleri
 
@@ -1777,7 +1809,7 @@ Kayıp kaydı markayı silmez veya arşivlemez. Aynı marka iki kez kayıp sayı
 
 OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akışını çalıştırır. Ancak aşağıdaki işler henüz tam otomatik değildir:
 
-- GrandNode, Shopify ve reklam platformlarından otomatik veri çekme (bağlantı bilgileri bekleniyor; bu faz kullanıcı onayıyla ertelendi, örnek veriler gerçek bağlantı gibi gösterilmez)
+- GrandNode dışındaki platformlardan otomatik veri çekme (GrandNode için marka detayındaki **Mağaza API ayarları** bağlantıyı, **Mağaza siparişleri** bölümü seçili dönemin siparişlerini salt okunur olarak çeker; çekilen siparişler yalnız kontrol içindir, hakedişe veya aylık sonuca otomatik yazılmaz. Shopify ve reklam platformları henüz bağlı değildir, örnek veriler gerçek bağlantı gibi gösterilmez)
 - Muhasebe veya fatura sistemi entegrasyonu
 - Sözleşme belgesi oluşturma ve elektronik imza
 - Kurumsal tek oturum açma ve çok şirketli kullanım (yönetici için isteğe bağlı iki aşamalı giriş; e-posta hizmeti açıksa davet ve şifre yenileme mevcuttur)

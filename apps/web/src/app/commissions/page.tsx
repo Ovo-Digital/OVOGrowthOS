@@ -3,9 +3,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, money, moneyPrecise, percent } from '@/lib/api';
-import { Badge, Card, PageHeader } from '@/components/ui/core';
+import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
 import {
-    EmptyState,
     ListControls,
     Pagination,
     Paged,
@@ -90,12 +89,12 @@ export default function Page() {
                     ]}
                 />
                 {isLoading ? (
-                    <p className="p-5 text-sm">Yükleniyor…</p>
+                    <LoadingState />
                 ) : error ? (
-                    <p className="p-5 text-[#d72c0d]">{error.message}</p>
+                    <ErrorState message={error.message} />
                 ) : data?.items.length ? (
                     <div className="table-scroll">
-                        <table className="w-full min-w-[1120px] text-left text-sm">
+                        <div className="overflow-x-auto"><table className="w-full min-w-[1120px] text-left text-sm">
                             <thead className="bg-[#f7f7f8] text-xs uppercase text-[#6d7175]">
                                 <tr>
                                     {[
@@ -166,12 +165,10 @@ export default function Page() {
                                     </tr>
                                 ))}
                             </tbody>
-                        </table>
+                        </table></div>
                     </div>
                 ) : (
-                    <EmptyState>
-                        Arama ve filtrelere uygun hakediş bulunamadı.
-                    </EmptyState>
+                    <EmptyState message="Arama ve filtrelere uygun hakediş bulunamadı." />
                 )}
                 {data && <Pagination {...data} onPage={setPage} />}
             </Card>

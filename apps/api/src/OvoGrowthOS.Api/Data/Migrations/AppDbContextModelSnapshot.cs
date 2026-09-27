@@ -244,6 +244,43 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("Brands", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandApiSettings", b =>
+                {
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ApiUser")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<DateTimeOffset?>("LastTestAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProtectedPassword")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StoreUrl")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("BrandId");
+
+                    b.ToTable("BrandApiSettings", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_BrandApiSettings_Revision", "\"Revision\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2441,6 +2478,70 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("ServiceCostReviews", "growth");
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.StoreOrderStaging", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrderStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("OrderTotal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("PaidAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("PlacedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("RefundedAmount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("SourceOrderId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceStoreId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "PlacedOnUtc");
+
+                    b.HasIndex("BrandId", "SourceOrderId")
+                        .IsUnique();
+
+                    b.ToTable("StoreOrderStagings", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_StoreOrderStaging_Amounts", "\"OrderTotal\" >= 0 AND \"PaidAmount\" >= 0 AND \"RefundedAmount\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.TargetAction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2878,6 +2979,15 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.BrandApiSettings", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithOne()
+                        .HasForeignKey("OvoGrowthOS.Domain.BrandApiSettings", "BrandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandContactNote", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.Brand", null)
@@ -3272,6 +3382,17 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasForeignKey("MonthlyPerformanceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.StoreOrderStaging", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Brand");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.TargetAction", b =>

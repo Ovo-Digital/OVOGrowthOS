@@ -70,18 +70,44 @@ public static partial class WorkflowEndpoints
         app.MapGet("/api/brands/{id:guid}/contact-notes", async (Guid id, AppDbContext db, int page = 1) => Results.Ok(await Page(
             db.BrandContactNotes.AsNoTracking().Where(x => x.BrandId == id).OrderByDescending(x => x.ContactOn).ThenByDescending(x => x.CreatedAt), page, 20))).RequireAuthorization("ReadAccess");
         app.MapPost("/api/brands/{id:guid}/contact-notes", AddContactNote).AddEndpointFilter<ValidationFilter<ContactNoteRequest>>().RequireAuthorization("OperationsWrite");
-        app.MapGet("/api/lead-follow-ups", async (AppDbContext db, int page = 1, int pageSize = 20) => Results.Ok(await Page(
+        app.MapGet("/api/lead-follow-ups", async (AppDbContext db, int page = 1, int pageSize = 20, string? search = null, LeadStage? stage = null) =>
+        {
+            var term = string.IsNullOrWhiteSpace(search) ? null : search.Trim().ToLower();
+            var source =
             from brand in db.Brands.AsNoTracking()
             where brand.Status == BrandStatus.Lead || brand.Status == BrandStatus.Evaluation || brand.Status == BrandStatus.Negotiation
+            where term == null || brand.Name.ToLower().Contains(term) || brand.ContactName.ToLower().Contains(term)
             join follow in db.BrandFollowUps on brand.Id equals follow.BrandId into follows
             from follow in follows.DefaultIfEmpty()
+            where !stage.HasValue || (follow != null && follow.Stage == stage.Value)
             orderby brand.UpdatedAt descending, brand.Id
-            select new { brand.Id, brand.Name, brand.Status, brand.ContactName, brand.ContactEmail,
-                followUp = follow, lastContactOn = db.BrandContactNotes.Where(x => x.BrandId == brand.Id).Max(x => (DateOnly?)x.ContactOn),
-                stageEnteredAt = db.BrandStageHistories.Where(h => h.BrandId == brand.Id && h.ExitedAt == null)
-                    .OrderByDescending(h => h.EnteredAt).Select(h => (DateTimeOffset?)h.EnteredAt).FirstOrDefault(),
-                stageEntryKnown = db.BrandStageHistories.Where(h => h.BrandId == brand.Id && h.ExitedAt == null)
-                    .OrderByDescending(h => h.EnteredAt).Select(h => (bool?)h.EntryKnown).FirstOrDefault() ?? false }, page, pageSize))).RequireAuthorization("ReadAccess");
+            select new { brand.Id, brand.Name, brand.Status, brand.ContactName, brand.ContactEmail, followUp = follow };
+            var size = Math.Clamp(pageSize, 1, 100);
+            var current = Math.Max(page, 1);
+            var total = await source.CountAsync();
+            var rows = await source.Skip((current - 1) * size).Take(size).ToListAsync();
+            var ids = rows.Select(x => x.Id).ToList();
+            Dictionary<Guid, DateOnly> contacts = [];
+            Dictionary<Guid, BrandStageHistory> stages = [];
+            if (ids.Count > 0)
+            {
+                contacts = await db.BrandContactNotes.AsNoTracking().Where(x => ids.Contains(x.BrandId))
+                    .GroupBy(x => x.BrandId).Select(g => new { g.Key, Last = g.Max(x => x.ContactOn) })
+                    .ToDictionaryAsync(x => x.Key, x => x.Last);
+                stages = (await db.BrandStageHistories.AsNoTracking()
+                    .Where(x => ids.Contains(x.BrandId) && x.ExitedAt == null).OrderByDescending(x => x.EnteredAt).ToListAsync())
+                    .GroupBy(x => x.BrandId).ToDictionary(g => g.Key, g => g.First());
+            }
+            var items = rows.Select(x =>
+            {
+                stages.TryGetValue(x.Id, out var entry);
+                return new { x.Id, x.Name, x.Status, x.ContactName, x.ContactEmail, followUp = x.followUp,
+                    lastContactOn = contacts.TryGetValue(x.Id, out var last) ? last : (DateOnly?)null,
+                    stageEnteredAt = (DateTimeOffset?)entry?.EnteredAt,
+                    stageEntryKnown = entry?.EntryKnown ?? false };
+            });
+            return Results.Ok(new { items, total, page = current, pageSize = size });
+        }).RequireAuthorization("ReadAccess");
     }
 
     private static async Task<IResult> ListWorkTasks(AppDbContext db, ClaimsPrincipal user, Guid? brandId = null,

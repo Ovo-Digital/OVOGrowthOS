@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type SessionUser } from '@/lib/api';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/core';
 
 type Preferences = { dailyTasksEmail: boolean; taskDueEmail: boolean; portalMessagesEmail: boolean; portalReportsEmail: boolean; revision: number };
 type Item = { id: string; title: string; href: string; createdAt: string; readAt: string | null; emailStatus: string | null };
@@ -25,15 +26,15 @@ export default function Notifications() {
     catch (e) { setMessage(e instanceof Error ? e.message : 'Bildirim güncellenemedi.'); }
     finally { setBusy(false); }
   }
-  if (list.isPending) return <p role="status">Bildirimler hazırlanıyor…</p>;
-  if (list.isError) return <div role="alert">Bildirimler alınamadı. <button className="underline" onClick={() => void list.refetch()}>Yeniden dene</button></div>;
+  if (list.isPending) return <LoadingState label="Bildirimler hazırlanıyor…" />;
+  if (list.isError) return <div><ErrorState message="Bildirimler alınamadı." /><div className="px-5 pb-5"><button className="underline" onClick={() => void list.refetch()}>Yeniden dene</button></div></div>;
   return <div className="space-y-5"><h1 className="text-2xl font-bold">Bildirimler</h1>
     <p className="text-sm text-[#6d7175]">Son 30 gündeki en yeni 100 kayıt gösterilir. Okundu işareti görevi tamamlamaz, raporu onaylamaz. Artık erişemediğiniz veya geçerliliği kalmayan bildirimler görünmez.</p>
     <button className="btn-secondary" disabled={list.isFetching || busy} onClick={() => void list.refetch()}>Bildirimleri yenile</button>
     {message && <p role="status">{message}</p>}
     {list.data.preferences && <PreferencesForm key={list.data.preferences.revision} value={list.data.preferences} customer={me.data?.role === 'BrandClient'} analyst={me.data?.role === 'Analyst'} ready={list.data.emailReady} onSaved={() => setMessage('Tercihleriniz kaydedildi.')} />}
     <h2 className="text-lg font-semibold">Size gelenler · {list.data.items.filter(x => !x.readAt).length} okunmamış</h2>
-    {!list.data.items.length && <p className="card p-5">Şu anda size gösterilecek bildirim yok. Bildirimler takip başladıktan sonraki olaylardan oluşur; eski konuşmaların tamamı burada görünmez.</p>}
+    {!list.data.items.length && <div className="card"><EmptyState message="Şu anda size gösterilecek bildirim yok. Bildirimler takip başladıktan sonraki olaylardan oluşur; eski konuşmaların tamamı burada görünmez." /></div>}
     {list.data.items.map(item => <article className="card space-y-2 p-4" key={item.id}>
       <h3 className="font-semibold">{!item.readAt && <span className="mr-2 text-[#008060]">Yeni</span>}{item.title}</h3>
       <p className="text-xs text-[#6d7175]">{new Date(item.createdAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })} (Türkiye)</p>

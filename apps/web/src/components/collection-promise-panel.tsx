@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, moneyPrecise, type SessionUser } from '@/lib/api';
 import { periodNumber } from '@/lib/period-input';
 import { Card } from '@/components/ui/core';
+import { useDialog } from '@/components/ui/modal';
 import { dayText, type Paged, type TeamMember } from '@/components/work-tasks';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 import type { CollectionBalance } from '@/components/collection-panel';
@@ -59,6 +60,7 @@ function PromiseForm({ mode, data, onClose, onSaved }: { mode: Mode; data: Promi
   const [dirty, setDirty] = useState(false); const [error, setError] = useState(''); const [page, setPage] = useState(1);
   const [note, setNote] = useState<Note | null>(data.promise ? { id: data.promise.contactNoteId, contactOn: data.promise.sourceContactOn, text: data.promise.sourceText } : null);
   useUnsavedChanges(dirty);
+  const { confirm } = useDialog();
   const team = useQuery({ queryKey: ['team'], queryFn: () => api<TeamMember[]>('/api/team'), enabled: mode === 'save' });
   const notes = useQuery({ queryKey: ['contact-notes', data.brandId, page], queryFn: () => api<Paged<Note>>(`/api/brands/${data.brandId}/contact-notes?page=${page}`), enabled: mode === 'save' });
   const save = useMutation({ mutationFn: (body: object) => api(`/api/performance/${data.id}/collection/promise${mode === 'save' ? '' : `/${mode}`}`, { method: mode === 'save' ? 'PUT' : 'POST', body: JSON.stringify(body) }), onSuccess: () => { setDirty(false); onSaved(); } });
@@ -90,7 +92,7 @@ function PromiseForm({ mode, data, onClose, onSaved }: { mode: Mode; data: Promi
       {mode !== 'task' ? <label className="sm:col-span-2">{mode === 'cancel' ? 'Kaldırma nedeni' : 'Kayıt veya değişiklik nedeni'}<textarea name="reason" className="input mt-1" required minLength={5} maxLength={1000} rows={3} /></label>
         : <label>Takip işinin son günü<input name="due" type="date" className="input mt-1" required min="2020-01-01" max="2100-12-31" /></label>}
       <label className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" required className="mt-1" /><span className="text-sm">Bilgileri kontrol ettim. Bu işlem tahsilat veya “ödendi” durumu oluşturmaz.</span></label>
-      <div className="flex flex-wrap gap-3 sm:col-span-2"><button className={button} disabled={mode === 'save' && (!note || !team.data || team.isError)}>{save.isPending ? 'Kaydediliyor…' : mode === 'save' ? 'Sözü kaydet' : mode === 'cancel' ? 'Gerekçeyle takipten kaldır' : 'Takip işini kaydet'}</button><button type="button" className={button} onClick={() => { if (!dirty || confirm('Yazdıklarınızı kaydetmeden kapatmak istiyor musunuz?')) onClose(); }}>Vazgeç</button></div>
+      <div className="flex flex-wrap gap-3 sm:col-span-2"><button className={button} disabled={mode === 'save' && (!note || !team.data || team.isError)}>{save.isPending ? 'Kaydediliyor…' : mode === 'save' ? 'Sözü kaydet' : mode === 'cancel' ? 'Gerekçeyle takipten kaldır' : 'Takip işini kaydet'}</button><button type="button" className={button} onClick={async () => { if (dirty && !(await confirm({ title: 'Form kapatılsın mı?', message: 'Yazdıklarınızı kaydetmeden kapatmak istiyor musunuz?' }))) return; onClose(); }}>Vazgeç</button></div>
     </fieldset>
     {(error || save.error || (mode === 'save' && team.error)) && <p role="alert" className="mt-3 text-red-700">{error || save.error?.message || team.error?.message} Kayıt değişmişse yazdıklarınızı kontrol edip formu kapatın ve bilgileri yenileyin.</p>}
   </form>;
