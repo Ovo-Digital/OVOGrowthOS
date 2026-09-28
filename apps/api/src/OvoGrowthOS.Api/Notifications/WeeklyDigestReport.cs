@@ -33,6 +33,10 @@ public static class WeeklyDigestReport
         await AppendTargetsAsync(db, today, body, ct);
         body.AppendLine();
 
+        body.AppendLine("5) Sistem sağlığı");
+        await AppendSystemHealthAsync(db, now, body, ct);
+        body.AppendLine();
+
         body.AppendLine($"Detaylar için sisteme giriş yapın: {webOrigin}/reports");
         body.AppendLine("E-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.");
         return body.ToString();
@@ -161,5 +165,35 @@ public static class WeeklyDigestReport
         }
         foreach (var line in lines.Take(10)) body.AppendLine(line);
         if (lines.Count > 10) body.AppendLine($"- … ve {lines.Count - 10} sapma daha.");
+    }
+
+    private static async Task AppendSystemHealthAsync(AppDbContext db, DateTimeOffset now, StringBuilder body, CancellationToken ct)
+    {
+        var since = now.AddDays(-7);
+        var failedMails = await db.UserNotifications.AsNoTracking()
+            .CountAsync(x => x.CreatedAt >= since && x.EmailStatus == MailDeliveryStatus.Uncertain, ct);
+        var syncAudits = await db.AuditRecords.AsNoTracking()
+            .Where(x => x.Action == "StoreOrdersAutoSync" && x.CreatedAt >= since)
+            .ToListAsync(ct);
+        var failedSyncs = new List<string>();
+        foreach (var audit in syncAudits)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(audit.NewValueJson);
+                if (doc.RootElement.TryGetProperty("failed", out var failed) && failed.GetInt32() > 0)
+                    failedSyncs.Add($"{audit.EntityId} ({failed.GetInt32()} marka)");
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
+        if (failedMails == 0 && failedSyncs.Count == 0)
+        {
+            body.AppendLine("Son 7 günde gönderilemeyen e-posta veya başarısız otomatik senkron yok.");
+            return;
+        }
+        if (failedMails > 0)
+            body.AppendLine($"- Gönderilemeyen veya doğrulanamayan e-posta: {failedMails} adet. Gönderim merkezinden inceleyin.");
+        if (failedSyncs.Count > 0)
+            body.AppendLine($"- Başarısız otomatik sipariş senkronu: {string.Join(", ", failedSyncs)}. Marka sayfasından elle tekrar deneyin.");
     }
 }

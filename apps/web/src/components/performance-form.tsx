@@ -70,6 +70,40 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
     } catch (e) { setError(e instanceof Error ? e.message : 'Ciro önerisi alınamadı.'); }
     finally { inFlight.current = false; setBusy(false); }
   }
+  async function pullAds() {
+    if (inFlight.current || busy || !form.current) return;
+    const f = new FormData(form.current);
+    let brandId = baseline?.brandId; let year = baseline?.year; let month = baseline?.month;
+    if (!baseline) {
+      const deal = deals.data?.find(d => d.id === String(f.get('dealId') ?? ''));
+      if (!deal) { setError('Reklam harcaması için önce etkin anlaşmayı seçin.'); return; }
+      brandId = deal.brandId; year = Number(f.get('year')); month = Number(f.get('month'));
+    }
+    if (!year || !month || month < 1 || month > 12) { setError('Önce geçerli bir yıl ve ay seçin.'); return; }
+    inFlight.current = true; setBusy(true); setError(''); setHint(''); setReview(null);
+    try {
+      const period = `${year}-${String(month).padStart(2, '0')}`;
+      const found: { platform: string; amount: number; currency: string }[] = [];
+      for (const platform of ['meta', 'google']) {
+        try {
+          found.push(await api<{ platform: string; amount: number; currency: string }>(`/api/brands/${brandId}/ad-spend?platform=${platform}&period=${period}`));
+        } catch (e) {
+          const message = e instanceof Error ? e.message : '';
+          if (message.includes('kayıtlı değil')) continue;
+          throw new Error(message || 'Reklam harcaması okunamadı.');
+        }
+      }
+      if (!found.length) { setHint('Meta veya Google bağlantıları kayıtlı değil. Harcamayı kaynak raporunuza göre elle girin.'); return; }
+      for (const s of found) {
+        const field = form.current.elements.namedItem(s.platform === 'meta' ? 'metaSpend' : 'googleSpend');
+        if (field instanceof HTMLInputElement) field.value = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 4 }).format(s.amount);
+      }
+      setDirty(true);
+      setHint('Getirildi: ' + found.map(s => `${s.platform === 'meta' ? 'Meta' : 'Google'} ${moneyPrecise(s.amount, s.currency)}`).join(' · ')
+        + '. Yazılan tutarları kontrol edip “Hesabı kontrol et” ile devam edin; kayıt kendiliğinden yapılmaz.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Reklam harcaması getirilemedi.'); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
   async function save() {
     if (inFlight.current || !review) return;
     inFlight.current = true; setBusy(true); setError('');
@@ -95,8 +129,11 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
           <label>Yıl<input name="year" type="number" min={2020} max={2100} required className="input mt-1" defaultValue={new Date().getFullYear()} disabled={busy}/></label>
           <label>Ay<input name="month" type="number" min={1} max={12} required className="input mt-1" defaultValue={new Date().getMonth() + 1} disabled={busy}/></label></div></>}
     <div className="mt-3 border-t pt-3">
-      <button type="button" className={button} disabled={busy} onClick={() => void suggest()}>Mağaza verisinden brüt satış öner</button>
-      <p className="mt-1 text-xs text-[#6d7175]">Mağazadan çekilmiş siparişlerden bu dönemin brüt satış tutarını alan yazar; reklam ayarları kayıtlıysa bunu da bildirir. Öneri otomatik kaydetmez, tutarı siz kontrol edersiniz.</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={button} disabled={busy} onClick={() => void suggest()}>Mağaza verisinden brüt satış öner</button>
+        <button type="button" className={button} disabled={busy} onClick={() => void pullAds()}>Reklam harcamasını getir</button>
+      </div>
+      <p className="mt-1 text-xs text-[#6d7175]">Mağazadan çekilmiş siparişlerden bu dönemin brüt satış tutarını alan yazar. “Reklam harcamasını getir” ise Meta/Google bağlantıları kayıtlıysa bu dönemin harcamasını ilgili alanlara yazar. Her ikisi de otomatik kaydetmez, yazılanı siz kontrol edersiniz.</p>
       {hint && <p role="status" className="mt-2 text-sm">{hint}</p>}
     </div>
     </Card>

@@ -159,4 +159,25 @@ public sealed class DataQualityTests
         Assert.Equal(HttpStatusCode.Forbidden, (await analyst.PostAsJsonAsync("/api/data-quality/track-task", new QualityTaskRequest(brand, 2026, 9, null, null))).StatusCode);
         await Db(f, async db => Assert.Empty(await db.WorkTasks.ToListAsync()));
     }
+
+    [Fact]
+    public async Task Connected_ad_settings_surface_the_pull_button_hint_in_the_alert()
+    {
+        await using var f = new WorkflowApiFactory();
+        var (brand, deal) = await SeedBrand(f, "Bağlantılı Marka", new DateOnly(2026, 1, 1));
+        await SeedPeriod(f, brand, deal, 2026, 9, p => { p.GrossSales = 10_000m; p.Vat = 1_000m; p.Orders = 10; });
+        using var admin = await Client(f);
+
+        using var before = JsonDocument.Parse(await admin.GetStringAsync("/api/data-quality?year=2026&month=9"));
+        Assert.DoesNotContain("Reklam harcamasını getir", Item(before, brand).GetProperty("alerts").GetRawText());
+
+        await Db(f, async db =>
+        {
+            db.BrandAdSettings.Add(new BrandAdSettings { BrandId = brand, Platform = AdPlatform.Meta, AccountId = "123" });
+            await db.SaveChangesAsync();
+        });
+
+        using var after = JsonDocument.Parse(await admin.GetStringAsync("/api/data-quality?year=2026&month=9"));
+        Assert.Contains("Reklam harcamasını getir", Item(after, brand).GetProperty("alerts").GetRawText());
+    }
 }

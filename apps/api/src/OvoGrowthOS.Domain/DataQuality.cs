@@ -20,7 +20,7 @@ public sealed record QualityReport(QualityPeriod Period, string Label, QualitySu
 public sealed record QualityInput(
     int Year, int Month, Guid BrandId, string BrandName, string Currency, Deal? Deal, MonthlyPerformance? Current, MonthlyPerformance? Previous,
     string Origin, string OriginDetail, string Responsible, Guid? ResponsibleId,
-    Guid? TaskId, bool TaskCompleted, decimal VatRate);
+    Guid? TaskId, bool TaskCompleted, decimal VatRate, bool AdConnected);
 
 public static class DataQuality
 {
@@ -146,8 +146,17 @@ public static class DataQuality
         if (current.GrossSales > 0 && current.TotalAdSpend == 0)
             alerts2.Add(new QualityAlert("missing_ads", "info",
                 "Brüt satış var ama reklam harcaması 0.",
-                "Reklam raporu girilmemişse harcama eksik görünür; reklam yoksa 0 doğru değerdir.",
-                "Reklam raporunu kontrol edin; harcama yoksa bunu ekipte teyit edin."));
+                input.AdConnected
+                    ? "Meta veya Google reklam bağlantısı kayıtlı; harcama bağlantıdan henüz getirilmemiş ya da bu ay reklam yapılmamış olabilir."
+                    : "Reklam raporu girilmemişse harcama eksik görünür; reklam yoksa 0 doğru değerdir.",
+                input.AdConnected
+                    ? "Aylık sonuç girişinde “Reklam harcamasını getir” düğmesiyle bağlantıdan okuyun; reklam yoksa 0'ı ekipte teyit edin."
+                    : "Reklam raporunu kontrol edin; harcama yoksa bunu ekipte teyit edin."));
+        if (input.AdConnected && current.TotalAdSpend == 0 && current.GrossSales == 0 && (returns > 0 || costs > 0))
+            alerts2.Add(new QualityAlert("ads_connected_missing", "info",
+                "Reklam bağlantısı kayıtlı ama bu ayın reklam harcaması 0.",
+                "Bağlantılı hesaptan harcama henüz getirilmemiş ya da bu ay gerçekten reklam yapılmamış olabilir.",
+                "Aylık sonuç girişinde “Reklam harcamasını getir” düğmesiyle bağlantıdan okuyun; reklam yoksa 0'ı kaynak raporuyla teyit edin."));
         if (current.GrossSales > 0 && costs == 0)
             alerts2.Add(new QualityAlert("missing_costs", "info",
                 "Brüt satış var ama gider raporu 0.",

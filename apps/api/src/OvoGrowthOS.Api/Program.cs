@@ -36,6 +36,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<NotificationMailQueue>();
 builder.Services.AddScoped<ScheduledReportQueue>();
 builder.Services.AddScoped<OvoGrowthOS.Api.Features.LeadTimeoutQueue>();
+builder.Services.AddScoped<OvoGrowthOS.Api.Notifications.StoreOrderSyncQueue>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<NotificationWorker>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<AccountMailWorker>();
 builder.Services.AddExceptionHandler<DatabaseExceptionHandler>();

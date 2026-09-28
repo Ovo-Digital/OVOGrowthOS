@@ -8,6 +8,7 @@ const labels: Record<string, string> = {
   BrandApiSettings: "Mağaza API ayarları",
   BrandApiSettingsChanged: "Mağaza API ayarları güncellendi",
   StoreOrdersSynced: "Mağaza siparişleri güncellendi",
+  StoreOrdersAutoSync: "Otomatik sipariş senkronu",
   BrandApiTestRequested: "Mağaza bağlantısı doğrulaması istendi",
   BrandApiTestAccepted: "Mağaza bağlantısı doğrulandı",
   BrandApiTestUncertain: "Mağaza bağlantısı doğrulanamadı",

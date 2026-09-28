@@ -17,20 +17,37 @@ type Report = {
   coverage: { recordedBrands: number; selectedBrands: number; expectedBrands: number; missingBrands: { brandId: string; name: string }[]; unknownStartDateBrands: number; unclosedRecords: number };
   concentrationRisk: string; largestClientRevenueShare: number; largestClientOvoFeeShare: number; top3RevenueConcentration: number; top3OvoRevenueConcentration: number;
   trends: ReportTrend[]; dealModelDistribution: { dealType: string; count: number }[];
+  currencyTotals: { currency: string; netRevenue: number; ovoFee: number; recordCount: number }[];
+  conversion: { target: string; rates: Record<string, number>; missing: string[]; netRevenue: number | null; ovoFee: number | null } | null;
   brands: { id: string; brandId: string; name: string; status: string; netRevenue: number; ovoFee: number; ovoGrossProfit: number; ovoInternalCost: number; mer: number | null; contributionMargin: number | null; health: string }[];
 };
 const scopes = [['Closed', 'Kapanmış dönemler'], ['Approved', 'Onaylı, henüz kilitlenmemiş'], ['Preparation', 'Hazırlık ve kontrol aşaması'], ['All', 'Tüm kayıtlar (taslaklar dahil)']] as const;
-const ratio = (value: number | null) => value === null ? 'Hesaplanamıyor' : percent(value);
+  const ratio = (value: number | null) => value === null ? 'Hesaplanamıyor' : percent(value);
 
 export function PortfolioReportView({ title, brandId, showCharts = false }: { title: string; brandId?: string; showCharts?: boolean }) {
   const [period, setPeriod] = useState('');
   const [scope, setScope] = useState('Closed');
   const [currency, setCurrency] = useState('');
+  const [rateDraft, setRateDraft] = useState<Record<string, string>>({});
+  const [convertTarget, setConvertTarget] = useState('');
+  const [conversionRequest, setConversionRequest] = useState<{ target: string; rates: string } | null>(null);
   const parameters = new URLSearchParams({ scope });
   if (period) { const [year, month] = period.split('-'); parameters.set('year', year); parameters.set('month', month); }
   if (currency) parameters.set('currency', currency);
   if (brandId) parameters.set('brandId', brandId);
-  const report = useQuery({ queryKey: ['dashboard', period, scope, currency, brandId], queryFn: () => api<Report>(`/api/dashboard?${parameters}`) });
+  if (conversionRequest) { parameters.set('convertTo', conversionRequest.target); parameters.set('manualRates', conversionRequest.rates); }
+  const report = useQuery({ queryKey: ['dashboard', period, scope, currency, brandId, conversionRequest], queryFn: () => api<Report>(`/api/dashboard?${parameters}`) });
+  const trendNote = (() => {
+    const points = (report.data?.trends ?? []).filter(t => t.netRevenue !== null);
+    if (points.length < 6) return '';
+    const average = (rows: typeof points) => rows.reduce((sum, t) => sum + (t.netRevenue ?? 0), 0) / rows.length;
+    const previous = average(points.slice(-6, -3));
+    const latest = average(points.slice(-3));
+    if (previous === 0) return 'Son 6 ayda veri var ama önceki 3 ayın ortalaması sıfır; basit trend karşılaştırması yapılamıyor. Bu bir tahmin değildir.';
+    const change = (latest - previous) / previous;
+    const direction = change > 0.005 ? 'yükseliyor' : change < -0.005 ? 'düşüyor' : 'neredeyse aynı kaldı';
+    return <>Son 3 ayın ortalama net cirosu önceki 3 aya göre <strong>{percent(Math.abs(change))}</strong> {direction} ({moneyPrecise(previous, report.data?.currency)} → {moneyPrecise(latest, report.data?.currency)}). Bu değer yalnız kayıtlı veriden hesaplanan basit bir trenddir; gelecek dönem için tahmin değildir.</>;
+  })();
   const data = report.data;
   const amount = (value: number) => money(value, data?.currency);
   const hasData = !!data?.totals.recordCount;
@@ -66,6 +83,27 @@ export function PortfolioReportView({ title, brandId, showCharts = false }: { ti
         <MetricCard label="MARKALARA KALAN KATKI" value={hasData ? amount(data.totals.brandContributionProfit) : 'Veri yok'} />
       </div>
       <p className="mt-3 text-xs text-[#6d7175]">OVO brüt kârı, kayıttaki hakedişten hizmet maliyeti çıkarılarak hesaplanır; bu maliyet mevcut sistemde anlaşmadaki tahmindir. Vergi sonrası net kâr veya banka bakiyesi değildir. Eski dönem hesapları bu rapor açılırken yeniden hesaplanmaz.</p>
+      {data.currencyTotals.length > 0 && <Card className="mt-4 p-5">
+        <h2 className="font-semibold">Para birimi bazında toplamlar</h2>
+        <p className="mt-1 text-xs text-[#6d7175]">Seçili dönem ({periodLabel}) ve kapsam için her para birimi ayrı toplanır; farklı para birimleri birbiriyle toplanmaz.</p>
+        <div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr>{['Para birimi', 'Net ciro', 'OVO hakedişi', 'Dönem kaydı'].map(h => <th className="border-b py-2 pr-3" key={h}>{h}</th>)}</tr></thead>
+          <tbody>{data.currencyTotals.map(row => <tr key={row.currency}><td className="border-b py-2 pr-3 font-semibold">{row.currency}</td><td className="border-b py-2 pr-3">{money(row.netRevenue, row.currency)}</td><td className="border-b py-2 pr-3">{money(row.ovoFee, row.currency)}</td><td className="border-b py-2">{row.recordCount}</td></tr>)}</tbody></table></div>
+        {data.currencyTotals.length > 1 && (() => { const target = convertTarget || data.currency; return <div className="mt-4 rounded-lg border p-3">
+          <h3 className="text-sm font-semibold">Manuel kurla genel toplam</h3>
+          <p className="mt-1 text-xs text-[#6d7175]">Kurlar elle girilir; sistemden canlı kur çekilmez. Genel toplam açıklayıcı bir tahmindir; mali rapor, fatura veya banka bakiyesi değildir.</p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label><span className="label">Toplam para birimi</span><select className="input mt-1.5" value={target} onChange={e => { setConvertTarget(e.target.value); setConversionRequest(null); }}>{data.currencyTotals.map(row => <option key={row.currency}>{row.currency}</option>)}</select></label>
+            {data.currencyTotals.filter(row => row.currency !== target).map(row => <label key={row.currency}><span className="label">1 {row.currency} = ? {target}</span><input className="input mt-1.5 w-32" inputMode="decimal" placeholder="ör. 38,5" value={rateDraft[row.currency] ?? ''} onChange={e => setRateDraft(r => ({ ...r, [row.currency]: e.target.value }))} /></label>)}
+            <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => { const rates = data.currencyTotals.filter(r => r.currency !== target).map(r => `${r.currency}=${(rateDraft[r.currency] || '').trim()}`).filter(x => !x.endsWith('=')).join(','); setConversionRequest({ target, rates }); }}>Genel toplamı hesapla</button>
+          </div>
+          {data.conversion && (data.conversion.missing.length > 0
+            ? <p role="alert" className="mt-3 text-sm text-[#8e1f0b]">Şu para birimleri için kur girilmedi: {data.conversion.missing.join(', ')}. Genel toplam hesaplanmadı.</p>
+            : <div className="mt-3 rounded-lg border bg-[#f7f7f8] p-3 text-sm">
+                <p><strong>Genel toplam (net ciro): {moneyPrecise(data.conversion.netRevenue ?? 0, data.conversion.target)}</strong> · OVO hakedişi: {moneyPrecise(data.conversion.ovoFee ?? 0, data.conversion.target)}</p>
+                <p className="mt-1 text-xs text-[#6d7175]">{Object.keys(data.conversion.rates).length === 0 ? 'Başka para birimi yok; toplam doğrudan dönem toplamıdır.' : <>Kullanılan manuel kurlar: {Object.entries(data.conversion.rates).map(([c, r]) => `1 ${c} = ${r}`).join(' · ')}</>}</p>
+              </div>)}
+        </div>; })()}
+      </Card>}
       <Card className="mt-4 p-5"><h2 className="font-semibold">Bu ayın kapanış aşamaları</h2><div className="mt-3 grid gap-3 sm:grid-cols-3">{[['Kapanmış', data.stages.closed], ['Onaylı, kilit bekliyor', data.stages.approved], ['Hazırlık / kontrol', data.stages.preparation]].map(([label, value]) => { const totals = value as Totals; return <div className="rounded-lg border p-3" key={String(label)}><p className="text-sm">{String(label)}</p><p className="mt-1 font-semibold">{totals.recordCount ? amount(totals.ovoFee) : 'Kayıt yok'}</p><p className="text-xs text-[#6d7175]">{totals.recordCount} dönem kaydı</p></div>; })}</div></Card>
       <Card className="mt-4 p-5"><h2 className="font-semibold">Hakediş ve tahsilat ayrımı</h2><dl className="mt-3 space-y-3 text-sm">{[
         ['Seçili aydan kalan alacak', moneyPrecise(data.periodOutstandingCommission, data.currency)],
@@ -81,7 +119,8 @@ export function PortfolioReportView({ title, brandId, showCharts = false }: { ti
       {showCharts && <>
         <Card className="mt-4 p-5"><h2 className="font-semibold">Ciro ve kâr gelişimi</h2><p className="mb-4 mt-1 text-xs text-[#6d7175]">Seçili ayda biten son 12 ay · {stageName}. Veri olmayan aylar boş bırakılır.</p><DashboardChart data={data.trends} currency={data.currency} /></Card>
         <Card className="mt-4 p-5"><h2 className="mb-4 font-semibold">Verimlilik gelişimi</h2><DashboardRatioChart data={data.trends} /></Card>
-        <Card className="mt-4 p-5"><h2 className="font-semibold">Portföy ve güncel iş durumu</h2><p className="mt-2 text-sm">Bugün etkin marka: {data.activeBrands}. Seçili kapsamda müşteri yoğunlaşma riski: {turkce(data.concentrationRisk)}.</p><p className="mt-2 text-sm">En büyük müşterinin hakediş payı: {hasData && data.totals.ovoFee > 0 ? percent(data.largestClientOvoFeeShare) : 'Hesaplanamıyor'} · En büyük üç müşterinin payı: {hasData && data.totals.ovoFee > 0 ? percent(data.top3OvoRevenueConcentration) : 'Hesaplanamıyor'}.</p><p className="mt-2 text-sm">Etkin anlaşma modelleri: {data.dealModelDistribution.map(x => `${turkce(x.dealType)} (${x.count})`).join(', ') || 'Etkin anlaşma yok'}.</p></Card>
+        {trendNote && <p className="mt-3 rounded-lg border bg-[#f7f7f8] p-3 text-sm">{trendNote}</p>}
+        {!brandId && <Card className="mt-4 p-5"><h2 className="font-semibold">Portföy ve güncel iş durumu</h2><p className="mt-2 text-sm">Bugün etkin marka: {data.activeBrands}. Seçili kapsamda müşteri yoğunlaşma riski: {turkce(data.concentrationRisk)}.</p><p className="mt-2 text-sm">En büyük müşterinin hakediş payı: {hasData && data.totals.ovoFee > 0 ? percent(data.largestClientOvoFeeShare) : 'Hesaplanamıyor'} · En büyük üç müşterinin payı: {hasData && data.totals.ovoFee > 0 ? percent(data.top3OvoRevenueConcentration) : 'Hesaplanamıyor'}.</p><p className="mt-2 text-sm">Etkin anlaşma modelleri: {data.dealModelDistribution.map(x => `${turkce(x.dealType)} (${x.count})`).join(', ') || 'Etkin anlaşma yok'}.</p></Card>}
       </>}
     </>}
   </div>;

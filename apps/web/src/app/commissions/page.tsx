@@ -49,12 +49,17 @@ export default function Page() {
             ),
     });
     return (
-        <>
-            <PageHeader
-                title="Hakedişler"
-                description="Hakediş, parçalı ödeme ve kalan alacağı ayrı takip edin. Fatura ve ödeme eklemek için ilgili ayı açın. Tutarlar KDV hariçtir."
-            />
-            <Link href="/commissions/planning" className="mb-4 inline-block text-sm font-semibold underline">Alacak yaşı ve vade takvimini aç</Link>
+        <div className="commission-document">
+            <div className="report-controls">
+                <PageHeader
+                    title="Hakedişler"
+                    description="Hakediş, parçalı ödeme ve kalan alacağı ayrı takip edin. Fatura ve ödeme eklemek için ilgili ayı açın. Tutarlar KDV hariçtir."
+                />
+                <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <Link href="/commissions/planning" className="text-sm font-semibold underline">Alacak yaşı ve vade takvimini aç</Link>
+                    <button className="rounded-lg bg-[#303030] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={!data} onClick={() => window.print()}>PDF’ye kaydet / yazdır</button>
+                    <p className="text-xs text-[#6d7175]">Yazdırma, seçili filtrenin açık sayfasındaki kayıtları ve özet satırlarını içerir.</p>
+                </div>
             <Card className="mb-4 p-4">
                 <div className="flex flex-wrap items-end gap-3">
                     <label><span className="label">Dönem (boşsa tüm aylar)</span><input type="month" className="input mt-1.5" min="2020-01" max="2100-12" value={period} onChange={e => { setPeriod(e.target.value); setPage(1); }} /></label>
@@ -66,7 +71,9 @@ export default function Page() {
                 {data && <p className="mt-3 text-sm"><strong>Filtreye uyan toplam hakediş: {data.summary.recordCount ? money(data.summary.ovoFee, data.currency) : 'Kayıt yok'}</strong> · {data.summary.recordCount} kayıt, tüm sayfalar dahil. {scope !== 'Closed' && 'Bu toplamın tamamı kapanmış veya tahsil edilmiş hakediş değildir.'}</p>}
                 {data && <p className="mt-2 text-sm">Aynı filtredeki kapanmış kayıtlar · Ödenen: {moneyPrecise(data.paid, data.currency)} · Kalan: {moneyPrecise(data.outstanding, data.currency)} · Bugün vadesi geçmiş kalan: {moneyPrecise(data.overdue, data.currency)}. Eski tarihsiz ödenmişler, ödenen toplamına dahildir.</p>}
             </Card>
+            </div>
             <Card className="overflow-hidden">
+                <div className="report-controls">
                 <ListControls
                     sort={sort}
                     onSort={(value) => { setSort(value); setPage(1); }}
@@ -88,6 +95,7 @@ export default function Page() {
                         ['Paid', 'Ödendi'],
                     ]}
                 />
+                </div>
                 {isLoading ? (
                     <LoadingState />
                 ) : error ? (
@@ -170,8 +178,9 @@ export default function Page() {
                 ) : (
                     <EmptyState message="Arama ve filtrelere uygun hakediş bulunamadı." />
                 )}
-                {data && <Pagination {...data} onPage={setPage} />}
+                {data && <div className="report-controls"><Pagination {...data} onPage={setPage} /></div>}
             </Card>
-        </>
+            <style>{`@media print { @page { size: A4 landscape; margin: 10mm; } body:has(.commission-document) aside, body:has(.commission-document) header:not(.report-heading), .report-controls { display: none !important; } body:has(.commission-document) .lg\\:ml-\\[240px\\] { margin-left: 0 !important; } body:has(.commission-document) main { max-width: none !important; padding: 0 !important; } .commission-document { font-size: 8.5pt; } .commission-document table { min-width: 0 !important; } .commission-document .table-scroll, .commission-document .overflow-x-auto { overflow: visible !important; } .commission-document thead { display: table-header-group; } tr { break-inside: avoid; } a { color: inherit !important; text-decoration: none !important; } }`}</style>
+        </div>
     );
 }

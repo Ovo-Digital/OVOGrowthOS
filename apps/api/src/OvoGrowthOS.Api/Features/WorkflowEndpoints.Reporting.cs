@@ -56,7 +56,8 @@ public static partial class WorkflowEndpoints
     }
 
     private static async Task<IResult> PortfolioReport(AppDbContext db, int? year = null, int? month = null,
-        ReportScope scope = ReportScope.Closed, Guid? brandId = null, string? currency = null)
+        ReportScope scope = ReportScope.Closed, Guid? brandId = null, string? currency = null,
+        string? convertTo = null, string? manualRates = null)
     {
         if (year.HasValue != month.HasValue || year is < 2020 or > 2100 || month is < 1 or > 12 || !Enum.IsDefined(scope))
             return Results.BadRequest(new { error = "Geçerli bir yıl, ay ve rapor kapsamı seçin." });
@@ -70,11 +71,12 @@ public static partial class WorkflowEndpoints
             .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync();
         var currencies = deals.Select(x => x.Currency.ToUpperInvariant()).Append(currency).Distinct().Order().ToArray();
         deals = deals.Where(x => string.Equals(x.Currency, currency, StringComparison.OrdinalIgnoreCase)).ToList();
-        var history = await db.MonthlyPerformances.AsNoTracking()
+        var allHistory = await db.MonthlyPerformances.AsNoTracking()
             .Include(x => x.Brand)!.ThenInclude(x => x!.Economics)
             .Include(x => x.Deal)!.ThenInclude(x => x!.Conditions)
             .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
-            .Where(x => (!brandId.HasValue || x.BrandId == brandId) && x.Deal!.Currency.ToUpper() == currency).ToListAsync();
+            .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync();
+        var history = allHistory.Where(x => x.Deal is not null && string.Equals(x.Deal.Currency, currency, StringComparison.OrdinalIgnoreCase)).ToList();
         var periods = history.Select(x => new ReportPeriod(x.Year, x.Month)).Distinct()
             .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).ToList();
         var period = year.HasValue ? new ReportPeriod(year.Value, month!.Value) : periods.FirstOrDefault();
@@ -93,9 +95,52 @@ public static partial class WorkflowEndpoints
         var scores = await db.Evaluations.Where(x => (!brandId.HasValue || x.BrandId == brandId) &&
             (x.Status == EvaluationStatus.Approved || x.Status == EvaluationStatus.Analyzed)).Select(x => x.PartnershipScore).ToListAsync();
 
+        var perCurrency = new List<(string Currency, decimal NetRevenue, decimal OvoFee, int RecordCount)>();
+        if (period is not null)
+            perCurrency.AddRange(allHistory
+                .Where(x => x.Year == period.Year && x.Month == period.Month && x.Deal is not null && PortfolioReporting.Matches(x.Status, scope))
+                .GroupBy(x => x.Deal!.Currency.ToUpperInvariant())
+                .Select(g => (Currency: g.Key, NetRevenue: g.Sum(x => x.NetRevenue), OvoFee: g.Sum(x => x.OvoFee), RecordCount: g.Count()))
+                .OrderBy(x => x.Currency));
+        object? conversion = null;
+        if (convertTo is not null)
+        {
+            convertTo = convertTo.Trim().ToUpperInvariant();
+            if (convertTo.Length != 3 || !convertTo.All(char.IsAsciiLetter))
+                return Results.BadRequest(new { error = "Genel toplam para birimi üç harfli olmalı." });
+            var rates = new Dictionary<string, decimal>();
+            foreach (var entry in (manualRates ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var parts = entry.Split('=', 2, StringSplitOptions.TrimEntries);
+                var code = parts[0].ToUpperInvariant();
+                if (parts.Length != 2 || code.Length != 3 || !code.All(char.IsAsciiLetter) ||
+                    !decimal.TryParse(parts[1].Replace(',', '.'), System.Globalization.NumberStyles.Number,
+                        System.Globalization.CultureInfo.InvariantCulture, out var rate) || rate <= 0)
+                    return Results.BadRequest(new { error = "Kurları şu biçimde girin: USD=38.5 (birden çok para birimini virgülle ayırın)." });
+                rates[code] = rate;
+            }
+            var present = perCurrency.Select(x => x.Currency).ToHashSet();
+            var missingCurrencies = present.Where(c => c != convertTo && !rates.ContainsKey(c)).Order().ToList();
+            decimal? netTotal = null, feeTotal = null;
+            if (missingCurrencies.Count == 0)
+            {
+                netTotal = perCurrency.Sum(x => x.NetRevenue * (x.Currency == convertTo ? 1m : rates[x.Currency]));
+                feeTotal = perCurrency.Sum(x => x.OvoFee * (x.Currency == convertTo ? 1m : rates[x.Currency]));
+            }
+            conversion = new
+            {
+                target = convertTo,
+                rates = rates.Where(kv => present.Contains(kv.Key)).OrderBy(kv => kv.Key)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value),
+                missing = missingCurrencies, netRevenue = netTotal, ovoFee = feeTotal
+            };
+        }
+
         return Results.Ok(new
         {
             period, periods, scope, currency, currencies, totals,
+            currencyTotals = perCurrency.Select(x => new { currency = x.Currency, netRevenue = x.NetRevenue, ovoFee = x.OvoFee, recordCount = x.RecordCount }),
+            conversion,
             activeBrands = await db.Brands.CountAsync(x => x.Status == BrandStatus.Active && (!brandId.HasValue || x.Id == brandId)),
             portfolioNetRevenue = totals.NetRevenue, ovoMonthlyRevenue = totals.OvoFee,
             ovoGrossProfit = totals.OvoGrossProfit, ovoGrossMargin = totals.OvoMargin, portfolioMer = totals.Mer,

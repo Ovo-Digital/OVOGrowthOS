@@ -32,6 +32,7 @@ public static partial class WorkflowEndpoints
     {
         var portal = app.MapGroup("/api/portal").RequireAuthorization("PortalAccess");
         portal.MapGet("/trend", ReadPortalTrend);
+        portal.MapGet("/balance", ReadPortalBalance);
         portal.MapGet("/", async (AppDbContext db, ClaimsPrincipal user) =>
         {
             var brandId = await PortalBrand(db, user); var actor = Guid.Parse(user.FindFirstValue("uid")!);
@@ -166,6 +167,42 @@ public static partial class WorkflowEndpoints
         return db.PortalAccesses.Where(x => x.UserId == id).Select(x => x.BrandId).SingleAsync();
     }
     private static PortalReportSnapshot ReadPortalSnapshot(PortalReport report) => JsonSerializer.Deserialize<PortalReportSnapshot>(report.SnapshotJson, Json)!;
+
+    private static async Task<IResult> ReadPortalBalance(AppDbContext db, ClaimsPrincipal user)
+    {
+        var brandId = await PortalBrand(db, user);
+        var today = TeamWork.Today(DateTimeOffset.UtcNow);
+        var rows = await db.MonthlyPerformances.AsNoTracking()
+            .Include(x => x.Deal)
+            .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
+            .Include(x => x.Collection)!.ThenInclude(x => x!.Promise)
+            .Where(x => x.BrandId == brandId && (x.Status == MonthlyPerformanceStatus.Locked ||
+                x.Status == MonthlyPerformanceStatus.Invoiced || x.Status == MonthlyPerformanceStatus.Paid))
+            .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
+            .ToListAsync();
+        var items = rows.Select(p => (Period: p, Balance: Collections.Balance(p, today)))
+            .Where(x => x.Balance.Outstanding > 0)
+            .Select(x =>
+            {
+                var promise = x.Period.Collection?.Promise;
+                var expectation = promise is null ? null : CollectionPromises.Balance(x.Period, today);
+                return new
+                {
+                    year = x.Period.Year, month = x.Period.Month,
+                    currency = x.Period.Collection?.Currency ?? x.Period.Deal?.Currency ?? "",
+                    receivable = x.Balance.Receivable, paid = x.Balance.Paid, outstanding = x.Balance.Outstanding,
+                    overdueDays = x.Balance.OverdueDays, dueOn = x.Period.Collection?.DueOn,
+                    promise = promise is null || expectation is null || expectation.State == "Cancelled" ? null :
+                        new { amount = promise.Amount, promisedOn = promise.PromisedOn, remaining = expectation.Remaining, state = expectation.State }
+                };
+            }).ToList();
+        var totals = items.GroupBy(x => x.currency).Select(g => new
+        {
+            currency = g.Key, outstanding = g.Sum(x => x.outstanding),
+            overdue = g.Sum(x => x.overdueDays > 0 ? x.outstanding : 0m)
+        }).OrderBy(x => x.currency).ToList();
+        return Results.Ok(new { items, totals });
+    }
 
     private static async Task<IResult> ReadPortalTrend(AppDbContext db, ClaimsPrincipal user, int endYear, int endMonth, int months = 3, string? currency = null)
     {

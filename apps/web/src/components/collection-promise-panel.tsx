@@ -31,7 +31,7 @@ export function CollectionPromisePanel({ id }: { id: string }) {
   };
   return <Card className="mt-5 p-5"><section id="payment-promise" className="scroll-mt-5">
     <div className="flex flex-wrap justify-between gap-3"><h2 className="text-lg font-semibold">Ödeme sözü ve takip</h2><Link className="text-sm underline" href="/guide#odeme-sozu-ve-takip">Nasıl kullanılır?</Link></div>
-    <p className="my-3 text-sm">Markanın bildirdiği tutar ve tarihtir; banka bakiyesi, tahsilat veya ödeme garantisi değildir. Vade değişmez. Müşteri portalında paylaşılmaz.</p>
+    <p className="my-3 text-sm">Markanın bildirdiği tutar ve tarihtir; banka bakiyesi, tahsilat veya ödeme garantisi değildir. Vade değişmez. Müşteri portalında yalnız kalan tutar, tarih ve durum olarak görünür; iç notlar ve kaynak metin paylaşılmaz.</p>
     {message && <p role="status" className="mb-3">{message}</p>}
     {query.isPending ? <p role="status">Ödeme sözü yükleniyor…</p> : query.isError ? <p role="alert">{query.error.message}</p> : data && <>
       {data.promise ? <div className="space-y-2 rounded-lg border p-4 text-sm"><strong>{promiseState(data.expectation?.state ?? '')}</strong>

@@ -26,7 +26,7 @@ public sealed class DataQualityTests
         };
 
     private static QualityInput Input(int year, int month, Deal? deal, MonthlyPerformance? current, MonthlyPerformance? previous = null,
-        decimal vatRate = .20m) => new(year, month, Guid.NewGuid(), "Lale", "TRY", deal, current, previous, "manual", "", "", null, null, false, vatRate);
+        decimal vatRate = .20m, bool adConnected = false) => new(year, month, Guid.NewGuid(), "Lale", "TRY", deal, current, previous, "manual", "", "", null, null, false, vatRate, adConnected);
 
     private static QualityAlert Find(BrandQuality quality, string code) => quality.Alerts.Single(x => x.Code == code);
 
@@ -172,5 +172,28 @@ public sealed class DataQualityTests
         Assert.Equal(new QualityPeriod(2026, 12), DataQuality.Previous(new QualityPeriod(2027, 1)));
         Assert.Equal(new QualityPeriod(2026, 8), DataQuality.Previous(new QualityPeriod(2026, 9)));
         Assert.Equal("Eylül 2026", DataQuality.Label(2026, 9));
+    }
+
+    [Fact]
+    public void Connected_ad_settings_point_the_missing_spend_alert_to_the_pull_button()
+    {
+        var connected = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(10_000m, vat: 1_000m, ads: 0, costs: 0, orders: 3), adConnected: true));
+        Assert.Contains("Reklam harcamasını getir", Find(connected, "missing_ads").NextStep);
+        Assert.Contains("bağlantı", Find(connected, "missing_ads").WhyItMatters.ToLowerInvariant());
+
+        var plain = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(10_000m, vat: 1_000m, ads: 0, costs: 0, orders: 3)));
+        Assert.DoesNotContain("Reklam harcamasını getir", Find(plain, "missing_ads").NextStep);
+    }
+
+    [Fact]
+    public void Connected_ad_settings_without_sales_flag_only_when_other_sources_exist()
+    {
+        var quality = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(gross: 0, costs: 500m), adConnected: true));
+        Assert.Equal("ads_connected_missing", Find(quality, "ads_connected_missing").Code);
+        Assert.Contains("Reklam harcamasını getir", Find(quality, "ads_connected_missing").NextStep);
+
+        var empty = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(gross: 0), adConnected: true));
+        Assert.DoesNotContain(empty.Alerts, x => x.Code == "ads_connected_missing");
+        Assert.Equal("all_zero", Find(empty, "all_zero").Code);
     }
 }

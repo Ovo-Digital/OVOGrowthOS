@@ -68,6 +68,15 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
                 var week = $"digest:{System.Globalization.ISOWeek.GetYear(iso)}-W{System.Globalization.ISOWeek.GetWeekOfYear(iso):00}";
                 Add(NotificationKind.WeeklyDigest, null, week, now, today);
             }
+            var renewals = await db.Deals.AsNoTracking()
+                .Where(x => x.Status == DealStatus.Active && x.EndDate != null && x.EndDate >= today && x.EndDate <= today.AddDays(30))
+                .ToListAsync(ct);
+            foreach (var deal in renewals)
+            {
+                var days = deal.EndDate!.Value.DayNumber - today.DayNumber;
+                var prefix = days <= 7 ? "renewal-7" : "renewal-30";
+                Add(NotificationKind.RenewalDue, deal.Id, $"{prefix}:{deal.Id}:{deal.EndDate:yyyy-MM-dd}", now, deal.EndDate);
+            }
         }
         var brandId = await db.PortalAccesses.Where(x => x.UserId == userId).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
         if (user.Role == "BrandClient" && brandId.HasValue)
@@ -155,6 +164,15 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
         }
         if (n.Kind == NotificationKind.WeeklyDigest)
             return Staff(user) ? new("Haftalık yönetim özeti", "/reports") : null;
+        if (n.Kind == NotificationKind.StoreSync)
+        {
+            if (!Manager(user) || !n.EventKey.StartsWith("store-sync:", StringComparison.Ordinal)) return null;
+            var periodKey = n.EventKey["store-sync:".Length..];
+            var claim = await db.AuditRecords.AsNoTracking()
+                .Where(x => x.Action == "StoreOrdersAutoSync" && x.EntityId == periodKey)
+                .OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(ct);
+            return claim is null ? null : new(claim.Reason, "/brands");
+        }
         if (n.Kind == NotificationKind.PromiseReminder)
         {
             if (!Staff(user)) return null;
@@ -179,6 +197,22 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
             return overdueRow
                 ? new($"Ödeme sözü gecikti: {name} ({remaining} {currency} kaldı)", "/commissions/planning")
                 : new($"Yarın ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning");
+        }
+        if (n.Kind == NotificationKind.RenewalDue)
+        {
+            if (!Manager(user)) return null;
+            if (lockSource && db.Database.IsRelational())
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"Deals\" WHERE \"Id\" = {n.SourceId} FOR SHARE", ct);
+            var deal = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == n.SourceId, ct);
+            if (deal is null || deal.Status != DealStatus.Active || deal.EndDate is null) return null;
+            var days = deal.EndDate.Value.DayNumber - TeamWork.Today(now).DayNumber;
+            if (days is < 0 or > 30) return null;
+            var isSeven = n.EventKey.StartsWith("renewal-7:", StringComparison.Ordinal);
+            if (isSeven != (days <= 7)) return null;
+            var dealName = await db.Brands.AsNoTracking().Where(x => x.Id == deal.BrandId).Select(x => x.Name).SingleOrDefaultAsync(ct) ?? "Marka";
+            return new(days == 0
+                ? $"Anlaşmanın bitiş günü: {dealName}"
+                : $"Anlaşmanın bitmesine {days} gün kaldı: {dealName}", $"/deals/{deal.Id}");
         }
         var brand = await cache.Brand();
         if (n.Kind == NotificationKind.PortalReport)

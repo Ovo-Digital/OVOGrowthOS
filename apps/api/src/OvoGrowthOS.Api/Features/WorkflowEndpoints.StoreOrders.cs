@@ -11,6 +11,8 @@ namespace OvoGrowthOS.Api.Features;
 
 public sealed record StoreOrderSyncRequest(string Period);
 
+internal sealed record StoreOrderSyncOutcome(bool Ok, bool Conflict, string Error, int Added, int Updated, bool Truncated);
+
 public static partial class WorkflowEndpoints
 {
     private static void MapStoreOrders(WebApplication app)
@@ -32,11 +34,25 @@ public static partial class WorkflowEndpoints
         if (!StoreOrderPeriod.TryParse(r.Period, out var period)) return Results.BadRequest(new { error = "Dönem 'YYYY-AA' biçiminde olmalı, örneğin 2026-08." });
         if (!await CurrentAdmin(db, actor)) return Results.Unauthorized();
         if (!await db.Brands.AnyAsync(x => x.Id == id, ct)) return Results.NotFound(new { error = "Marka bulunamadı." });
+        var outcome = await ExecuteStoreOrderSync(db, protection, tokens, orderClient, id, period, User(actor), ct);
+        if (!outcome.Ok)
+            return outcome.Conflict ? Results.Conflict(new { error = outcome.Error }) : Results.BadRequest(new { error = outcome.Error });
+        var payload = await StoreOrdersPayload(db, id, period, 1, protection, ct);
+        var message = $"Dönem siparişleri güncellendi: {outcome.Added} yeni, {outcome.Updated} güncellenen kayıt."
+            + (outcome.Truncated ? " Sayfalamadaki üst sınıra gelindi; daha uzun dönemler için dönemleri ayrı ayrı çekin." : "");
+        return Results.Ok(new { message, payload });
+    }
+
+    // Shared by the manual endpoint and the scheduled queue; errors are already safe Turkish text.
+    internal static async Task<StoreOrderSyncOutcome> ExecuteStoreOrderSync(AppDbContext db, IDataProtectionProvider protection,
+        IStoreTokenClient tokens, IStoreOrderClient orderClient, Guid id, StoreOrderPeriod period, string actorEmail, CancellationToken ct)
+    {
+        StoreOrderSyncOutcome Fail(string error, bool conflict = false) { db.ChangeTracker.Clear(); return new(false, conflict, error, 0, 0, false); }
         var settings = await db.BrandApiSettings.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == id, ct);
         if (settings is null || !IsApiSettingsValid(settings, protection))
-            return Results.BadRequest(new { error = "Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin." });
+            return Fail("Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin.");
         if (!TryUnprotect(protection, settings.ProtectedPassword, out var password))
-            return Results.BadRequest(new { error = "Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin." });
+            return Fail("Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin.");
         string token;
         if (settings.Platform == StorePlatform.Shopify)
         {
@@ -46,20 +62,20 @@ public static partial class WorkflowEndpoints
         {
             var storeToken = await tokens.CreateTokenAsync(settings.StoreUrl, settings.ApiUser, Convert.ToBase64String(Encoding.UTF8.GetBytes(password)), ct);
             if (!storeToken.Accepted)
-                return Results.BadRequest(new { error = "Mağaza bağlantısı doğrulanamadı. Mağaza adresini ve API ayarlarını kontrol edin." });
+                return Fail("Mağaza bağlantısı doğrulanamadı. Mağaza adresini ve API ayarlarını kontrol edin.");
             token = storeToken.Token;
         }
         var fetched = await orderClient.FetchAsync(token, settings.StoreUrl, period, settings.Platform, ct);
         if (!fetched.Accepted)
-            return Results.BadRequest(new { error = "Mağaza siparişleri okunamadı. Mağaza adresini ve API yetkilerini kontrol edip tekrar deneyin." });
+            return Fail("Mağaza siparişleri okunamadı. Mağaza adresini ve API yetkilerini kontrol edip tekrar deneyin.");
         foreach (var order in fetched.Orders)
         {
             if (!period.Contains(order.PlacedOnUtc))
-                return Results.BadRequest(new { error = $"Mağaza beklenmedik bir sipariş döndürdü (sipariş #{order.OrderNumber}); dönem sınırı dışında kayıt aktarılmadı." });
+                return Fail($"Mağaza beklenmedik bir sipariş döndürdü (sipariş #{order.OrderNumber}); dönem sınırı dışında kayıt aktarılmadı.");
             if (order.OrderTotal < 0 || order.PaidAmount < 0 || order.RefundedAmount < 0)
-                return Results.BadRequest(new { error = $"Mağaza kaydında eksi tutar var (sipariş #{order.OrderNumber}); aktarım durduruldu, mevcut kayıtlar değişmedi." });
+                return Fail($"Mağaza kaydında eksi tutar var (sipariş #{order.OrderNumber}); aktarım durduruldu, mevcut kayıtlar değişmedi.");
             if (order.Currency.Length is not (0 or 3))
-                return Results.BadRequest(new { error = $"Mağaza kaydında okunamayan para birimi var (sipariş #{order.OrderNumber}); aktarım durduruldu, mevcut kayıtlar değişmedi." });
+                return Fail($"Mağaza kaydında okunamayan para birimi var (sipariş #{order.OrderNumber}); aktarım durduruldu, mevcut kayıtlar değişmedi.");
         }
         var now = DateTimeOffset.UtcNow;
         var rows = await db.StoreOrderStagings.Where(x => x.BrandId == id && x.PlacedOnUtc >= period.UtcStart && x.PlacedOnUtc < period.UtcEnd).ToListAsync(ct);
@@ -78,13 +94,11 @@ public static partial class WorkflowEndpoints
             row.RefundedAmount = order.RefundedAmount; row.OrderStatus = order.OrderStatus; row.PaymentStatus = order.PaymentStatus;
             row.ImportedAt = now;
         }
-        Audit(db, actor, "StoreOrdersSynced", "Brand", id, null, new { period = period.Key, added, updated });
+        db.AuditRecords.Add(new AuditRecord { UserId = actorEmail, Action = "StoreOrdersSynced", EntityType = "Brand", EntityId = id.ToString(),
+            NewValueJson = System.Text.Json.JsonSerializer.Serialize(new { period = period.Key, added, updated }) });
         try { await db.SaveChangesAsync(ct); }
-        catch (DbUpdateException) { return Results.Conflict(new { error = "Siparişler başka bir aktarım sırasında değişmiş. Sayfayı yenileyip tekrar deneyin." }); }
-        var payload = await StoreOrdersPayload(db, id, period, 1, protection, ct);
-        var message = $"Dönem siparişleri güncellendi: {added} yeni, {updated} güncellenen kayıt."
-            + (fetched.Truncated ? " Sayfalamadaki üst sınıra gelindi; daha uzun dönemler için dönemleri ayrı ayrı çekin." : "");
-        return Results.Ok(new { message, payload });
+        catch (DbUpdateException) { db.ChangeTracker.Clear(); return Fail("Siparişler başka bir aktarım sırasında değişmiş. Sayfayı yenileyip tekrar deneyin.", conflict: true); }
+        return new(true, false, "", added, updated, fetched.Truncated);
     }
 
     private static async Task<object> StoreOrdersPayload(AppDbContext db, Guid brandId, StoreOrderPeriod period, int page, IDataProtectionProvider protection, CancellationToken ct)

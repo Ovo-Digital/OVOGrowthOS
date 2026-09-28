@@ -48,6 +48,7 @@ public static partial class WorkflowEndpoints
         var byEmail = accounts.GroupBy(x => x.Email.ToLowerInvariant()).ToDictionary(g => g.Key, g => g.First());
         var byId = accounts.ToDictionary(x => x.Id, x => x);
         var vatRate = await db.GeneralSettings.AsNoTracking().Select(x => (decimal?)x.DefaultVatRate).SingleOrDefaultAsync() ?? .20m;
+        var adConnected = (await db.BrandAdSettings.AsNoTracking().Select(x => x.BrandId).ToListAsync()).ToHashSet();
 
         var rowIds = rows.Select(x => x.Id.ToString()).ToList();
         var created = await db.AuditRecords.AsNoTracking()
@@ -74,7 +75,7 @@ public static partial class WorkflowEndpoints
             var responsible = Responsible(current, origin.user, owner, byEmail, byId);
             var task = taskByBrand.TryGetValue(id, out var existing) ? existing : null;
             items.Add(DataQuality.Evaluate(new QualityInput(year, month, id, brand.Name, brand.Currency, deal, current, previous,
-                origin.kind, origin.detail, responsible.name, responsible.id, task?.Id, task?.CompletedAt is not null, vatRate)));
+                origin.kind, origin.detail, responsible.name, responsible.id, task?.Id, task?.CompletedAt is not null, vatRate, adConnected.Contains(id))));
         }
         items.Sort((a, b) => string.Compare(a.BrandName, b.BrandName, StringComparison.CurrentCultureIgnoreCase));
         return new QualityReport(period, DataQuality.Label(year, month), DataQuality.Summarize(items), items);
