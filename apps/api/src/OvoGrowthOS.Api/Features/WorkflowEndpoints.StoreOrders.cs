@@ -33,12 +33,23 @@ public static partial class WorkflowEndpoints
         if (!await CurrentAdmin(db, actor)) return Results.Unauthorized();
         if (!await db.Brands.AnyAsync(x => x.Id == id, ct)) return Results.NotFound(new { error = "Marka bulunamadı." });
         var settings = await db.BrandApiSettings.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == id, ct);
-        if (settings is null || !IsStoreUrl(settings.StoreUrl) || !SmtpSettings.IsAddress(settings.ApiUser) || !TryUnprotect(protection, settings.ProtectedPassword, out var password))
+        if (settings is null || !IsApiSettingsValid(settings, protection))
             return Results.BadRequest(new { error = "Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin." });
-        var token = await tokens.CreateTokenAsync(settings.StoreUrl, settings.ApiUser, Convert.ToBase64String(Encoding.UTF8.GetBytes(password)), ct);
-        if (!token.Accepted)
-            return Results.BadRequest(new { error = "Mağaza bağlantısı doğrulanamadı. API ayarlarını ve mağaza panelindeki API kullanıcısını kontrol edin." });
-        var fetched = await orderClient.FetchAsync(token.Token, settings.StoreUrl, period, ct);
+        if (!TryUnprotect(protection, settings.ProtectedPassword, out var password))
+            return Results.BadRequest(new { error = "Önce marka API ayarlarını kaydedip bağlantı doğrulamasını deneyin." });
+        string token;
+        if (settings.Platform == StorePlatform.Shopify)
+        {
+            token = password;
+        }
+        else
+        {
+            var storeToken = await tokens.CreateTokenAsync(settings.StoreUrl, settings.ApiUser, Convert.ToBase64String(Encoding.UTF8.GetBytes(password)), ct);
+            if (!storeToken.Accepted)
+                return Results.BadRequest(new { error = "Mağaza bağlantısı doğrulanamadı. Mağaza adresini ve API ayarlarını kontrol edin." });
+            token = storeToken.Token;
+        }
+        var fetched = await orderClient.FetchAsync(token, settings.StoreUrl, period, settings.Platform, ct);
         if (!fetched.Accepted)
             return Results.BadRequest(new { error = "Mağaza siparişleri okunamadı. Mağaza adresini ve API yetkilerini kontrol edip tekrar deneyin." });
         foreach (var order in fetched.Orders)
@@ -72,7 +83,7 @@ public static partial class WorkflowEndpoints
         catch (DbUpdateException) { return Results.Conflict(new { error = "Siparişler başka bir aktarım sırasında değişmiş. Sayfayı yenileyip tekrar deneyin." }); }
         var payload = await StoreOrdersPayload(db, id, period, 1, protection, ct);
         var message = $"Dönem siparişleri güncellendi: {added} yeni, {updated} güncellenen kayıt."
-            + (fetched.Truncated ? " Mağazadaki ilk 5000 sipariş alındı; daha uzun dönemler için dönemleri ayrı ayrı çekin." : "");
+            + (fetched.Truncated ? " Sayfalamadaki üst sınıra gelindi; daha uzun dönemler için dönemleri ayrı ayrı çekin." : "");
         return Results.Ok(new { message, payload });
     }
 
@@ -88,8 +99,7 @@ public static partial class WorkflowEndpoints
             .Where(x => x.BrandId == brandId && x.Year == period.Year && x.Month == period.Month);
         decimal? panelSales = await panelQuery.AnyAsync(ct) ? await panelQuery.SumAsync(x => x.GrossSales, ct) : null;
         var settings = await db.BrandApiSettings.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == brandId, ct);
-        var configured = settings is not null && IsStoreUrl(settings.StoreUrl) && SmtpSettings.IsAddress(settings.ApiUser)
-            && TryUnprotect(protection, settings.ProtectedPassword, out _);
+        var configured = settings is not null && IsApiSettingsValid(settings, protection);
         const int size = 50;
         var current = Math.Max(1, page);
         return new

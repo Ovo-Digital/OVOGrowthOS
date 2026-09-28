@@ -22,6 +22,11 @@ public static partial class WorkflowEndpoints
         MapAccountMail(app);
         MapBrandApiSettings(app);
         MapStoreOrders(app);
+        MapAdSettings(app);
+        MapBrandHealth(app);
+        MapSectorComparison(app);
+        MapPerformanceSuggestions(app);
+        MapPeriodApprovals(app);
         MapNotifications(app);
         MapMailCenter(app);
         MapDataQuality(app);

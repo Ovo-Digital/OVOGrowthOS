@@ -13,6 +13,7 @@ public sealed class BrandStageHistory
     public string EnteredBy { get; set; } = "";
     public string ExitedBy { get; set; } = "";
     public string Note { get; set; } = "";
+    public Guid? TimeoutTaskId { get; set; }
 }
 
 public sealed record StageWait(LeadStage Stage, int Open, int Known, int Unknown, decimal? AverageDays, int LongestDays);
@@ -31,6 +32,16 @@ public static class Pipeline
         LeadSource.Partner => "İş ortağı yönlendirmesi",
         LeadSource.Other => "Diğer",
         _ => "Belirtilmedi"
+    };
+
+    public static string StageLabel(LeadStage stage) => stage switch
+    {
+        LeadStage.New => "Yeni aday",
+        LeadStage.Contacted => "İlk görüşme yapıldı",
+        LeadStage.WaitingForInformation => "Bilgi bekleniyor",
+        LeadStage.MeetingPlanned => "Görüşme planlandı",
+        LeadStage.ProposalFollowUp => "Teklif takibi",
+        _ => "Beklemeye alındı"
     };
 
     public static int? StageDays(BrandStageHistory row, DateTimeOffset now)

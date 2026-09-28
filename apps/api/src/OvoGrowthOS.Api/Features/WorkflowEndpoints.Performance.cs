@@ -24,7 +24,9 @@ public static partial class WorkflowEndpoints
             var ordered = sort switch { "oldest" => q.OrderBy(x => x.Year).ThenBy(x => x.Month), "name" => q.OrderBy(x => x.Brand!.Name),
                 "nameDesc" => q.OrderByDescending(x => x.Brand!.Name), _ => q.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month) };
             var items = ordered.Select(x => new { x.Id, x.Year, x.Month, x.Status, x.NetRevenue, x.OvoFee, x.Mer, x.DealId,
-                Brand = new { x.Brand!.Id, x.Brand!.Name }, Deal = new { x.Deal!.Id, x.Deal!.Currency } });
+                Brand = new { x.Brand!.Id, x.Brand!.Name }, Deal = new { x.Deal!.Id, x.Deal!.Currency },
+                Approval = db.PeriodApprovals.Where(a => a.BrandId == x.BrandId && a.Year == x.Year && a.Month == x.Month)
+                    .Select(a => new { a.Approved, a.Reason, a.CreatedAt }).FirstOrDefault() });
             return Results.Ok(await Page(items, page, pageSize));
         });
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>

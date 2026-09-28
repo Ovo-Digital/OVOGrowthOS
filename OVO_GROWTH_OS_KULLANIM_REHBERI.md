@@ -4,7 +4,7 @@ Bu rehber, OVO Growth OS'u ilk kez kullanacak bir ekip arkadaşının sistemi he
 
 Rehberde; uygulamanın ne işe yaradığı, hangi ekranda ne yapılması gerektiği, kararların nasıl oluştuğu ve bir markanın ilk görüşmeden aylık kapanış, tahsilat ve müşteriyle rapor paylaşımına kadar nasıl yönetildiği anlatılır.
 
-**İçerik güncellemesi: 27 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, aday hattında aşama geçmişi, kaynak ve kayıp takibini, görev şablonlarını ve haftalık ekip kapasitesini, hizmet kapsamını ve paket dışı talepleri, gerçekleşen saat girişini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, yenileme toplantı özetini, açıklamalı raporları, müşteri portalını, bildirimleri, hesap güvenliğini, panelden e-posta ayarlarını ve marka bazında mağaza API ayarlarını kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
+**İçerik güncellemesi: 28 Eylül 2026.** Bu rehber; ekip görevleri ve görüşme takibini, aday hattında aşama geçmişi, kaynak ve kayıp takibini, görev şablonlarını ve haftalık ekip kapasitesini, hizmet kapsamını ve paket dışı talepleri, gerçekleşen saat girişini, aylık hedef ve bütçe karşılaştırmasını, dosyadan aylık veri aktarımını, güvenli aylık veri düzenleme ve gerekçeli geri gönderme akışını, fatura ve parçalı ödemeleri, gerçek hizmet maliyetini, yatırım geri kazanımını, yenileme toplantı özetini, açıklamalı raporları, sektör karşılaştırmasını, müşteri portalında dönem onayını, bildirimleri, ödeme sözü hatırlatmalarını ve haftalık yönetim özeti e-postasını, hesap güvenliğini, panelden e-posta ayarlarını, marka bazında mağaza API ayarlarını (GrandNode ve Shopify), reklam platformu ayarlarını, marka sağlık skorunu ve mağaza verisinden ciro önerisini kapsar. Henüz yapılmayan işler ayrıca belirtilmiştir; anlatılan örnekler otomatik veri bağlantısı veya gerçek ticari sonuç garantisi değildir.
 
 Kullanım rehberi iç ekip içindir. Yönetici, iş ortağı ve analist hesapları giriş yaptıktan sonra açabilir; marka yetkilileri bu iç rehbere erişemez. Rehber yüklenemiyorsa güncel hesabınızla yeniden giriş yapın ve bağlantınızı kontrol edin. Sistem hesabınızı doğrulayamıyorsa içeriği göstermez.
 
@@ -26,6 +26,7 @@ Rehberi baştan sona ezberlemeniz gerekmez. Sol menüden **Kullanım rehberi** s
 - **Hazırlanan ayı kontrol edeceğim:** **İşlerim → Onay bekleyenler** veya **Aylık sonuçlar** üzerinden dönemi açın. Hazırlayan kişiyle onaylayan kişi farklı olmalıdır.
 - **Bu ay hangi bilgi eksik, hangi marka kapanmaya hazır?** Sol menüden **Kapanış hazırlığı** ekranını açın; dönem seçip marka marka hangi kaynağın girildiğini, hangi uyarının çıktığını ve kimin sorumlu olduğunu görün.
 - **Bu ay hedefin neresindeyiz?** Markayı açıp **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
+- **Markanın genel durumu veya sektördeki yerini merak ediyorum?** Marka sayfasındaki **Marka sağlık skoru** kartına ve **Raporlar** sayfasındaki **Sektör karşılaştırması** kartına bakın; ikisi de yalnız bilgi verir, kayıt değiştirmez.
 - **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın ekip alanındaki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
 - **Ekibin bu hafta yeni işe zamanı var mı?** **İşlerim → Haftalık ekip kapasitesi** ekranını açın. Önce kapasite ve görev saatlerinin girildiğini kontrol edin; **Yeni marka veya ek iş ön izlemesi** ile ek yükü kaydetmeden deneyin.
 - **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir.
@@ -282,19 +283,22 @@ Marka adına tıklandığında markanın özet sayfası açılır. Burada:
 - iş ortaklığı puanı,
 - son değerlendirme,
 - mevcut anlaşma,
-- markanın güncel durumu
+- markanın güncel durumu,
+- marka sağlık skoru
 
 görülebilir.
 
 Bu ekran, marka hakkında hızlı bir yönetim özeti almak için kullanılır.
 
-Aşağıdaki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın mağazasından (örneğin GrandNode panelinden) sipariş listesini okumak için gereken bağlantı bilgilerini kaydeder:
+Sayfanın devamındaki **Marka sağlık skoru** kartı markayı 100 puan üzerinden değerlendirir. Veri kalitesi, hedef sapması, tahsilat gecikmesi ve anlaşma durumu ayrı kalemler hâlinde puan etkisiyle tabloda gösterilir; üstteki **Güçlü** (85 ve üzeri), **İzlenmeli** (70–84), **Riskli** (50–69) ve **Kritik** (50 altı) rozeti genel durumu özetler. Skor yalnız bilgi verir; hakediş, dönem onayı veya anlaşma kararını etkilemez.
 
-- Mağaza adresi (https ile başlayan panel adresi),
-- Mağaza panelinde API Kullanıcılar bölümünde oluşturulan API kullanıcısının e-postası,
-- Bu API kullanıcısının şifresi.
+Aşağıdaki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın mağazasından sipariş listesini okumak için gereken bağlantı bilgilerini kaydeder. Önce **Mağaza platformu** olarak **GrandNode** veya **Shopify** seçilir; seçime göre istenen alanlar değişir:
 
-Şifre sunucuda şifreli saklanır, kayıttan sonra ekranda bir daha görünmez; alanı boş bırakmak kayıtlı şifreyi korur. **API ayarlarını kaydet** yalnız bilgileri saklar, bağlantıyı doğrulamaz. **Bağlantıyı doğrula** ise mağazadan geçici bir erişim jetonu isteyip sonucu bildirir; bir dakika içinde tekrar denenemez. Doğrulama yalnız bağlantıyı sınamaktan ibarettir, sipariş getirmez. Siparişlerin kendisi aşağıdaki **Mağaza siparişleri** bölümünden ayrıca getirilir; bu ayarlar bölümü hakediş veya dönem kapanışını etkilemez.
+- Mağaza adresi: GrandNode'da panel adresi, Shopify'da `https` ile başlayan ve `.myshopify.com` ile biten mağaza adresi.
+- GrandNode için panelin Ayarlar → API Kullanıcılar bölümünde oluşturulan API kullanıcısının e-postası. Shopify'da bu alan istenmez.
+- GrandNode'da API kullanıcısının şifresi; Shopify'da sipariş okuma yetkili bir **Admin API jetonu** (yönetimden Ayarlar → Uygulamalar ve satış kanalları bölümünden alınır).
+
+Şifre veya jeton sunucuda şifreli saklanır, kayıttan sonra ekranda bir daha görünmez; alanı boş bırakmak kayıtlı bilgiyi korur. **API ayarlarını kaydet** yalnız bilgileri saklar, bağlantıyı doğrulamaz. **Bağlantıyı doğrula** ise mağazadan geçici bir erişim jetonu isteyip sonucu bildirir; bir dakika içinde tekrar denenemez. Doğrulama yalnız bağlantıyı sınamaktan ibarettir, sipariş getirmez. Yanlış platform seçerseniz doğrulama hata verir; ayarları platforma göre düzeltip tekrar deneyin. Siparişlerin kendisi aşağıdaki **Mağaza siparişleri** bölümünden ayrıca getirilir; bu ayarlar bölümü hakediş veya dönem kapanışını etkilemez.
 
 ### Mağaza siparişleri
 
@@ -308,6 +312,15 @@ Aynı sayfadaki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgi
 - Müşterinin adı, e-postası, adresi veya sipariş içeriği bu bölüme hiç çekilmez; yalnız sipariş numarası, tarih, durum ve tutar gibi bilgiler saklanır.
 - Getirilen siparişler **yalnız bilgi ve kontrol içindir**: hakedişe, aylık sonuca, marka hedeflerine veya anlaşma kayıtlarına otomatik yazılmaz. Dönem onayı ve kapanış ayrı ekranlardan elle yapılır.
 - Mağaza bağlantısı yanıt vermezse bölüm bir hata gösterir, var olan kayıtlar değişmez ve "Yeniden dene" ile tekrar denenebilir.
+
+### Reklam platformu ayarları
+
+Aynı sayfadaki **Reklam platformu ayarları** bölümünde yalnız yönetici, **Meta reklamları** ve **Google Ads** sekmeleri arasında geçiş yaparak reklam hesaplarının salt okunur bağlantısını kaydeder:
+
+- Meta için reklam hesabı numarası ve erişim jetonu.
+- Google için reklam hesabı numarası, müşteri numarası, yenileme jetonu, istemci sırrı ve geliştirici jetonu.
+
+Jetonlar sunucuda şifreli saklanır, kayıttan sonra burada görünmez; boş bırakılan alan kayıtlı jetonu korur. **Reklam ayarlarını kaydet** yalnız bilgileri saklar. **Bağlantıyı doğrula** reklam hesabını okuyup sonucu bildirir; bir dakika içinde tekrar denenemez. **Reklam harcamasını oku** alanı seçili ayın harcamasını reklam platformundan getirir. Bu tutar yalnız bilgi amaçlıdır; aylık sonuca, hakedişe veya bütçeye otomatik yazılmaz, hiçbir kampanya değişikliği yapılmaz.
 
 ---
 
@@ -628,6 +641,10 @@ Aynı marka için aynı yıl ve aya ikinci bir kayıt açılmamalıdır. Sistem 
 
 Sistem bu temel değerlerden net ciroyu, hesaplamaya esas ciroyu, katkı kârını, MER'i, CAC'yi, iade oranını ve OVO hakedişini otomatik hesaplar.
 
+### Mağaza verisinden brüt satış öner
+
+Anlaşma, yıl ve ay seçiliyken **Mağaza verisinden brüt satış öner** düğmesi, markanın mağazasından çekilmiş siparişlerden o dönemin brüt satış tutarını **Brüt satış** alanına yazar. Birlikte sipariş adedi, paneldaki mevcut brüt satış ve Meta/Google reklam ayarlarının kayıtlı olup olmadığı da bildirilir. Öneri kendiliğinden kaydetmez; yazılan tutarı kontrol edip **Hesabı kontrol et** ile devam edin, istediğiniz değeri elle değiştirebilirsiniz. O dönem için henüz sipariş çekilmediyse sistem bunu bildirir; önce marka sayfasındaki **Mağaza siparişleri** bölümünden siparişleri getirin. Reklam harcaması önerilmez; reklam alanlarını kaynak raporunuza göre siz girersiniz.
+
 ---
 
 ## 13. Aylık dönem kapatma süreci
@@ -812,6 +829,10 @@ Marka detayındaki **Gerçekleşen aylık sonuçlar** bölümü de aynı raporun
 
 Raporu açmak eski kayıtları, ticari oranları veya kilitli hesapları değiştirmez.
 
+### Sektör karşılaştırması
+
+**Raporlar** sayfasındaki **Sektör karşılaştırması** kartında bir ay seçerek sektörlerin ortalama brüt kâr marjını, iade oranını ve hedef gerçekleşme oranını yan yana görürsünüz. Yalnız o ay ekip onayı almış veya kilitli sonucu olan markalar hesaba katılır; hedefi olmayan ya da hedef para birimi anlaşma para birimiyle eşleşmeyen markalarda hedef gerçekleşme boş görünür. Seçili ayda uygun kayıt yoksa kart bunu açıkça yazar. Karşılaştırma bilgi amaçlıdır; hiçbir markanın sonucunu, onayını veya kilitli kaydını değiştirmez.
+
 ### Excel veya CSV dosyasından aylık sonuçları topluca girmek
 
 **Aylık sonuçlar → Dosyadan aktar** alanı, yönetici ve ortakların birden fazla aylık sonucu dosyayla girmesini sağlar. Dosya eki yüklemekten farklıdır: buradaki dosya satırları, onayınızdan sonra yeni aylık sonuç taslaklarına dönüşür. Analist bu işlemi yapamaz.
@@ -882,7 +903,18 @@ Hesap açma, kapatma ve başka kişinin şifresini yönetme yalnız yöneticided
 - **Tabloyu indir** ile CSV dosyasını alır. **Yazdır / PDF kaydet** ile tarayıcısının yazdırma ekranından PDF kaydedebilir. Dosyadaki ayı, para birimini ve sürümü kontrol etmelidir.
 - **Bu raporla ilgili sorunuz** alanına en fazla 2.000 karakterlik sorusunu yazıp **Açıklama iste** düğmesine basar. Yanıtı **Sorularım ve yanıtlar** bölümünden takip eder. Aynı markanın diğer yetkilileri bu kişinin sorularını görmez. Saatte en fazla 20 soru gönderilebilir.
 - **Paylaşılan belgeler** bölümünden yalnız kendisine açılan dosyaları indirebilir. Dosya adı ve dosyanın tüm içeriği görünür; ekip için yazılmış belge açıklama notu görünmez. Bu nedenle dosyanın içine gizli bilgi koyup yalnız açıklama notunun saklanmasına güvenmeyin.
-- Bu alan ödeme yapma, anlaşma kabul etme veya aylık dönem onaylama ekranı değildir.
+- **Dönem onayları** bölümünde OVO ekibi onaylamış dönemleri görür, **Onayla** ile onaylayabilir veya **Reddet** ile gerekçe yazarak reddedebilir (adımları aşağıda ayrıca anlatılmıştır). Anlaşma kabulü ve ödeme bu alandan yapılmaz.
+
+### Dönem onayı nasıl yapılır?
+
+**Dönem onayları** kartı, OVO ekibi tarafından onaylanmış dönemleri durumu Türkçe yazılı olarak listeler (örneğin **Ekip onayladı**):
+
+1. Önce o ayın yayımlanmış raporundaki brüt satış, kesintiler ve ödeme tablosunu inceleyin.
+2. Katılıyorsanız **Onayla** düğmesine basın ve açılan onay penceresini onaylayın.
+3. Katılmıyorsanız **Reddet** düğmesine basın, nedenini en fazla 1000 karakterle yazın ve **Reddi gönder** deyin. Gerekçesiz ret gönderilemez.
+4. Kararınız satırın altında onaylayan kişi ve tarihle görünür; istediğiniz zaman **Onayla** veya **Reddet** ile kararınızı değiştirebilirsiniz.
+
+Onay veya ret yalnız markanızın kaydını oluşturur: rapor tutarlarını, kilitleri, hakedişi veya faturalamayı değiştirmez, karar OVO ekibine bildirilir. Taslak veya incelemedeki dönemler bu listede görünmez; onaya yalnız kesinleşmiş dönemler açıktır.
 
 **Bir rakam değiştiyse ne olur?**
 
@@ -1216,6 +1248,8 @@ Yönetici hesabınızda **Ayarlar → Hesap güvenliği** yolunu açın. Bu koru
 - **Yaklaşan veya gecikmiş görev:** Son tarihi yarın, bugün veya geçmiş olan görev için hatırlatma oluşur. Aynı görev ve son tarih her kontrolde yeniden bildirilmez. Görev tamamlanırsa, başka kişiye atanırsa veya son tarihi değişirse eski bildirim görünmez.
 - **Müşteri konuşması:** Yeni soru ve devam mesajı atanmış yönetici/iş ortağına; henüz sorumlusu yoksa yöneticilere gösterilir. Ekip yanıtı yalnız soruyu açan müşteri hesabına gider, aynı markanın diğer müşteri hesaplarına gitmez.
 - **Yeni rapor:** Paylaşılmış yeni rapor, ilgili markanın etkin müşteri hesaplarına bildirilir. Paylaşımı geri çekilen raporun bildirimi artık açılmaz; henüz gönderilmemiş e-postası iptal edilir. Bu özellik kendiliğinden rapor yayımlamaz.
+- **Ödeme sözü hatırlatması:** Kendinize atanmış bir ödeme sözünün vadesi yarın geldiğinde veya geciktiğinde panelde hatırlatma oluşur; **E-posta tercihlerim**'den ilgili tercihi açtıysanız e-posta da gönderilir. Aynı söz ve tarih için tekrar bildirim yapılmaz. Hatırlatma ödeme alındığı anlamına gelmez; gerçek ödemeyi hakediş ekranından kontrol edin.
+- **Haftalık yönetim özeti:** Yönetici ve iş ortağı hesaplarında her pazartesi Türkiye saatiyle 09.00'da bir özet hazırlanır: gecikmiş veya yaklaşan ödeme sözleri, onay bekleyen dönemler, veri kalitesi uyarıları ve hedefin altındaki markalar. Tercih açıksa e-posta gönderilir; iletinin bağlantısı raporlar sayfasına götürür, değerler e-postaya yazılmaz.
 
 Marka yetkilisi bu sayfada yalnız **Sorularıma gelen yanıtlar** ve **Markam için paylaşılan yeni raporlar** tercihlerini görür; iç ekip görevleri veya başka kişilerin bildirimleri gösterilmez. Konuşma ekranındaki e-posta açıklaması da bu kişisel tercihlere bağlıdır; mesaj yazmak tek başına e-posta teslim edildiği anlamına gelmez.
 
@@ -1708,6 +1742,8 @@ Bu üç tutarla söz takviminin haftalarını topladığınızda incelenebilir k
 5. Kayıt nedenini yazın, bilgileri kontrol edin ve **Sözü kaydet** deyin. Bu işlem ödeme oluşturmaz, vadeyi değiştirmez, hakedişi/kârı yeniden hesaplamaz ve dönemi **ödendi** yapmaz.
 6. Yapılacak işi takip etmek için **Ödeme sözü için takip işi oluştur** düğmesini kullanın. İş sözün sorumlusuna atanır; son günü ayrıca seçersiniz. Görevde kaynak dönem, söz tutarı/tarihi ve görüşmeden alıntı bulunur. Tam kaynak metni ve güncel söz hakedişte kalır.
 
+Sözün sorumlusu, vadesi yarın gelen veya gecikmiş sözler için **Bildirimler** sayfasında hatırlatma görür. **E-posta tercihlerim**'den ilgili tercih açıksa e-posta da gönderilir. Hatırlatma ödeme alındığını göstermez; gerçek ödemeyi ödeme geçmişinden kontrol edin.
+
 **Bir dönem için tek güncel söz vardır.** Marka planını değiştirirse **Ödeme sözünü gerekçeyle güncelle** ile şu andan itibaren beklenen yeni tutarı kaydedin. Eski sözü veya daha önce alınmış parayı bu tutara eklemeyin. Önceki ve sonraki tutar, tarih, sorumlu, kaynak metin, işlemi yapan kişi ve gerekçe **Ödeme sözü değişiklik geçmişi** bölümünde görülebilir. Bu ilk sürüm çok taksitli ödeme planı değildir; birden fazla gelecek taksit için ayrı ayrı söz satırı oluşturmaz.
 
 **Kısmi ödeme nasıl etkiler?** Öğretici örnek: Dönemin kalan alacağı 100.000 TL iken 60.000 TL söz kaydedildi. Bundan sonra 20.000 TL gerçek ödeme eklendiğinde toplam alacak 80.000 TL, sözden beklenen 40.000 TL olur. Ödeme yanlış girildiği için yönetici tarafından iptal edilirse toplam alacak 100.000 TL, sözden beklenen 60.000 TL'ye döner. Söz kaydından önce sistemde bulunan ödemeler yeni sözden tekrar düşülmez; sonradan kaydedilen gerçek ödeme, ödeme tarihi geçmişte olsa da bekleyeni azaltır. Tutar her zaman dönemin kalan alacağıyla sınırlıdır.
@@ -1809,14 +1845,14 @@ Kayıp kaydı markayı silmez veya arşivlemez. Aynı marka iki kez kayıp sayı
 
 OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akışını çalıştırır. Ancak aşağıdaki işler henüz tam otomatik değildir:
 
-- GrandNode dışındaki platformlardan otomatik veri çekme (GrandNode için marka detayındaki **Mağaza API ayarları** bağlantıyı, **Mağaza siparişleri** bölümü seçili dönemin siparişlerini salt okunur olarak çeker; çekilen siparişler yalnız kontrol içindir, hakedişe veya aylık sonuca otomatik yazılmaz. Shopify ve reklam platformları henüz bağlı değildir, örnek veriler gerçek bağlantı gibi gösterilmez)
+- GrandNode ve Shopify'dan sipariş çekme ile Meta ve Google reklam harcamasının okunması (marka detayındaki **Mağaza API ayarları** ve **Reklam platformu ayarları** bağlantıları salt okunur çalışır; çekilen sipariş ve harcamalar yalnız kontrol içindir, hakedişe, aylık sonuca veya bütçeye otomatik yazılmaz ve örnek veriler gerçek bağlantı gibi gösterilmez)
 - Muhasebe veya fatura sistemi entegrasyonu
 - Sözleşme belgesi oluşturma ve elektronik imza
 - Kurumsal tek oturum açma ve çok şirketli kullanım (yönetici için isteğe bağlı iki aşamalı giriş; e-posta hizmeti açıksa davet ve şifre yenileme mevcuttur)
 - Sunucuda otomatik PDF üretme ve e-postaya dosya ekleme (aylık zamanlanmış rapor e-postası marka bazında açılır, yalnız giriş gerektiren portal bağlantısı gönderir; marka raporları ve müşteri portalında tarayıcıdan PDF kaydetme/yazdırma mevcuttur)
 - Bankadan otomatik ödeme okuma, panelden gerçek para gönderme/iade etme, fazla ödeme veya mahsup yönetimi
 - WhatsApp/SMS ve pazarlama iletileri (görev, rapor ve konuşma e-postaları kişisel tercihle kullanılabilir)
-- Müşteri portalından veri girişi, dönem onayı, sözleşme kabulü veya ödeme yapma
+- Müşteri portalından veri girişi, sözleşme kabulü veya ödeme yapma (dönem onayı yapılabilir; bu karar yalnız müşterinin onay veya ret kaydıdır, tutar değiştirmez)
 - Uygulama içinden yedek alma/geri yükleme yönetimi (ilgili geliştirme kullanıcı tercihiyle ertelendi; sunucuda ayrıca yedek bulunduğunu varsaymayın)
 
 Bu nedenle aylık veriler ilgili kaynaklardan kontrol edilerek sisteme girilmeli; fatura ve sözleşme işlemleri mevcut şirket süreçleriyle birlikte yürütülmelidir.

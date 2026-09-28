@@ -64,7 +64,7 @@ public sealed class NotificationTests
     {
         await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(p, sender); using var c = await Client(f);
         await TaskSeed(f); var now = DateTimeOffset.UtcNow.Date.AddHours(12); await Refresh(f, Admin, now); await Refresh(f, Admin, now);
-        await Db(f, async db => { Assert.Equal(2, await db.UserNotifications.CountAsync()); Assert.All(await db.UserNotifications.ToListAsync(), x => Assert.Null(x.EmailStatus)); });
+        await Db(f, async db => { Assert.Equal(3, await db.UserNotifications.CountAsync()); Assert.All(await db.UserNotifications.ToListAsync(), x => Assert.Null(x.EmailStatus)); });
         Assert.False(await Send(f));
         var body = await c.GetStringAsync("/api/notifications"); Assert.DoesNotContain("Private task", body); Assert.DoesNotContain("Private brand", body); Assert.DoesNotContain("accountVersion", body);
         using var other = await Client(f, "partner@ovo.test"); Guid id = Guid.Empty; await Db(f, async db => id = (await db.UserNotifications.FirstAsync()).Id);

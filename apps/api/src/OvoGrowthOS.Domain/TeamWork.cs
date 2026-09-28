@@ -2,7 +2,7 @@ namespace OvoGrowthOS.Domain;
 
 public enum LeadStage { New, Contacted, WaitingForInformation, MeetingPlanned, ProposalFollowUp, OnHold }
 public enum WorkPriority { Low, Normal, High }
-public enum WorkKind { General, MonthlyClose, ContractRenewal }
+public enum WorkKind { General, MonthlyClose, ContractRenewal, LeadTimeout }
 
 public sealed class BrandFollowUp
 {

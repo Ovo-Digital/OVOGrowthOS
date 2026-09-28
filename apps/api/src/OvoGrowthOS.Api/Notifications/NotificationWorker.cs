@@ -49,6 +49,11 @@ public sealed class NotificationMailQueue(AppDbContext db, NotificationService n
                     subject = ReportMailTemplate.Render(policy.SubjectTemplate, name, period, settings.WebOrigin + "/portal");
                     body = ReportMailTemplate.Render(policy.BodyTemplate, name, period, settings.WebOrigin + "/portal");
                 }
+                else if (mail.Kind == NotificationKind.WeeklyDigest)
+                {
+                    subject = "OVO Growth OS haftalık yönetim özeti";
+                    body = await WeeklyDigestReport.BuildAsync(db, DateTimeOffset.UtcNow, settings.WebOrigin, CancellationToken.None);
+                }
                 await sender.SendAsync(mail.Id, user.Email, subject, body + "\n\nE-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.", timeout.Token);
                 mail.EmailStatus = MailDeliveryStatus.Sent;
             }
@@ -71,6 +76,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, ILogger<Noti
             {
                 await using (var scope = scopes.CreateAsyncScope())
                     await scope.ServiceProvider.GetRequiredService<ScheduledReportQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
+                await using (var scope = scopes.CreateAsyncScope())
+                    await scope.ServiceProvider.GetRequiredService<OvoGrowthOS.Api.Features.LeadTimeoutQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 Guid[] ids;
                 await using (var scope = scopes.CreateAsyncScope())
                     ids = await scope.ServiceProvider.GetRequiredService<AppDbContext>().UserAccounts.Where(x => x.IsActive && !x.InvitationPending).Select(x => x.Id).ToArrayAsync(stoppingToken);

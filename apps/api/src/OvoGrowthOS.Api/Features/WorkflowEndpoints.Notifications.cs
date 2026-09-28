@@ -7,7 +7,8 @@ using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Features;
 
-public sealed record NotificationPreferenceRequest(bool DailyTasksEmail, bool TaskDueEmail, bool PortalMessagesEmail, bool PortalReportsEmail, int Revision);
+public sealed record NotificationPreferenceRequest(bool DailyTasksEmail, bool TaskDueEmail, bool PortalMessagesEmail, bool PortalReportsEmail, int Revision,
+    bool PromiseRemindersEmail = false, bool WeeklyDigestEmail = false);
 
 public static partial class WorkflowEndpoints
 {
@@ -31,7 +32,7 @@ public static partial class WorkflowEndpoints
                 var n = rows[i]; var content = contents[i];
                 if (content is not null) visible.Add(new { n.Id, n.Kind, content.Title, content.Href, n.CreatedAt, n.ReadAt, n.EmailStatus, n.ErrorCode });
             }
-            return Results.Ok(new { items = visible, preferences = pref is null ? null : new { pref.DailyTasksEmail, pref.TaskDueEmail, pref.PortalMessagesEmail, pref.PortalReportsEmail, pref.Revision }, emailReady = settings.Ready });
+            return Results.Ok(new { items = visible, preferences = pref is null ? null : new { pref.DailyTasksEmail, pref.TaskDueEmail, pref.PortalMessagesEmail, pref.PortalReportsEmail, pref.PromiseRemindersEmail, pref.WeeklyDigestEmail, pref.Revision }, emailReady = settings.Ready });
         });
         group.MapPut("/preferences", async (NotificationPreferenceRequest r, ClaimsPrincipal actor, AppDbContext db) =>
         {
@@ -41,7 +42,8 @@ public static partial class WorkflowEndpoints
             var p = await db.NotificationPreferences.SingleOrDefaultAsync(x => x.UserId == id);
             if (p is null || p.Revision != r.Revision) return Results.Conflict(new { error = "Tercihler değişmiş. Sayfayı yenileyip tekrar deneyin." });
             p.DailyTasksEmail = r.DailyTasksEmail; p.TaskDueEmail = r.TaskDueEmail;
-            p.PortalMessagesEmail = r.PortalMessagesEmail; p.PortalReportsEmail = r.PortalReportsEmail; p.Revision++;
+            p.PortalMessagesEmail = r.PortalMessagesEmail; p.PortalReportsEmail = r.PortalReportsEmail;
+            p.PromiseRemindersEmail = r.PromiseRemindersEmail; p.WeeklyDigestEmail = r.WeeklyDigestEmail; p.Revision++;
             await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync(); return Results.NoContent();
         });
         group.MapPost("/{id:guid}/read", async (Guid id, ClaimsPrincipal actor, AppDbContext db) =>

@@ -6,7 +6,7 @@ import { Card, ErrorState, LoadingState } from '@/components/ui/core';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 import { turkceTarih } from '@/lib/turkish';
 
-type ApiSettings = { revision: number; storeUrl: string; apiUser: string; passwordStored: boolean; configured: boolean; updatedAt: string | null; lastTestAt: string | null };
+type ApiSettings = { revision: number; platform: string; storeUrl: string; apiUser: string; passwordStored: boolean; configured: boolean; updatedAt: string | null; lastTestAt: string | null };
 const button = 'rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50';
 
 export function BrandApiSettingsCard({ brandId }: { brandId: string }) {
@@ -24,26 +24,27 @@ export function BrandApiSettingsCard({ brandId }: { brandId: string }) {
       <SettingsForm key={query.data.revision} brandId={brandId} initial={query.data} report={setNotice} reload={async () => { await query.refetch(); }} />}
     <div className="mt-4 space-y-2 border-t pt-4 text-xs text-[#6d7175]">
       <p>Kaydetmek bağlantıyı doğrulamaz. Doğrulama düğmesi mağazadan geçici bir erişim jetonu ister ve sonucu size bildirir; bir dakika içinde ikinci kez denenemez.</p>
-      <p>GrandNode mağazalarında panelin Ayarlar → API Kullanıcılar bölümünde bu e-postayla etkin bir API kullanıcısı bulunmalıdır. Mağaza adresi https ile başlamalıdır.</p>
       <p>Sipariş aktarımı şimdilik yalnız hazırlık ve kontrol içindir; hiçbir sipariş veya tutar otomatik değiştirilmez, hakediş ve dönem kapanışına etkisi yoktur.</p>
     </div>
   </Card>;
 }
 
 function SettingsForm({ brandId, initial: s, report, reload }: { brandId: string; initial: ApiSettings; report: (text: string) => void; reload: () => Promise<void> }) {
+  const [platform, setPlatform] = useState(s.platform);
   const [storeUrl, setStoreUrl] = useState(s.storeUrl);
   const [apiUser, setApiUser] = useState(s.apiUser);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmTest, setConfirmTest] = useState(false);
-  const dirty = storeUrl !== s.storeUrl || apiUser !== s.apiUser || !!password;
+  const shopify = platform === 'Shopify';
+  const dirty = storeUrl !== s.storeUrl || apiUser !== s.apiUser || !!password || platform !== s.platform;
   useUnsavedChanges(dirty);
   async function save(e: FormEvent) {
     e.preventDefault(); if (busy) return;
     setBusy(true); setError(''); report('');
     try {
-      const result = await api<{ message: string }>(`/api/brands/${brandId}/api-settings`, { method: 'PUT', body: JSON.stringify({ revision: s.revision, storeUrl, apiUser, password: password || null }) });
+      const result = await api<{ message: string }>(`/api/brands/${brandId}/api-settings`, { method: 'PUT', body: JSON.stringify({ revision: s.revision, platform, storeUrl, apiUser: shopify ? '' : apiUser, password: password || null }) });
       setPassword(''); report(result.message); await reload();
     } catch (e) { setPassword(''); setError(e instanceof Error ? e.message : 'API ayarları kaydedilemedi.'); } finally { setBusy(false); }
   }
@@ -59,12 +60,16 @@ function SettingsForm({ brandId, initial: s, report, reload }: { brandId: string
       {s.lastTestAt ? ` Son doğrulama: ${turkceTarih(s.lastTestAt)}.` : ' Henüz bağlantı doğrulanmadı.'}</p>
     <form onSubmit={save} className="mt-3 space-y-4">
       <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
-        <label>Mağaza adresi<input className="input mt-1" type="url" required maxLength={300} placeholder="https://admin.ornek.com" value={storeUrl} onChange={e => setStoreUrl(e.target.value)} /></label>
-        <label>API kullanıcısı e-postası<input className="input mt-1" type="email" required maxLength={320} autoComplete="off" value={apiUser} onChange={e => setApiUser(e.target.value)} /></label>
-        <label className="sm:col-span-2">API kullanıcısı şifresi<input className="input mt-1" type="password" autoComplete="new-password" maxLength={400} value={password} onChange={e => setPassword(e.target.value)} placeholder={s.passwordStored ? 'Kayıtlı şifre var; değiştirmeyecekseniz boş bırakın' : 'API kullanıcısı şifresini girin'} /></label>
+        <label className="sm:col-span-2">Mağaza platformu<select className="input mt-1" value={platform} onChange={e => setPlatform(e.target.value)}><option value="GrandNode">GrandNode</option><option value="Shopify">Shopify</option></select></label>
+        <label>Mağaza adresi<input className="input mt-1" type="url" required maxLength={300} placeholder={shopify ? 'https://ornek.myshopify.com' : 'https://admin.ornek.com'} value={storeUrl} onChange={e => setStoreUrl(e.target.value)} /></label>
+        {!shopify && <label>API kullanıcısı e-postası<input className="input mt-1" type="email" required maxLength={320} autoComplete="off" value={apiUser} onChange={e => setApiUser(e.target.value)} /></label>}
+        <label className="sm:col-span-2">{shopify ? 'Admin API jetonu' : 'API kullanıcısı şifresi'}<input className="input mt-1" type="password" autoComplete="new-password" maxLength={400} value={password} onChange={e => setPassword(e.target.value)} placeholder={s.passwordStored ? (shopify ? 'Kayıtlı jeton var; boş bırakırsanız korunur' : 'Kayıtlı şifre var; değiştirmeyecekseniz boş bırakın') : (shopify ? 'Admin API jetonunu girin' : 'API kullanıcısı şifresini girin')} /></label>
         {error && <p role="alert" className="sm:col-span-2 text-sm text-red-700">{error}</p>}
         <button className={button} type="submit">{busy ? 'İşlem sürüyor…' : 'API ayarlarını kaydet'}</button>
       </fieldset>
+      <p className="text-xs text-[#6d7175]">{shopify
+        ? 'Shopify mağazalarında API kullanıcısı e-postası gerekmez. Yönetimden Ayarlar → Uygulamalar ve satış kanalları bölümünden sipariş okuma yetkili bir özel uygulama jetonu alınır. Mağaza adresi https ile başlamalı ve .myshopify.com ile bitmelidir.'
+        : 'GrandNode mağazalarında panelin Ayarlar → API Kullanıcılar bölümünde bu e-postayla etkin bir API kullanıcısı bulunmalıdır. Mağaza adresi https ile başlamalıdır.'}</p>
     </form>
     <div className="mt-4 space-y-3 border-t pt-4 text-sm">
       <h3 className="font-semibold">Bağlantıyı doğrula</h3>

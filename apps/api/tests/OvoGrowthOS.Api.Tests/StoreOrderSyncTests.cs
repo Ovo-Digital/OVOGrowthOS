@@ -27,11 +27,14 @@ public sealed class StoreOrderSyncTests
         public List<StoreOrderDraft> Drafts { get; } = [];
         public bool Fail { get; set; }
         public StoreOrderPeriod? LastPeriod { get; private set; }
-        public Task<StoreOrderFetchResult> FetchAsync(string token, string storeUrl, StoreOrderPeriod period, CancellationToken ct)
+        public StorePlatform? LastPlatform { get; private set; }
+        public Task<StoreOrderFetchResult> FetchAsync(string token, string storeUrl, StoreOrderPeriod period, StorePlatform platform, CancellationToken ct)
         {
-            LastPeriod = period;
+            LastPeriod = period; LastPlatform = platform;
             return Task.FromResult(Fail ? new StoreOrderFetchResult(false, [], false) : new StoreOrderFetchResult(true, Drafts, false));
         }
+        public Task<bool> TestAsync(StorePlatform platform, string token, string storeUrl, CancellationToken ct) =>
+            Task.FromResult(!Fail);
     }
 
     private static WebApplicationFactory<Program> Setup(WorkflowApiFactory parent, FakeToken token, FakeOrders orders) =>

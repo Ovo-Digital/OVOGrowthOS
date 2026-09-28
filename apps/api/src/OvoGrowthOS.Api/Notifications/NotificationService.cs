@@ -40,6 +40,34 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
                 Add(NotificationKind.DailyTasks, null, $"daily:{today:yyyy-MM-dd}", now, today);
             foreach (var task in tasks.Where(x => x.DueOn <= today.AddDays(1)))
                 Add(NotificationKind.TaskDue, task.Id, $"due:{task.Id}:{task.DueOn:yyyy-MM-dd}", now, task.DueOn);
+            var promiseFrom = today.AddDays(-60);
+            var promises = await db.CollectionPromises.AsNoTracking()
+                .Where(x => x.OwnerId == userId && !x.IsCancelled && x.PromisedOn >= promiseFrom && x.PromisedOn <= today.AddDays(1))
+                .ToListAsync(ct);
+            foreach (var promise in promises)
+            {
+                var promisePeriod = await db.MonthlyPerformances.AsNoTracking()
+                    .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
+                    .Include(x => x.Collection)!.ThenInclude(x => x!.Promise)
+                    .SingleOrDefaultAsync(x => x.Id == promise.MonthlyPerformanceId, ct);
+                if (promisePeriod is null) continue;
+                var reminder = CollectionPromises.Reminder(CollectionPromises.Balance(promisePeriod, today), today);
+                if (reminder is null) continue;
+                var prefix = reminder == CollectionPromises.ReminderOverdue ? "promise-overdue" : "promise-due";
+                Add(NotificationKind.PromiseReminder, promise.Id, $"{prefix}:{promise.Id}:{promise.PromisedOn:yyyy-MM-dd}", now, today);
+            }
+        }
+        if (Manager(user))
+        {
+            var trNow = now.ToOffset(TimeSpan.FromHours(3));
+            var diff = ((int)trNow.DayOfWeek + 6) % 7;
+            var lastMonday = trNow.Date.AddDays(-diff).AddHours(9);
+            if (trNow >= lastMonday)
+            {
+                var iso = trNow.Date;
+                var week = $"digest:{System.Globalization.ISOWeek.GetYear(iso)}-W{System.Globalization.ISOWeek.GetWeekOfYear(iso):00}";
+                Add(NotificationKind.WeeklyDigest, null, week, now, today);
+            }
         }
         var brandId = await db.PortalAccesses.Where(x => x.UserId == userId).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
         if (user.Role == "BrandClient" && brandId.HasValue)
@@ -124,6 +152,33 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
             var task = await cache.TaskFor(n.SourceId);
             return task is not null && task.DueOn == n.Day && task.DueOn <= TeamWork.Today(now).AddDays(1)
                 ? new($"Görevinizin son tarihi: {task.DueOn:dd.MM.yyyy}", $"/brands/{task.BrandId}#team-work") : null;
+        }
+        if (n.Kind == NotificationKind.WeeklyDigest)
+            return Staff(user) ? new("Haftalık yönetim özeti", "/reports") : null;
+        if (n.Kind == NotificationKind.PromiseReminder)
+        {
+            if (!Staff(user)) return null;
+            if (lockSource && db.Database.IsRelational())
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM growth.\"CollectionPromises\" WHERE \"Id\" = {n.SourceId} FOR SHARE", ct);
+            var promise = await db.CollectionPromises.AsNoTracking().SingleOrDefaultAsync(x => x.Id == n.SourceId, ct);
+            if (promise is null || promise.IsCancelled || promise.OwnerId != user.Id) return null;
+            var promisePeriod = await db.MonthlyPerformances.AsNoTracking()
+                .Include(x => x.Brand).Include(x => x.Deal)
+                .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
+                .Include(x => x.Collection)!.ThenInclude(x => x!.Promise)
+                .SingleOrDefaultAsync(x => x.Id == promise.MonthlyPerformanceId, ct);
+            if (promisePeriod is null) return null;
+            var balance = CollectionPromises.Balance(promisePeriod, TeamWork.Today(now));
+            var reminder = CollectionPromises.Reminder(balance, TeamWork.Today(now));
+            if (reminder is null || balance is null) return null;
+            var overdueRow = n.EventKey.StartsWith("promise-overdue:", StringComparison.Ordinal);
+            if (overdueRow != (reminder == CollectionPromises.ReminderOverdue)) return null;
+            var name = promisePeriod.Brand?.Name ?? "Marka";
+            var currency = promisePeriod.Collection?.Currency ?? promisePeriod.Deal?.Currency ?? "";
+            var remaining = balance.Remaining.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+            return overdueRow
+                ? new($"Ödeme sözü gecikti: {name} ({remaining} {currency} kaldı)", "/commissions/planning")
+                : new($"Yarın ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning");
         }
         var brand = await cache.Brand();
         if (n.Kind == NotificationKind.PortalReport)

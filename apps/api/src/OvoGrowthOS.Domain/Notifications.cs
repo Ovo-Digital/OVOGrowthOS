@@ -1,6 +1,6 @@
 namespace OvoGrowthOS.Domain;
 
-public enum NotificationKind { DailyTasks, TaskDue, PortalQuestion, PortalReply, PortalReport }
+public enum NotificationKind { DailyTasks, TaskDue, PortalQuestion, PortalReply, PortalReport, PromiseReminder, WeeklyDigest }
 
 public sealed class NotificationPreference
 {
@@ -9,6 +9,8 @@ public sealed class NotificationPreference
     public bool TaskDueEmail { get; set; }
     public bool PortalMessagesEmail { get; set; }
     public bool PortalReportsEmail { get; set; }
+    public bool PromiseRemindersEmail { get; set; }
+    public bool WeeklyDigestEmail { get; set; }
     public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
     public int Revision { get; set; } = 1;
 
@@ -17,6 +19,8 @@ public sealed class NotificationPreference
         NotificationKind.DailyTasks => DailyTasksEmail,
         NotificationKind.TaskDue => TaskDueEmail,
         NotificationKind.PortalReport => PortalReportsEmail,
+        NotificationKind.PromiseReminder => PromiseRemindersEmail,
+        NotificationKind.WeeklyDigest => WeeklyDigestEmail,
         _ => PortalMessagesEmail
     };
 }

@@ -6,7 +6,7 @@ import { api, type SessionUser } from '@/lib/api';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/core';
 
-type Preferences = { dailyTasksEmail: boolean; taskDueEmail: boolean; portalMessagesEmail: boolean; portalReportsEmail: boolean; revision: number };
+type Preferences = { dailyTasksEmail: boolean; taskDueEmail: boolean; portalMessagesEmail: boolean; portalReportsEmail: boolean; promiseRemindersEmail: boolean; weeklyDigestEmail: boolean; revision: number };
 type Item = { id: string; title: string; href: string; createdAt: string; readAt: string | null; emailStatus: string | null };
 export type NotificationList = { items: Item[]; preferences: Preferences | null; emailReady: boolean };
 const statuses: Record<string, string> = { Pending: 'Gönderim bekliyor', Sending: 'Gönderiliyor', Sent: 'E-posta sunucusu kabul etti', Uncertain: 'Gönderim doğrulanamadı; otomatik tekrarlanmaz', Cancelled: 'Tercih, hesap veya kaynak değiştiği için gönderilmedi' };
@@ -52,7 +52,7 @@ function PreferencesForm({ value, customer, analyst, ready, onSaved }: { value: 
   const [message, setMessage] = useState('');
   const options: [keyof Omit<Preferences, 'revision'>, string][] = customer
     ? [['portalMessagesEmail', 'Sorularıma gelen yanıtlar'], ['portalReportsEmail', 'Markam için paylaşılan yeni raporlar']]
-    : [['dailyTasksEmail', 'Günlük açık görev hatırlatması (Türkiye saatiyle 09.00 sonrası)'], ['taskDueEmail', 'Son tarihi yarın, bugün veya geçmiş görevler'], ...(!analyst ? [['portalMessagesEmail', 'Sorumlu olduğum müşteri konuşmaları (atanmamış konular yöneticilere gider)'] as [keyof Omit<Preferences, 'revision'>, string]] : [])];
+    : [['dailyTasksEmail', 'Günlük açık görev hatırlatması (Türkiye saatiyle 09.00 sonrası)'], ['taskDueEmail', 'Son tarihi yarın, bugün veya geçmiş görevler'], ['promiseRemindersEmail', 'Yarın vadesi gelen veya geciken ödeme sözleri'], ['weeklyDigestEmail', 'Her pazartesi 09.00’da haftalık yönetim özeti (toplantı öncesi)'], ...(!analyst ? [['portalMessagesEmail', 'Sorumlu olduğum müşteri konuşmaları (atanmamış konular yöneticilere gider)'] as [keyof Omit<Preferences, 'revision'>, string]] : [])];
   async function save(e: FormEvent) {
     e.preventDefault(); if (busy) return; setBusy(true); setMessage('');
     try { await api('/api/notifications/preferences', { method: 'PUT', body: JSON.stringify(form) }); onSaved(); await qc.invalidateQueries({ queryKey: ['notifications'] }); }

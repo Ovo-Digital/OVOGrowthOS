@@ -24,7 +24,7 @@ public static partial class WorkflowEndpoints
         return Results.Ok(await BuildQualityReport(db, y, m, brandId));
     }
 
-    private static async Task<QualityReport> BuildQualityReport(AppDbContext db, int year, int month, Guid? brandId)
+    internal static async Task<QualityReport> BuildQualityReport(AppDbContext db, int year, int month, Guid? brandId)
     {
         var period = new QualityPeriod(year, month);
         var lastMonth = DataQuality.Previous(period);

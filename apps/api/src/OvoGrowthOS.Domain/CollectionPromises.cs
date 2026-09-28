@@ -35,4 +35,15 @@ public static class CollectionPromises
     public static bool CanRecord(MonthlyPerformance period, DateOnly today) => period.Collection is not null
         && period.Status is MonthlyPerformanceStatus.Invoiced or MonthlyPerformanceStatus.Paid
         && Collections.Balance(period, today) is { NeedsReview: false, Outstanding: > 0 };
+
+    public const string ReminderDueTomorrow = "DueTomorrow";
+    public const string ReminderOverdue = "Overdue";
+
+    public static string? Reminder(PromiseBalance? balance, DateOnly today)
+    {
+        if (balance is null) return null;
+        if (balance.State == ReminderOverdue) return ReminderOverdue;
+        if (balance.State == "Waiting" && balance.PromisedOn == today.AddDays(1)) return ReminderDueTomorrow;
+        return null;
+    }
 }
