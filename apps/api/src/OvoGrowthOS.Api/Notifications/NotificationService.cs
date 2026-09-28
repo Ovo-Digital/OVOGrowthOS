@@ -61,8 +61,8 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
         {
             var trNow = now.ToOffset(TimeSpan.FromHours(3));
             var diff = ((int)trNow.DayOfWeek + 6) % 7;
-            var lastMonday = trNow.Date.AddDays(-diff).AddHours(9);
-            if (trNow >= lastMonday)
+            var gate = new DateTimeOffset(trNow.Date.AddDays(-diff).AddHours(9), TimeSpan.FromHours(3));
+            if (trNow >= gate)
             {
                 var iso = trNow.Date;
                 var week = $"digest:{System.Globalization.ISOWeek.GetYear(iso)}-W{System.Globalization.ISOWeek.GetWeekOfYear(iso):00}";

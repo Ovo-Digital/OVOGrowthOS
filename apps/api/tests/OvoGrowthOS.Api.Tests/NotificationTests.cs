@@ -133,7 +133,7 @@ public sealed class NotificationTests
         await Db(f, async db => {
             Assert.Equal(1, await db.UserNotifications.CountAsync(x => x.UserId == client && x.Kind == NotificationKind.PortalReply));
             Assert.False(await db.UserNotifications.AnyAsync(x => x.UserId == other && x.Kind == NotificationKind.PortalReply));
-            Assert.False(await db.UserNotifications.AnyAsync(x => x.UserId == Admin));
+            Assert.False(await db.UserNotifications.AnyAsync(x => x.UserId == Admin && x.Kind != NotificationKind.WeeklyDigest));
             Assert.True(await db.UserNotifications.AnyAsync(x => x.UserId == Partner && x.Kind == NotificationKind.PortalQuestion));
             (await db.PortalReports.SingleAsync()).RevokedAt = DateTimeOffset.UtcNow; await db.SaveChangesAsync();
         });
