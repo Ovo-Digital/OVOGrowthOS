@@ -85,6 +85,7 @@ type RenewalState = {
   renewal: { renewalOfDealId: string | null; successorId: string | null; successorName: string | null; successorStatus: string | null; taskId: string | null; taskTitle: string | null; taskDueOn: string | null; taskAssignee: string | null; taskCompleted: boolean };
   scope: { activeItems: number; pendingRequests: number; rejectedRequests: number };
   months: Month[];
+  collectionPerformance: { onTimeRate: number | null; averageDays: number | null; recordCount: number; paymentCount: number; onTimePayments: number; onTimeAmount: number; totalAmount: number };
   collections: { receivable: number; paid: number; outstanding: number; overdue: number };
   costs: { recorded: number; hours: number; direct: number; team: number; confirmedPeriods: number };
   effort: { taskCount: number; plannedHours: number; actualHours: number; difference: number };
@@ -126,6 +127,16 @@ export function RenewalSummaryPanel({ dealId }: { dealId: string }) {
       <h3 className="mt-5 font-semibold">Son aylar</h3>
       <div className="mt-2 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-[#6d7175]"><th className="py-1 pr-3">Dönem</th><th className="py-1 pr-3">Hedef</th><th className="py-1 pr-3">Net ciro</th><th className="py-1 pr-3">Alacak</th><th className="py-1 pr-3">Tahsil edilen</th><th className="py-1">Gecikme (gün)</th></tr></thead>
         <tbody>{query.data.months.map(m => <tr key={`${m.year}-${m.month}`} className="border-t"><td className="py-1 pr-3">{m.month}/{m.year}</td><td className="py-1 pr-3">{m.target === null ? '—' : money(m.target, query.data.deal.currency)}</td><td className="py-1 pr-3">{m.netRevenue === null ? '—' : money(m.netRevenue, query.data.deal.currency)}</td><td className="py-1 pr-3">{m.receivable === null ? '—' : money(m.receivable, query.data.deal.currency)}</td><td className="py-1 pr-3">{m.paid === null ? '—' : money(m.paid, query.data.deal.currency)}</td><td className="py-1">{m.overdueDays || 0}</td></tr>)}</tbody></table></div>
+      <div className="mt-4 rounded-lg border p-3 text-sm">
+        <strong>Tahsilat performansı</strong>
+        {query.data.collectionPerformance.onTimeRate === null
+          ? <p className="mt-1">Bu markada vade tarihi bilinen ve kapanmış tahsilat kaydı yok; performans hesaplanamıyor.</p>
+          : <>
+            <p className="mt-1">Vadesinde tahsil oranı: <strong>{percent(query.data.collectionPerformance.onTimeRate)}</strong> · Ortalama vade farkı: <strong>{new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(query.data.collectionPerformance.averageDays!)} gün</strong></p>
+            <p className="mt-1">{query.data.collectionPerformance.recordCount} kapalı tahsilat, {query.data.collectionPerformance.paymentCount} ödeme; vadesinde olan {query.data.collectionPerformance.onTimePayments} ödeme tutarı {money(query.data.collectionPerformance.onTimeAmount, query.data.deal.currency)} / toplam {money(query.data.collectionPerformance.totalAmount, query.data.deal.currency)}.</p>
+          </>}
+        <p className="mt-1 text-[#6d7175]">Yalnız vade tarihi bilinen ve kapanan tahsilatlar ölçülür; iptal edilen ve ödeme tarihi bilinmeyen eski ödemeler dışarıdadır. Negatif vade farkı, vadesinden önce tahsil edildiğini gösterir.</p>
+      </div>
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
         <Summary l="Toplam alacak" v={money(query.data.collections.receivable, query.data.deal.currency)} />
         <Summary l="Tahsil edilen" v={money(query.data.collections.paid, query.data.deal.currency)} />

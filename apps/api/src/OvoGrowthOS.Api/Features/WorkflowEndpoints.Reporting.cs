@@ -10,15 +10,40 @@ public static partial class WorkflowEndpoints
         string? search = null, CommissionStatus? status = null, string sort = "recent",
         int? year = null, int? month = null, ReportScope scope = ReportScope.All, Guid? brandId = null, string? currency = null, string collection = "all")
     {
+        var (error, rows, ordered, resolvedCurrency, today) = await CommissionRows(db, search, status, sort, year, month, scope, brandId, currency, collection);
+        if (error is not null) return error;
+        var currencies = (await db.Deals.Select(x => x.Currency).Distinct().ToListAsync()).Append(resolvedCurrency).Distinct().Order().ToList();
+        page = Math.Max(page, 1); pageSize = Math.Clamp(pageSize, 1, 100);
+        return Results.Ok(new
+        {
+            page, pageSize, total = rows.Count, currency = resolvedCurrency, currencies, scope, summary = PortfolioReporting.Summarize(rows),
+            paid = PortfolioReporting.Paid(rows), outstanding = PortfolioReporting.Outstanding(rows),
+            overdue = rows.Sum(x => Collections.Balance(x, today) is { OverdueDays: > 0 } b ? b.Outstanding : 0),
+            items = ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
+            {
+                x.Id, x.BrandId, x.Year, x.Month, brand = x.Brand!.Name, x.CommissionableRevenue,
+                dealType = x.Deal!.DealType, x.Deal.MonthlyRetainer, x.Deal.MinimumMonthlyFee, x.OvoFee,
+                effectiveRate = FinancialCalculator.Ratio(x.OvoFee, x.CommissionableRevenue),
+                commissionStatus = PortfolioReporting.PaymentStage(x.Status), periodStatus = x.Status,
+                balance = Collections.Balance(x, today), x.Collection?.DueOn, invoiceReference = x.Collection?.InvoiceReference ?? ""
+            })
+        });
+    }
+
+    private static async Task<(IResult? Error, List<MonthlyPerformance> Rows, IOrderedEnumerable<MonthlyPerformance> Ordered, string Currency, DateOnly Today)> CommissionRows(
+        AppDbContext db, string? search, CommissionStatus? status, string sort, int? year, int? month,
+        ReportScope scope, Guid? brandId, string? currency, string collection)
+    {
         if (year.HasValue != month.HasValue || year is < 2020 or > 2100 || month is < 1 or > 12 ||
             !Enum.IsDefined(scope) || status.HasValue && !Enum.IsDefined(status.Value))
-            return Results.BadRequest(new { error = "Geçerli bir dönem ve durum seçin." });
-        if (collection is not ("all" or "outstanding" or "partial" or "overdue" or "settled" or "review")) return Results.BadRequest(new { error = "Geçerli bir tahsilat görünümü seçin." });
+            return (Results.BadRequest(new { error = "Geçerli bir dönem ve durum seçin." }), [], default!, "", default);
+        if (collection is not ("all" or "outstanding" or "partial" or "overdue" or "settled" or "review"))
+            return (Results.BadRequest(new { error = "Geçerli bir tahsilat görünümü seçin." }), [], default!, "", default);
         var today = TeamWork.Today(DateTimeOffset.UtcNow);
         var settings = await db.GeneralSettings.AsNoTracking().SingleAsync();
         currency = (currency ?? settings.DefaultCurrency).Trim().ToUpperInvariant();
-        if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) return Results.BadRequest(new { error = "Geçerli bir para birimi seçin." });
-        var currencies = (await db.Deals.Select(x => x.Currency).Distinct().ToListAsync()).Append(currency).Distinct().Order().ToList();
+        if (currency.Length != 3 || !currency.All(char.IsAsciiLetter))
+            return (Results.BadRequest(new { error = "Geçerli bir para birimi seçin." }), [], default!, "", default);
         var query = db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal)
             .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
             .Where(x => (!year.HasValue || x.Year == year && x.Month == month) &&
@@ -38,21 +63,66 @@ public static partial class WorkflowEndpoints
             "nameDesc" => rows.OrderByDescending(x => x.Brand!.Name),
             _ => rows.OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
         };
-        page = Math.Max(page, 1); pageSize = Math.Clamp(pageSize, 1, 100);
-        return Results.Ok(new
+        return (null, rows, ordered, currency, today);
+    }
+
+    private static async Task<IResult> ExportCommissions(AppDbContext db, string? search = null, CommissionStatus? status = null, string sort = "recent",
+        int? year = null, int? month = null, ReportScope scope = ReportScope.All, Guid? brandId = null, string? currency = null, string collection = "all")
+    {
+        var (error, rows, ordered, resolvedCurrency, today) = await CommissionRows(db, search, status, sort, year, month, scope, brandId, currency, collection);
+        if (error is not null) return error;
+        string StatusLabel(CommissionStatus value) => value switch
         {
-            page, pageSize, total = rows.Count, currency, currencies, scope, summary = PortfolioReporting.Summarize(rows),
-            paid = PortfolioReporting.Paid(rows), outstanding = PortfolioReporting.Outstanding(rows),
-            overdue = rows.Sum(x => Collections.Balance(x, today) is { OverdueDays: > 0 } b ? b.Outstanding : 0),
-            items = ordered.ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).Select(x => new
+            CommissionStatus.Draft => "Taslak", CommissionStatus.Approved => "Onaylandı",
+            CommissionStatus.Invoiced => "Faturalandı", _ => "Ödendi"
+        };
+        string PeriodLabel(MonthlyPerformanceStatus value) => value switch
+        {
+            MonthlyPerformanceStatus.Draft => "Taslak", MonthlyPerformanceStatus.UnderReview => "İncelemede",
+            MonthlyPerformanceStatus.Approved => "Onaylandı", MonthlyPerformanceStatus.Locked => "Kilitlendi",
+            MonthlyPerformanceStatus.Invoiced => "Faturalandı", _ => "Ödendi"
+        };
+        string DealLabel(DealType value) => value switch
+        {
+            DealType.FlatRevenueShare => "Sabit ciro payı", DealType.TieredRevenueShare => "Kademeli ciro payı",
+            DealType.RetainerPlusRevenueShare => "Aylık hizmet bedeli + ciro payı",
+            DealType.MinimumFeePlusRevenueShare => "Asgari ücret + ciro payı",
+            DealType.IncrementalRevenueShare => "Büyüme farkı üzerinden pay",
+            DealType.RetainerPlusIncrementalRevenueShare => "Aylık hizmet bedeli + büyüme farkı payı",
+            DealType.ContributionProfitShare => "Katkı kârı paylaşımı", _ => "Sabit aylık hizmet bedeli"
+        };
+        string StateLabel(string value) => value switch
+        {
+            "NeedsReview" => "İnceleme gerekli", "NotClosed" => "Henüz kapanmadı", "Settled" => "Alacak kapandı",
+            "PartiallyPaid" => "Kısmen ödendi", "Unpaid" => "Ödeme bekleniyor", _ => "Kontrol edin"
+        };
+        var headers = new[] { "Ay", "Marka", "Hesaplamaya esas ciro", "Anlaşma modeli", "Aylık ücret", "Asgari ücret",
+            "Son hakediş", "Gerçekleşen oran", "Hakediş durumu", "Dönem kapanışı", "Ödenen", "Kalan alacak",
+            "Tahsilat durumu", "Vade", "Gecikme (gün)", "Fatura referansı" };
+        var data = ordered.ThenBy(x => x.Id).Select(x =>
+        {
+            var b = Collections.Balance(x, today);
+            return new object?[]
             {
-                x.Id, x.BrandId, x.Year, x.Month, brand = x.Brand!.Name, x.CommissionableRevenue,
-                dealType = x.Deal!.DealType, x.Deal.MonthlyRetainer, x.Deal.MinimumMonthlyFee, x.OvoFee,
-                effectiveRate = FinancialCalculator.Ratio(x.OvoFee, x.CommissionableRevenue),
-                commissionStatus = PortfolioReporting.PaymentStage(x.Status), periodStatus = x.Status,
-                balance = Collections.Balance(x, today), x.Collection?.DueOn, invoiceReference = x.Collection?.InvoiceReference ?? ""
-            })
-        });
+                $"{x.Month}/{x.Year}", x.Brand!.Name, x.CommissionableRevenue, DealLabel(x.Deal!.DealType),
+                x.Deal.MonthlyRetainer, x.Deal.MinimumMonthlyFee, x.OvoFee,
+                FinancialCalculator.Ratio(x.OvoFee, x.CommissionableRevenue), StatusLabel(PortfolioReporting.PaymentStage(x.Status)),
+                PeriodLabel(x.Status), b.Paid, b.Outstanding, StateLabel(b.State), x.Collection?.DueOn, b.OverdueDays,
+                x.Collection?.InvoiceReference ?? ""
+            };
+        }).ToList();
+        var summary = PortfolioReporting.Summarize(rows);
+        data.Add([]);
+        data.Add(["Kayıt sayısı", rows.Count]);
+        data.Add(["Toplam hakediş (kapsamdaki)", summary.OvoFee]);
+        data.Add(["Ödenen", PortfolioReporting.Paid(rows)]);
+        data.Add(["Kalan alacak", PortfolioReporting.Outstanding(rows)]);
+        data.Add(["Bugün vadesi geçmiş kalan", rows.Sum(x => Collections.Balance(x, today) is { OverdueDays: > 0 } b ? b.Outstanding : 0)]);
+        data.Add(["Para birimi", resolvedCurrency]);
+        data.Add(["Uyarı", "Tutarlar KDV hariçtir. Bu dosya ekranınızdaki filtrelerle aynı kayıtları içerir."]);
+        var periodName = year.HasValue ? $"-{year:0000}-{month:00}" : "";
+        var bytes = ExcelExport.Build("Hakedişler", $"Hakediş listesi{periodName} ({resolvedCurrency})", headers, data);
+        return Results.File(bytes, ExcelExport.MimeType, $"hakedisler{periodName}-{DateTime.UtcNow:yyyy-MM-dd}.xlsx");
     }
 
     private static async Task<IResult> PortfolioReport(AppDbContext db, int? year = null, int? month = null,

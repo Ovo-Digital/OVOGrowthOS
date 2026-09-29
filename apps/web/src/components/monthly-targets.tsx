@@ -13,7 +13,7 @@ import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 type Metric = 'NetRevenue' | 'AdSpend' | 'ContributionMargin';
 type Target = { id: string; year: number; month: number; currency: string; netRevenueGoal: number; adBudget: number; contributionMarginGoal: number; ownerId: string; revision: number; updatedAt: string };
 type Result = { metric: Metric; target: number; actual: number | null; difference: number | null; relativeDifference: number | null; percentagePointDifference: number | null; needsAttention: boolean | null };
-type TargetData = { brandName: string; target: Target | null; owner?: { name: string; isActive: boolean }; comparison: { performanceId: string | null; performanceUpdatedAt: string | null; status: string | null; isClosed: boolean; missingReason: string | null; metrics: Result[] } | null; actions?: { metric: Metric; taskId: string; targetRevision: number; completedAt: string | null; dueOn: string }[] };
+type TargetData = { brandName: string; target: Target | null; owner?: { name: string; isActive: boolean }; comparison: { performanceId: string | null; performanceUpdatedAt: string | null; status: string | null; isClosed: boolean; missingReason: string | null; metrics: Result[] } | null; projection?: { calculable: boolean; notReason: string | null; dealName: string | null; dealType: string; netRevenueGoal: number; currency: string; ovoFee: number | null; effectiveRate: number | null; ovoInternalCost: number | null; ovoGrossProfit: number | null; brandContributionProfit: number | null; brandContributionMarginGoal: number | null } | null; actions?: { metric: Metric; taskId: string; targetRevision: number; completedAt: string | null; dueOn: string }[] };
 type History = { id: string; userId: string; createdAt: string; reason: string; oldValueJson: string | null; newValueJson: string };
 const labels: Record<Metric, string> = { NetRevenue: 'Net ciro', AdSpend: 'Reklam gideri', ContributionMargin: 'Markaya kalan katkı marjı' };
 const button = 'rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50';
@@ -52,6 +52,18 @@ export function MonthlyTargets({ brandId }: { brandId: string }) {
             {task ? <p className="text-sm">Takip işi {task.completedAt ? 'tamamlandı' : 'açık'} · {dayText(task.dueOn)} · Hedef sürümü {task.targetRevision}. <Link className="underline" href={`/brands/${brandId}#team-work`}>Mevcut işi aç</Link></p> : canManage && row.needsAttention && <button className={button} disabled={editing || !!action} onClick={() => setAction({ data, metric: row.metric })}>Takip işi oluştur: {labels[row.metric]}</button>}
           </Card>;
         })}</div>
+        {data.projection && <Card className="mb-4 p-5"><h2 className="font-semibold">Hedef senaryosu projeksiyonu</h2>
+          <p className="mt-2 text-sm">Eğer bu hedef tutarsa, mevcut anlaşma oranlarıyla oluşacak hesaplanabilir rakamlar şunlardır. Bu bir tahmin değildir ve gerçekleşen sonucu göstermez; yalnız “eğer hedef tutarsa” senaryosudur.</p>
+          {!data.projection.calculable ? <p className="mt-3 rounded-lg border p-3 text-sm">{data.projection.notReason}</p> : <>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+              <div><dt>Beklenen OVO hakedişi</dt><dd className="font-semibold">{moneyPrecise(data.projection.ovoFee!, data.projection.currency)}</dd></div>
+              <div><dt>Etkin oran</dt><dd className="font-semibold">{percent(data.projection.effectiveRate!)}</dd></div>
+              <div><dt>OVO katkısı (hakediş − iç maliyet)</dt><dd className="font-semibold">{moneyPrecise(data.projection.ovoGrossProfit!, data.projection.currency)}</dd></div>
+              <div><dt>Markaya kalan katkı</dt><dd className="font-semibold">{data.projection.brandContributionProfit === null ? 'Katkı marjı hedefi girilmedi' : moneyPrecise(data.projection.brandContributionProfit, data.projection.currency)}</dd></div>
+            </dl>
+            <p className="mt-3 text-sm">Anlaşma: {data.projection.dealName} · {turkce(data.projection.dealType)}. Komisyon tabanı olarak net hedef cirosu alınır; kargo ve hediye kartı kesintileri hedefe girilmediğinden projeksiyonda yoktur. Reklam bütçesi ve diğer giderler bu hesaba katılmaz; markaya kalan katkı hedeflenen katkı marjından türetilir. Tahmini OVO iç maliyeti: {moneyPrecise(data.projection.ovoInternalCost!, data.projection.currency)}.</p>
+          </>}
+        </Card>}
       </>}
       {editing && <TargetForm path={path} target={data.target} onClose={() => setEditing(false)} onSaved={() => refreshed('Hedef gerekçesiyle kaydedildi. Finansal sonuçlar değiştirilmedi.')} />}
       {action && <ActionForm data={action.data} metric={action.metric} onClose={() => setAction(null)} onSaved={() => refreshed('Takip işi oluşturuldu. Markanın görevleri alanından takip edebilirsiniz.')} />}

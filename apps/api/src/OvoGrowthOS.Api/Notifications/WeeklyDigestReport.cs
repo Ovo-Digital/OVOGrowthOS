@@ -186,7 +186,21 @@ public static class WeeklyDigestReport
             }
             catch (System.Text.Json.JsonException) { }
         }
-        if (failedMails == 0 && failedSyncs.Count == 0)
+        var adAudits = await db.AuditRecords.AsNoTracking()
+            .Where(x => x.Action == "AdSpendAutoSyncSummary" && x.CreatedAt >= since)
+            .ToListAsync(ct);
+        var failedAdSyncs = new List<string>();
+        foreach (var audit in adAudits)
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(audit.NewValueJson);
+                if (doc.RootElement.TryGetProperty("failed", out var failed) && failed.GetInt32() > 0)
+                    failedAdSyncs.Add($"{audit.EntityId} ({failed.GetInt32()} marka)");
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
+        if (failedMails == 0 && failedSyncs.Count == 0 && failedAdSyncs.Count == 0)
         {
             body.AppendLine("Son 7 günde gönderilemeyen e-posta veya başarısız otomatik senkron yok.");
             return;
@@ -195,5 +209,7 @@ public static class WeeklyDigestReport
             body.AppendLine($"- Gönderilemeyen veya doğrulanamayan e-posta: {failedMails} adet. Gönderim merkezinden inceleyin.");
         if (failedSyncs.Count > 0)
             body.AppendLine($"- Başarısız otomatik sipariş senkronu: {string.Join(", ", failedSyncs)}. Marka sayfasından elle tekrar deneyin.");
+        if (failedAdSyncs.Count > 0)
+            body.AppendLine($"- Başarısız otomatik reklam harcaması senkronu: {string.Join(", ", failedAdSyncs)}. Reklam ayarlarını kontrol edip tekrar deneyin.");
     }
 }

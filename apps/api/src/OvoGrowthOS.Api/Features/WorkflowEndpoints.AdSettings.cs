@@ -137,7 +137,7 @@ public static partial class WorkflowEndpoints
         return Enum.TryParse(value.Trim(), true, out platform);
     }
 
-    private static bool IsAdSettingsValid(BrandAdSettings row, IDataProtectionProvider protection)
+    internal static bool IsAdSettingsValid(BrandAdSettings row, IDataProtectionProvider protection)
     {
         if (AdSettings.Validate(row.Platform, row.AccountId, row.ClientId) is not null) return false;
         if (!TryUnprotectAd(protection, row.ProtectedSecret, out var secret) || secret.Length < 8) return false;
@@ -146,7 +146,7 @@ public static partial class WorkflowEndpoints
             && TryUnprotectAd(protection, row.ProtectedDeveloperToken, out var developerToken) && developerToken.Length > 0;
     }
 
-    private static bool TryBuildConnection(BrandAdSettings row, IDataProtectionProvider protection, out AdConnection connection)
+    internal static bool TryBuildConnection(BrandAdSettings row, IDataProtectionProvider protection, out AdConnection connection)
     {
         connection = null!;
         if (AdSettings.Validate(row.Platform, row.AccountId, row.ClientId) is not null) return false;

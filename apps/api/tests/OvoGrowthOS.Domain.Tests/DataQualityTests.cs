@@ -26,7 +26,8 @@ public sealed class DataQualityTests
         };
 
     private static QualityInput Input(int year, int month, Deal? deal, MonthlyPerformance? current, MonthlyPerformance? previous = null,
-        decimal vatRate = .20m, bool adConnected = false) => new(year, month, Guid.NewGuid(), "Lale", "TRY", deal, current, previous, "manual", "", "", null, null, false, vatRate, adConnected);
+        decimal vatRate = .20m, bool adConnected = false, decimal? autoAdSpend = null, string autoAdSpendCurrency = "") =>
+        new(year, month, Guid.NewGuid(), "Lale", "TRY", deal, current, previous, "manual", "", "", null, null, false, vatRate, adConnected, autoAdSpend, autoAdSpendCurrency);
 
     private static QualityAlert Find(BrandQuality quality, string code) => quality.Alerts.Single(x => x.Code == code);
 
@@ -195,5 +196,21 @@ public sealed class DataQualityTests
         var empty = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(gross: 0), adConnected: true));
         Assert.DoesNotContain(empty.Alerts, x => x.Code == "ads_connected_missing");
         Assert.Equal("all_zero", Find(empty, "all_zero").Code);
+    }
+
+    [Fact]
+    public void Auto_read_ad_spend_is_shown_as_information_without_changing_the_period()
+    {
+        var quality = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(10_000m, vat: 1_000m, ads: 0, costs: 0, orders: 3),
+            adConnected: true, autoAdSpend: 1234.56m, autoAdSpendCurrency: "USD"));
+        var alert = Find(quality, "ads_auto_read");
+        Assert.Equal("info", alert.Severity);
+        Assert.Contains("1234,56 USD", alert.Finding);
+        Assert.Contains("değiştirmez", alert.WhyItMatters);
+        Assert.Equal(0m, quality.Sources.Single(x => x.Key == "ads").Amount);
+
+        var withoutConnection = DataQuality.Evaluate(Input(2026, 9, Contract(), Row(10_000m, vat: 1_000m, ads: 0, costs: 0, orders: 3),
+            adConnected: false, autoAdSpend: 1234.56m, autoAdSpendCurrency: "USD"));
+        Assert.DoesNotContain(withoutConnection.Alerts, x => x.Code == "ads_auto_read");
     }
 }

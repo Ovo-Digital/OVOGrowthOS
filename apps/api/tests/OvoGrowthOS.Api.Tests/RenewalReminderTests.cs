@@ -79,6 +79,44 @@ public sealed class RenewalReminderTests
     }
 
     [Fact]
+    public async Task Renewal_window_opens_exactly_one_renewal_task_automatically()
+    {
+        await using var f = new WorkflowApiFactory();
+        var end = TeamWork.Today(DateTimeOffset.UtcNow).AddDays(20);
+        var deal = await SeedDeal(f, end);
+        using var admin = await Client(f);
+
+        await Items(admin);
+        await Db(f, async db =>
+        {
+            var task = await db.WorkTasks.SingleAsync(x => x.Kind == WorkKind.ContractRenewal && x.DealId == deal);
+            Assert.Equal(end, task.DueOn);
+            Assert.Equal(WorkflowApiFactory.AccountId("admin@ovo.test"), task.AssigneeId);
+            Assert.Equal("sistem (otomatik)", task.CreatedBy);
+            Assert.Contains("Lale", task.Title);
+            Assert.Contains("otomatik", task.Description);
+        });
+
+        await Items(admin);
+        using var partner = await Client(f, "partner");
+        await Items(partner);
+        await Db(f, async db => Assert.Equal(1, await db.WorkTasks.CountAsync(x => x.Kind == WorkKind.ContractRenewal && x.DealId == deal)));
+
+        await Db(f, async db =>
+        {
+            var task = await db.WorkTasks.SingleAsync(x => x.Kind == WorkKind.ContractRenewal && x.DealId == deal);
+            task.CompletedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        });
+        await Items(admin);
+        await Db(f, async db =>
+        {
+            var task = await db.WorkTasks.SingleAsync(x => x.Kind == WorkKind.ContractRenewal && x.DealId == deal);
+            Assert.NotNull(task.CompletedAt);
+        });
+    }
+
+    [Fact]
     public async Task Far_away_finished_and_missing_end_dates_produce_no_reminder()
     {
         await using var f = new WorkflowApiFactory();

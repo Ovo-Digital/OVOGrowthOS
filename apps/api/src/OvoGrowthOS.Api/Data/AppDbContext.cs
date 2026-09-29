@@ -158,7 +158,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.HasIndex(x => new { x.UserId, x.EventKey }).IsUnique();
             e.HasIndex(x => new { x.UserId, x.CreatedAt });
             e.HasIndex(x => new { x.EmailStatus, x.CreatedAt });
-            e.ToTable(t => t.HasCheckConstraint("CK_UserNotifications_Values", "\"Revision\" > 0 AND \"Kind\" BETWEEN 0 AND 6 AND (\"EmailStatus\" IS NULL OR \"EmailStatus\" BETWEEN 0 AND 4)"));
+            e.ToTable(t => t.HasCheckConstraint("CK_UserNotifications_Values", "\"Revision\" > 0 AND \"Kind\" BETWEEN 0 AND 9 AND (\"EmailStatus\" IS NULL OR \"EmailStatus\" BETWEEN 0 AND 4)"));
         });
         modelBuilder.Entity<AccountLink>(e =>
         {

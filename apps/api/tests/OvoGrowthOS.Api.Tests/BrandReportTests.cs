@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OvoGrowthOS.Api.Data;
+using OvoGrowthOS.Api.Features;
 using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Tests;
@@ -48,6 +49,28 @@ public sealed class BrandReportTests
         var cost = d.GetProperty("internal").GetProperty("costs"); Assert.Equal(57_778, cost.GetProperty("contributionAfterRecordedCosts").GetDecimal());
         Assert.Contains("OVO iç yönetim - paylaşmayın", d.GetProperty("csv").GetString());
     }
+    [Fact]
+    public async Task Xlsx_export_matches_the_whitelisted_view_and_blocks_internal_for_analysts()
+    {
+        await using var f = new WorkflowApiFactory(); var id = await Seed(f);
+        using var analyst = Client(f, "Analyst");
+        Assert.Equal(HttpStatusCode.Forbidden, (await analyst.GetAsync($"/api/reports/brands/{id}/xlsx?year=2026&month=8&audience=internal")).StatusCode);
+        var response = await analyst.GetAsync($"/api/reports/brands/{id}/xlsx?year=2026&month=8&audience=brand");
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(ExcelExport.MimeType, response.Content.Headers.ContentType?.MediaType);
+        using var workbook = new ClosedXML.Excel.XLWorkbook(new MemoryStream(await response.Content.ReadAsByteArrayAsync()));
+        Assert.Equal("Marka raporu", workbook.Worksheets.Single().Name);
+        var cells = workbook.Worksheets.Single().RangeUsed()!.CellsUsed().ToList();
+        var text = string.Join("\n", cells.Select(c => c.GetString()));
+        Assert.Contains("Markayla paylaşılabilir", text);
+        Assert.Contains("Net ciro", text);
+        Assert.Contains("Dönem durumu", text);
+        Assert.Contains("Faturalandı", text);
+        foreach (var secret in new[] { "22222", "GİZLİ DİĞER MARKA", "SECRET-PAYMENT-REF", "SECRET-COST" }) Assert.DoesNotContain(secret, text);
+        Assert.Contains(cells, c => c.TryGetValue<decimal>(out var value) && value == 800_000m);
+        Assert.Equal(HttpStatusCode.BadRequest, (await analyst.GetAsync($"/api/reports/brands/{id}/xlsx?year=2026&month=13")).StatusCode);
+    }
+
     [Fact]
     public async Task Closed_scope_excludes_draft_and_missing_month_is_not_zero_result()
     {

@@ -13,12 +13,13 @@ type Row = { id: string; brandId: string; brandName: string; year: number; month
 type Week = { from: string; through: string; amount: number; count: number };
 type Plan = { today: string; currency: string; weeks: number; closedPeriods: number; outstanding: number; overdue: number; unknownDue: number; afterHorizon: number; legacyPaid: number;
   aging: { age: string; count: number; amount: number }[]; upcoming: Week[]; received: Week[]; items: Row[]; reviewItems: Row[]; promised: Week[]; overduePromises: number; afterHorizonPromises: number; unpromised: number };
+type Performance = { onTimeRate: number | null; averageDays: number | null; recordCount: number; paymentCount: number; onTimePayments: number; onTimeAmount: number; totalAmount: number };
 
 export default function CollectionPlanningPage() {
   const [weeks, setWeeks] = useState(4); const [currency, setCurrency] = useState(''); const [age, setAge] = useState('');
   const [promiseView, setPromiseView] = useState(false);
-  const query = useQuery({ queryKey: ['collection-planning', weeks, currency], queryFn: () => api<{ currencies: string[]; plan: Plan }>(`/api/collection-planning?weeks=${weeks}${currency ? `&currency=${currency}` : ''}`) });
-  const plan = query.data?.plan; const amount = (value: number) => moneyPrecise(value, plan?.currency ?? 'TRY');
+  const query = useQuery({ queryKey: ['collection-planning', weeks, currency], queryFn: () => api<{ currencies: string[]; plan: Plan; performance: Performance }>(`/api/collection-planning?weeks=${weeks}${currency ? `&currency=${currency}` : ''}`) });
+  const plan = query.data?.plan; const performance = query.data?.performance; const amount = (value: number) => moneyPrecise(value, plan?.currency ?? 'TRY');
   const items = plan?.items.filter(x => !age || x.age === age) ?? [];
   return <><PageHeader title="Alacak yaşı ve vade takvimi" description="Kalan alacağı ve kayıtlı vadelere göre beklenen girişi inceleyin. Vade bir ödeme sözü veya tahsilat garantisi değildir." />
     <div className="mb-4 flex flex-wrap gap-4 text-sm"><Link href="/commissions" className="underline">Hakedişlere dön</Link><Link href="/guide#alacak-yasi-ve-vade-takvimi" className="underline">Nasıl kullanılır?</Link></div>
@@ -30,6 +31,19 @@ export default function CollectionPlanningPage() {
       <p className="mb-4 text-sm">Hesap tarihi: {dayText(plan.today)} (Türkiye) · {plan.closedPeriods} kapanmış dönem. Takvimler birbirinden farklı tarih aralıklarını gösterir.</p>
       {plan.closedPeriods === 0 ? <Card className="p-5"><EmptyState message="Bu para biriminde kapanmış dönem kaydı yok. Bu, işletmenin hiç alacağı olmadığı anlamına gelmez." /></Card> : <>
         <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[['Toplam kalan alacak', plan.outstanding], ['Vadesi geçmiş kalan', plan.overdue], ['Vadesi bilinmeyen kalan', plan.unknownDue], ['Seçili takvimden sonraki vadeler', plan.afterHorizon]].map(([label, value]) => <Card key={String(label)} className="p-4"><p className="text-sm">{label}</p><p className="mt-2 break-words text-lg font-semibold">{amount(Number(value))}</p></Card>)}</div>
+        {performance && <Card className="mb-4 p-5"><h2 className="font-semibold">Tahsilat performansı</h2>
+          {performance.onTimeRate === null
+            ? <p className="mt-2 text-sm">Seçili para biriminde vade tarihi bilinen ve kapanmış tahsilat kaydı yok; performans hesaplanamıyor.</p>
+            : <>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div><p className="text-sm">Vadesinde tahsil oranı</p><p className="mt-1 text-lg font-semibold">{new Intl.NumberFormat('tr-TR', { style: 'percent', maximumFractionDigits: 2 }).format(performance.onTimeRate)}</p></div>
+                <div><p className="text-sm">Ortalama vade farkı</p><p className="mt-1 text-lg font-semibold">{new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(performance.averageDays!)} gün</p></div>
+                <div><p className="text-sm">Ölçülen kapsam</p><p className="mt-1 text-lg font-semibold">{performance.recordCount} dönem · {performance.paymentCount} ödeme</p></div>
+              </div>
+              <p className="mt-3 text-sm">Vadesinde ödenen tutar: <strong>{amount(performance.onTimeAmount)}</strong> / {amount(performance.totalAmount)} ({performance.onTimePayments} ödeme vadesinde).</p>
+            </>}
+          <p className="mt-3 text-sm text-[#6d7175]">Yalnız vade tarihi bilinen ve kapanan tahsilatlar ölçülür; iptal edilen ve ödeme tarihi bilinmeyen eski ödemeler dışarıdadır. Negatif vade farkı, vadesinden önce tahsil edildiğini gösterir. Tutarlar tek para birimindedir.</p>
+        </Card>}
         <Card className="mb-4 p-5"><h2 className="font-semibold">Kalan alacak kaç gündür bekliyor?</h2><p className="my-3 text-sm">Her kalan alacak yalnız bir grupta yer alır. Bugün vadeli iş henüz gecikmiş değildir. Vadesi bilinmeyene gecikme günü uydurulmaz.</p><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{plan.aging.map(x => <div className="rounded-lg border p-3" key={x.age}><p>{ageLabels[x.age]}</p><strong className="block break-words">{amount(x.amount)}</strong><p className="text-sm">{x.count} dönem</p></div>)}</div></Card>
         <Card className="mb-4 p-5"><label>Beklenti takviminin kaynağı<select className="input mt-1 max-w-sm" value={promiseView ? 'promise' : 'due'} onChange={e => setPromiseView(e.target.value === 'promise')}><option value="due">Kayıtlı vadeler</option><option value="promise">Bildirilen ödeme sözleri</option></select></label><p className="mt-3 text-sm">Aynı alacağın iki ayrı görünümüdür; vade ile söz tutarlarını toplamayın. Üstteki yaş grupları her zaman gerçek vadeye göre kalır. Ödeme sözü bulunmayan tutara tarih veya garanti uydurulmaz.</p>
           {promiseView && <dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['Tarihi geçmiş sözlerden kalan', plan.overduePromises], ['Takvim sonrasındaki sözlerden kalan', plan.afterHorizonPromises], ['Güncel sözle karşılanmayan alacak', plan.unpromised]].map(([label, value]) => <div className="rounded-lg border p-3" key={String(label)}><dt className="text-sm">{label}</dt><dd className="mt-1 break-words font-semibold">{amount(Number(value))}</dd></div>)}</dl>}

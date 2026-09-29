@@ -26,10 +26,11 @@ Rehberi baştan sona ezberlemeniz gerekmez. Sol menüden **Kullanım rehberi** s
 - **Hazırlanan ayı kontrol edeceğim:** **İşlerim → Onay bekleyenler** veya **Aylık sonuçlar** üzerinden dönemi açın. Hazırlayan kişiyle onaylayan kişi farklı olmalıdır.
 - **Bu ay hangi bilgi eksik, hangi marka kapanmaya hazır?** Sol menüden **Kapanış hazırlığı** ekranını açın; dönem seçip marka marka hangi kaynağın girildiğini, hangi uyarının çıktığını ve kimin sorumlu olduğunu görün.
 - **Bu ay hedefin neresindeyiz?** Markayı açıp **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
+- **Hedef tutarsa ne olur?** Aynı ekrandaki **Hedef senaryosu projeksiyonu** kartına bakın; anlaşma oranlarıyla beklenen OVO hakedişi ve markaya kalan katkı görünür. Bu bir tahmin değil, “eğer hedef tutarsa” senaryosudur.
 - **Markanın genel durumu veya sektördeki yerini merak ediyorum?** Marka sayfasındaki **Marka sağlık skoru** kartına ve **Raporlar** sayfasındaki **Sektör karşılaştırması** kartına bakın; ikisi de yalnız bilgi verir, kayıt değiştirmez.
 - **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın ekip alanındaki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
 - **Ekibin bu hafta yeni işe zamanı var mı?** **İşlerim → Haftalık ekip kapasitesi** ekranını açın. Önce kapasite ve görev saatlerinin girildiğini kontrol edin; **Yeni marka veya ek iş ön izlemesi** ile ek yükü kaydetmeden deneyin.
-- **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir.
+- **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir. Aynı ekrandaki **Tahsilat performansı** kartı, geçmişte vadesinde tahsil edilen tutarın oranını ve ortalama vade farkını gösterir.
 - **Kimden ne kadar alacağımız var?** **Hakedişler** ekranında ayı, para birimini ve ödeme filtresini seçin. İlgili dökümde fatura ve gerçek ödeme kayıtlarını yönetin.
 - **Bu markaya gerçekten ne kadar emek ve para harcadık?** Kapalı aylık sonucun **OVO gerçekleşen hizmet maliyeti** bölümünü açın. Başlangıç yatırımını ise ilgili anlaşmanın **Yatırım ve geri kazanım defteri** bölümünde izleyin.
 - **Bu anlaşmanın kapsamı ne, paket dışı talep bekliyor mu?** Anlaşmayı açıp **Hizmet kapsamı** bölümüne bakın. Bekleyen talebi karar notuyla onaylayın ya da reddedin; onaylanan talep kapsam kalemine dönüşür.
@@ -324,7 +325,7 @@ Aynı sayfadaki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgi
 - Müşterinin adı, e-postası, adresi veya sipariş içeriği bu bölüme hiç çekilmez; yalnız sipariş numarası, tarih, durum ve tutar gibi bilgiler saklanır.
 - Getirilen siparişler **yalnız bilgi ve kontrol içindir**: hakedişe, aylık sonuca, marka hedeflerine veya anlaşma kayıtlarına otomatik yazılmaz. Dönem onayı ve kapanış ayrı ekranlardan elle yapılır.
 - Mağaza bağlantısı yanıt vermezse bölüm bir hata gösterir, var olan kayıtlar değişmez ve "Yeniden dene" ile tekrar denenebilir.
-- **Otomatik senkron:** Mağaza API ayarı kayıtlı olan markaların bir önceki ayın siparişleri her ayın ilk günü sistem tarafından kendiliğinden getirilir. Sonuç yöneticiye panel bildirimi olarak düşer: kaç markanın güncellendiği, kaç tanesinin başarısız olduğu ve hangi dönemin işlendiği yazılır. Otomatik getirim de aynı güvenlik kurallarıyla (dönem sınırı, eksi tutar kontrolü, müşteri bilgisi sızmaması) çalışır ve aynı olduğu için elle tekrar getirim yeni kayıt oluşturmaz. Henüz hiç mağaza API ayarı girilmemişse otomatik getirim beklemede kalır; ayar kaydedildikten sonraki kontrolde çalışır.
+- **Otomatik senkron:** Mağaza API ayarı kayıtlı olan markaların bir önceki ayın siparişleri her ayın ilk günü sistem tarafından kendiliğinden getirilir. Sonuç yöneticiye panel bildirimi olarak düşer: kaç markanın güncellendiği, kaç tanesinin başarısız olduğu ve hangi dönemin işlendiği yazılır. Otomatik getirim de aynı güvenlik kurallarıyla (dönem sınırı, eksi tutar kontrolü, müşteri bilgisi sızmaması) çalışır ve aynı olduğu için elle tekrar getirim yeni kayıt oluşturmaz. Henüz hiç mağaza API ayarı girilmemişse otomatik getirim beklemede kalır; ayar kaydedildikten sonraki kontrolde çalışır. **Başarısız kalan bir marka sessizce bırakılmaz:** sistem aynı dönemi yaklaşık altı saatte bir yeniden dener ve marka sonunda başarıya ulaşınca ayrıca bir "tekrar denemesinde tamamlandı" bildirimi düşer. Bağlantısı sonradan kurulan markalar için **Son 6 ayı geriye dönük çek** düğmesi (yalnız yönetici) geçmiş ayları tek adımda, en eskisinden başlayarak getirir; sonuçta kaç dönemin güncellendiği veya başarısız olduğu yazılır.
 
 ### Reklam platformu ayarları
 
@@ -333,7 +334,7 @@ Aynı sayfadaki **Reklam platformu ayarları** bölümünde yalnız yönetici, *
 - Meta için reklam hesabı numarası ve erişim jetonu.
 - Google için reklam hesabı numarası, müşteri numarası, yenileme jetonu, istemci sırrı ve geliştirici jetonu.
 
-Jetonlar sunucuda şifreli saklanır, kayıttan sonra burada görünmez; boş bırakılan alan kayıtlı jetonu korur. **Reklam ayarlarını kaydet** yalnız bilgileri saklar. **Bağlantıyı doğrula** reklam hesabını okuyup sonucu bildirir; bir dakika içinde tekrar denenemez. **Reklam harcamasını oku** alanı seçili ayın harcamasını reklam platformundan getirir. Bu tutar yalnız bilgi amaçlıdır; aylık sonuca, hakedişe veya bütçeye otomatik yazılmaz, hiçbir kampanya değişikliği yapılmaz.
+Jetonlar sunucuda şifreli saklanır, kayıttan sonra burada görünmez; boş bırakılan alan kayıtlı jetonu korur. **Reklam ayarlarını kaydet** yalnız bilgileri saklar. **Bağlantıyı doğrula** reklam hesabını okuyup sonucu bildirir; bir dakika içinde tekrar denenemez. **Reklam harcamasını oku** alanı seçili ayın harcamasını reklam platformundan getirir. Bu tutar yalnız bilgi amaçlıdır; aylık sonuca, hakedişe veya bütçeye otomatik yazılmaz, hiçbir kampanya değişikliği yapılmaz. **Otomatik okuma:** Her ayın ilk günü bağlantı kayıtlı olan markaların bir önceki ayın reklam harcaması sistem tarafından kendiliğinden okunur ve sonuç, tutarlarıyla birlikte yöneticiye panel bildirimi olarak düşer. Okunamayan bir bağlantı sessizce bırakılmaz; yaklaşık altı saatte bir yeniden denenir ve başarıya ulaşınca ayrıca "tekrar denemesinde okundu" bildirimi gelir. Harcama 0 kalmışsa kapanış hazırlığındaki veri kalitesi ekranı okunan tutarı yalnız bilgi olarak gösterir; değer aylık sonuca kendiliğinden yazılmaz, yine siz kontrol edip girersiniz.
 
 ---
 
@@ -806,7 +807,7 @@ Hakediş listesinde ay, kapsam, ödeme durumu, para birimi ve marka aramasıyla 
 
 Ana sayfayla karşılaştırırken aynı ayı, para birimini ve **Kapanmış dönemler** kapsamını seçin; ayrıca marka araması veya ödeme durumu filtresi bırakmadığınızdan emin olun. Döküm ile kayıtlı hakediş arasında fark görülürse ekran uyarır; geçmiş kaydı değiştirmeden yöneticinize bildirin.
 
-Listeyi ve özet satırları **PDF'ye kaydet / yazdır** düğmesiyle yazdırabilir veya tarayıcıda PDF olarak kaydedebilirsiniz. Yazdırma, seçili filtrenin açık sayfadaki kayıtlarını içerir; yan menü, filtreler ve sayfa numaraları baskıya dahil edilmez, A4 yatay düzen kullanılır.
+Listeyi ve özet satırları **PDF'ye kaydet / yazdır** düğmesiyle yazdırabilir veya tarayıcıda PDF olarak kaydedebilirsiniz. Yazdırma, seçili filtrenin açık sayfadaki kayıtlarını içerir; yan menü, filtreler ve sayfa numaraları baskıya dahil edilmez, A4 yatay düzen kullanılır. **Excel olarak indir (.xlsx)** düğmesi ise aynı filtredeki **tüm sayfalardaki** kayıtları tek Excel dosyasında toplar: satırlar ekrandaki gibidir, sayısal tutarlar Excel'de gerçek sayı olarak durur (toplam alabilirsiniz), altta kayıt sayısı, toplam hakediş, ödenen, kalan ve vadesi geçmiş kalan özet satırları yer alır. Muhasebeye veya ortağa resmi dosya gönderecekseniz bu düğmeyi kullanın; yazdırma yalnız açık sayfayı kapsar.
 
 ### Fatura ve parçalı ödeme nasıl takip edilir?
 
@@ -893,10 +894,11 @@ Tutarlar KDV hariçtir. Katkı vergi sonrası net kâr, hakediş banka bakiyesi 
 
 1. Markayı, ayı, kapsamı, para birimini ve rapor görünümünü kontrol edin. Güncel bilgileri yeniden almak için **Raporu yenile** düğmesini kullanın.
 2. **Tabloyu indir (CSV)** ile ekrandaki raporun tablosunu indirin. Excel'de sütunlar tek alanda açılırsa ayırıcı olarak noktalı virgül, kodlama olarak UTF-8 seçin. “0–1” yazan oran sütununda 0,20 değeri %20 demektir.
-3. **PDF’ye kaydet / yazdır** ile tarayıcının yazdırma ekranını açın. Hedef olarak **PDF olarak kaydet**, kâğıt olarak A4 seçin. Tarayıcının eklediği web adresi ve sayfa başlığını istemiyorsanız üstbilgi/altbilgi seçeneğini kapatın. Kaydetmeden önce ön izlemeyi kontrol edin.
-4. Markaya göndermeden önce çıktının **Markayla paylaşılabilir** olduğunu doğrulayın. İç yönetim raporunu marka ile paylaşmayın.
+3. **Excel olarak indir (.xlsx)** ile aynı raporu resmi Excel dosyası olarak alın. Sayısal tutarlar gerçek sayı hücreleridir; dosya sunucuda, ekrandaki aynı filtreyle hazırlanır (birkaç saniye fark edebilir) ve CSV'den farklı olarak Excel'de açılışta ayıklama gerekmez.
+4. **PDF’ye kaydet / yazdır** ile tarayıcının yazdırma ekranını açın. Hedef olarak **PDF olarak kaydet**, kâğıt olarak A4 seçin. Tarayıcının eklediği web adresi ve sayfa başlığını istemiyorsanız üstbilgi/altbilgi seçeneğini kapatın. Kaydetmeden önce ön izlemeyi kontrol edin.
+5. Markaya göndermeden önce çıktının **Markayla paylaşılabilir** olduğunu doğrulayın. İç yönetim raporunu marka ile paylaşmayın.
 
-Tablo ve yazdırılan görünüm aynı rapor anını kullanır; ay, kapsam, para birimi, hazırlanma zamanı ve kesinleşme uyarısı çıktıda bulunur. Başka bir ekranda kayıt değişirse elinizdeki indirilmiş dosya kendiliğinden değişmez; raporu yenileyip yeniden indirin. Açıklamalar otomatik ama sabit kurallara dayanır; yapay zekânın tahmini veya gelecek performans garantisi değildir.
+Tablo ve yazdırılan görünüm aynı rapor anını kullanır; ay, kapsam, para birimi, hazırlanma zamanı ve kesinleşme uyarısı çıktıda bulunur. Excel dosyası indirildiği anda sunucuda yeniden hazırlanır, bu yüzden ekrandaki rapordan birkaç saniye farklı bir anı içerebilir. Başka bir ekranda kayıt değişirse elinizdeki indirilmiş dosya kendiliğinden değişmez; raporu yenileyip yeniden indirin. Açıklamalar otomatik ama sabit kurallara dayanır; yapay zekânın tahmini veya gelecek performans garantisi değildir.
 
 ## 16. Müşteri portalı: hesap açma, rapor paylaşma ve müşterinin kullanımı
 
@@ -997,12 +999,12 @@ Rapor ekranda açıldığında ilk ve son görüntüleme zamanı da kaydedilir. 
 Ekip, **Müşteri portalı → Marka seçin → Müşteriden istenen bilgiler** bölümündeki **Yeni bilgi veya belge iste** düğmesini kullanır.
 
 1. Örneğin “Ağustos iade dökümü” gibi açık bir başlık yazın.
-2. Açıklamada hangi bilgi gerektiğini ve markayla zaten kararlaştırılmış güvenli teslim yolunu belirtin. İç görüşme notu veya parola yazmayın. İstenirse son tarih ekleyin.
+2. Açıklamada hangi bilgi gerektiğini açıkça yazın. İç görüşme notu veya parola yazmayın. İstenirse son tarih ekleyin.
 3. **Talebi müşteriye göster** ile onaylayın. Başlık ve açıklama o markanın bütün müşteri hesaplarında **Sizden beklenen bilgi ve belgeler** alanına gelir; konuşmaların aksine tek kişiye özel değildir.
-4. Müşteri bilgiyi açıklanan kanaldan iletir. Bu ekranda dosya yükleme, otomatik e-posta veya başka bir sisteme dosya gönderme yoktur.
-5. Ekip teslimi kontrol edip **Teslim durumunu güncelle** ile **Ekip teslim aldı** seçer ve gerekçe yazar. Durum müşteriye görünür; gerekçe yalnız iç işlem geçmişindedir.
+4. Müşteri bu alanda yanıtını yazar ve isterse dosya yükler (PDF, PNG, JPG, CSV veya Excel; en fazla 10 MB). Yanıt ve dosya aynı yerden OVO ekibine iletilir; ayrıca e-posta veya başka kanal gerekmez. Yanıt geldiğinde talep **Müşteri yanıtladı** durumuna geçer.
+5. Ekip müşteri yanıtını ve yüklenen dosyaları talebin altında görür, dosyayı **İndir** ile alıp kontrol eder; **Teslim durumunu güncelle** ile **Ekip teslim aldı** seçer ve gerekçe yazar. Durum müşteriye görünür; gerekçe yalnız iç işlem geçmişindedir.
 
-**Sizden bekleniyor** açık talep, **Artık istenmiyor** ise ekipçe kapatılan taleptir. Gerekirse gerekçeyle yeniden bekleniyor durumuna alınabilir. Eski ekranla değişiklik engellenir; gerekçeyi koruyarak güncel durumu alabilirsiniz. Talebin ilk başlığı, açıklaması ve tarihi sonradan değiştirilmez: yanlış talebi kapatıp doğrusunu oluşturun. Talep silinmez; durum değişiklikleri İşlem geçmişi'nden izlenir. Son tarihin geçmesi otomatik belge teslimi veya gecikme cezası oluşturmaz.
+**Sizden bekleniyor** açık talep, **Müşteri yanıtladı** müşterinin yanıt ve/veya dosya gönderdiği talep, **Ekip teslim aldı** teslimi kontrol edilmiş talep, **Artık istenmiyor** ise ekipçe kapatılan taleptir. Gerekirse gerekçeyle yeniden bekleniyor durumuna alınabilir. Eski ekranla değişiklik engellenir; gerekçeyi koruyarak güncel durumu alabilirsiniz. Müşteri yanıt ve dosyasını sonradan yenileyebilir; her gönderim talebin güncelleme sayısını artırdığı için ekrandaki eski durum uyarısında güncel bilgiyi alıp devam edin. Talebin ilk başlığı, açıklaması ve tarihi sonradan değiştirilmez: yanlış talebi kapatıp doğrusunu oluşturun. Talep silinmez; durum değişiklikleri İşlem geçmişi'nden izlenir. Son tarihin geçmesi otomatik belge teslimi veya gecikme cezası oluşturmaz.
 
 ### “Yeni sürüm gerekebilir” uyarısında ne yapmalıyım?
 
@@ -1274,8 +1276,8 @@ Yönetici hesabınızda **Ayarlar → Hesap güvenliği** yolunu açın. Bu koru
 - **Yeni rapor:** Paylaşılmış yeni rapor, ilgili markanın etkin müşteri hesaplarına bildirilir. Paylaşımı geri çekilen raporun bildirimi artık açılmaz; henüz gönderilmemiş e-postası iptal edilir. Bu özellik kendiliğinden rapor yayımlamaz.
 - **Ödeme sözü hatırlatması:** Kendinize atanmış bir ödeme sözünün vadesi yarın geldiğinde veya geciktiğinde panelde hatırlatma oluşur; **E-posta tercihlerim**'den ilgili tercihi açtıysanız e-posta da gönderilir. Aynı söz ve tarih için tekrar bildirim yapılmaz. Hatırlatma ödeme alındığı anlamına gelmez; gerçek ödemeyi hakediş ekranından kontrol edin.
 - **Otomatik sipariş senkronu:** Mağaza API ayarı kayıtlı markaların bir önceki ayın siparişleri her ayın ilk günü otomatik getirildiğinde yönetici hesaplarına sonuç bildirimi düşer: hangi dönemde, kaç markanın güncellendiği ve kaçı başarısız olduğu yazılır. Bu bildirim için e-posta gönderilmez.
-- **Yenileme hatırlatması:** Etkin anlaşmanın bitiş tarihine 30 gün ve 7 gün kala yönetici ve iş ortağı hesaplarına panel bildirimi düşer; bitiş gününde ayrıca "bitiş günü" bildirimi görünür. Aynı anlaşma ve bitiş tarihi için tekrar bildirim yapılmaz; anlaşma sonlandığında eski bildirim görünmez. Bu bildirim için e-posta gönderilmez; yenileme kararı anlaşma ekranından verilir.
-- **Haftalık yönetim özeti:** Yönetici ve iş ortağı hesaplarında her pazartesi Türkiye saatiyle 09.00'da bir özet hazırlanır: gecikmiş veya yaklaşan ödeme sözleri, onay bekleyen dönemler, veri kalitesi uyarıları, hedefin altındaki markalar ve son 7 günün sistem sağlığı (gönderilemeyen e-posta ve başarısız otomatik senkron yoksa bu da ayrıca belirtilir). Tercih açıksa e-posta gönderilir; iletinin bağlantısı raporlar sayfasına götürür, değerler e-postaya yazılmaz.
+- **Yenileme hatırlatması:** Etkin anlaşmanın bitiş tarihine 30 gün ve 7 gün kala yönetici ve iş ortağı hesaplarına panel bildirimi düşer; bitiş gününde ayrıca "bitiş günü" bildirimi görünür. Aynı anlaşma ve bitiş tarihi için tekrar bildirim yapılmaz; anlaşma sonlandığında eski bildirim görünmez. Bu bildirim için e-posta gönderilmez; yenileme kararı anlaşma ekranından verilir. İlk hatırlatmayla birlikte sistem aynı anlaşmanın bitiş tarihine göre bir **"Anlaşma yenilemesi" görevini otomatik açar** ve bu görevi hesaplardaki ilk yöneticiye atar; **İşlerim** listesinde görünür, tektir (tekrar açılmaz), elle açılmış görevler gibi tamamlanabilir ve düzenlenebilir; görev kapatılsa da sistem onu yeniden oluşturmaz.
+- **Haftalık yönetim özeti:** Yönetici ve iş ortağı hesaplarında her pazartesi Türkiye saatiyle 09.00'da bir özet hazırlanır: gecikmiş veya yaklaşan ödeme sözleri, onay bekleyen dönemler, veri kalitesi uyarıları, hedefin altındaki markalar ve son 7 günün sistem sağlığı (gönderilemeyen e-posta, başarısız otomatik sipariş veya reklam harcaması senkronu yoksa bu da ayrıca belirtilir). Tercih açıksa e-posta gönderilir; iletinin bağlantısı raporlar sayfasına götürür, değerler e-postaya yazılmaz.
 
 Marka yetkilisi bu sayfada yalnız **Sorularıma gelen yanıtlar** ve **Markam için paylaşılan yeni raporlar** tercihlerini görür; iç ekip görevleri veya başka kişilerin bildirimleri gösterilmez. Konuşma ekranındaki e-posta açıklaması da bu kişisel tercihlere bağlıdır; mesaj yazmak tek başına e-posta teslim edildiği anlamına gelmez.
 
@@ -1565,7 +1567,7 @@ Yönetici doğru markaya hesap açıldığını kontrol etsin. Raporun yalnız k
 
 ### Tablo veya PDF inmiyor
 
-Tarayıcının indirmeler listesini kontrol edin. CSV bir tablo dosyasıdır; PDF için **Yazdır / PDF kaydet** veya **PDF’ye kaydet / yazdır** düğmesinden açılan ekranda hedefi **PDF olarak kaydet** seçin ve kaydetmeyi orada tamamlayın. Yazdırma penceresini kapatmak PDF oluşturmaz. Telefonda seçeneklerin adı tarayıcıya göre değişebilir. Kaydetmeden önce marka, ay, para birimi ve paylaşılabilir görünümü kontrol edin.
+Tarayıcının indirmeler listesini kontrol edin. CSV bir tablo dosyasıdır; PDF için **Yazdır / PDF kaydet** veya **PDF’ye kaydet / yazdır** düğmesinden açılan ekranda hedefi **PDF olarak kaydet** seçin ve kaydetmeyi orada tamamlayın. Yazdırma penceresini kapatmak PDF oluşturmaz. Excel (.xlsx) dosyası sunucuda hazırlanır; “Excel olarak indir” düğmesine bastıktan sonra bir–iki saniye bekleyin, tarayıcı engelliyorsa indirmeler bölümüne bakın. Telefonda seçeneklerin adı tarayıcıya göre değişebilir. Kaydetmeden önce marka, ay, para birimi ve paylaşılabilir görünümü kontrol edin.
 
 ### Kaydedildiğinden emin değilim veya başka kişi kaydı değiştirmiş
 
@@ -1611,6 +1613,17 @@ Her göstergede hedef, gerçekleşen rakam ve **Gerçekleşen − hedef** farkı
 - **Uygun baz yok:** Sıfır hedefe bölünmez; negatif gerçekleşen ciro üzerinden yanıltıcı yüzde farkı üretilmez. Tutar farkı yine görülebilir. Net ciro sıfır veya negatifse katkı marjı hesaplanmaz.
 
 Ekran farkın nedenini kendiliğinden bilemez. “İadeler arttığı için ciro düştü” demeden önce kaynak raporları kontrol edin. **Son durumu yenile** ile yeniden okuyabilirsiniz. Bir form açıkken ayı veya para birimini değiştirmek için önce kaydedin ya da vazgeçin.
+
+### Hedef senaryosu projeksiyonu
+
+Gösterge kartlarının altındaki **Hedef senaryosu projeksiyonu** kartı tek bir soruyu cevaplar: **Eğer bu ayın hedefi tutarsa, mevcut anlaşma oranlarıyla OVO hakedişi ne olurdu?** Bu bir tahmin değildir; gelecek ayı öngörmez ve gerçekleşen sonucu göstermez.
+
+- **Beklenen OVO hakedişi:** Net hedef cirosu, markanın seçili anlaşma modeli (ciro payı, tabanlı pay, asgari ücretli pay, sabit hizmet bedeli, katkı payı vb.) ve kayıtlı oranlarla hesaplanır.
+- **Etkin oran:** Beklenen hakedişin net hedef cirosuna oranıdır.
+- **OVO katkısı:** Hakedişten markanın tahmini aylık iç maliyeti çıkarılır.
+- **Markaya kalan katkı:** Yalnız katkı marjı hedefi girildiyse görünür; net hedef cirosu ile marj hedefinin çarpımıdır.
+
+Kart yalnız marka ve para birimi için **etkin anlaşma** varsa hesaplanır. Etkin anlaşma yoksa, net ciro hedefi sıfır veya negatifse ya da katkı payı anlaşmasında marj hedefi girilmemişse, sayılar uydurulmak yerine nedeniyle birlikte “hesaplanamıyor” yazılır. Projeksiyonda komisyon tabanı olarak **net hedef cirosu** alınır; kargo ve hediye kartı kesintileri hedefe girilmediğinden hesaba katılmaz. Reklam bütçesi ve diğer giderler bu senaryoya dahil değildir. Kart hiçbir hakedişi, anlaşmayı veya hedefi değiştirmez; müşteri portalına kendiliğinden gönderilmez.
 
 ### Hedefi değiştirmek
 
@@ -1739,6 +1752,16 @@ Gecikmiş alacakların ne zaman ödeneceği bilinmediği için sistem bunları b
 
 Eski “ödendi” bilgisi nedeniyle ödenmiş sayılan ancak ödeme tarihi bilinmeyen tutarlar bu takvime dağıtılmaz. Bunların toplamı ayrıca yazılır; tamamının seçili son haftalarda alındığını varsaymayın ve tekrar ödeme olarak girmeyin.
 
+### Tahsilat performansı
+
+Takvimin üstündeki **Tahsilat performansı** kartı, seçili para birimindeki kapanmış tahsilatların geçmişte ne kadar düzenli ödendiğini özetler:
+
+- **Vadesinde tahsil oranı:** Vadesi bilinen ve kapanan tahsilatlarda, vadesinde ya da önce ödenen tutarın toplam ödemeye oranıdır. Örneğin %60, ölçülü alacağın yüzde 60'ının vadesinde ya da önce geldiğini gösterir.
+- **Ortalama vade farkı:** Ödemelerin vade tarihinden ortalama kaç gün önce veya sonra geldiğidir. Negatif değer vadesinden önce tahsil edildiğini, pozitif değer ortalama gecikmeyi gösterir.
+- **Ölçülen kapsam:** Orana giren kapalı dönem ve ödeme sayısıdır.
+
+Yalnız **vade tarihi bilinen ve kapanan** tahsilatlar ölçülür. İptal edilen ödemeler, ödeme tarihi bilinmeyen eski “ödendi” tutarları, inceleme gereken kayıtlar ve henüz kapanmamış alacaklar dışarıdadır. Kart yalnız geçmiş bir durumu anlatır; tahsilat garantisi veya müşteri değerlendirme puanı değildir.
+
 ### Boş görünüm ve inceleme uyarısı
 
 - **Kapanmış dönem kaydı yok** mesajı, uygulamada bu para biriminde uygun kaynak olmadığı anlamına gelir; işletmenin hiç alacağı olmadığını kanıtlamaz.
@@ -1822,9 +1845,9 @@ Saat kaydı bordro veya çalışan performans puanı üretmez. Saat ücreti ve �
 
 **Nereden açılır?** **Anlaşmalar → ilgili anlaşma → Yenileme toplantısı özeti** bölümü. Bu bölüm yalnız yönetici ve iş ortağı hesaplarında açılır.
 
-Tek ekranda şunları görürsünüz: anlaşmanın süresi, başlangıcı, bitişi, aylık sabit ücret, aylık güvence ve gelir payı; kapsam kalemi sayısı ile bekleyen ve reddedilen paket dışı talepler; varsa yenileme görevi, sorumlusu ve son tarihi; varsa devam anlaşması; son ayların hedefi, gerçekleşeni, alacağı ve tahsilatı; kayıtlı hizmet maliyeti, maliyete giren saat ve kapanan maliyet dönemi; görev sayısı ile planlanan ve gerçekleşen saat.
+Tek ekranda şunları görürsünüz: anlaşmanın süresi, başlangıcı, bitişi, aylık sabit ücret, aylık güvence ve gelir payı; kapsam kalemi sayısı ile bekleyen ve reddedilen paket dışı talepler; varsa yenileme görevi, sorumlusu ve son tarihi; varsa devam anlaşması; son ayların hedefi, gerçekleşeni, alacağı ve tahsilatı; markanın **tahsilat performansı** (vadesinde tahsil oranı ve ortalama vade farkı); kayıtlı hizmet maliyeti, maliyete giren saat ve kapanan maliyet dönemi; görev sayısı ile planlanan ve gerçekleşen saat.
 
-Bu özet **yalnız bilgi verir**. Otomatik ücret artışı yapmaz, hiçbir anlaşma koşulunu değiştirmez, yenileme veya sonlandırma oluşturmaz; yenileme kararı ayrı bir adımda ayrıca verilir. Tahsilat tutarları yalnız kapalı dönemlere göre yazılır; açık dönemde alacak sayılmaz. Planlanan ve gerçekleşen saat yan yana gösterilir, biri diğerinden türetilmez. Bu ekran saat ücreti veya çalışan başına maliyet döndürmez.
+Bu özet **yalnız bilgi verir**. Otomatik ücret artışı yapmaz, hiçbir anlaşma koşulunu değiştirmez, yenileme veya sonlandırma oluşturmaz; yenileme kararı ayrı bir adımda ayrıca verilir. Tahsilat tutarları yalnız kapalı dönemlere göre yazılır; açık dönemde alacak sayılmaz. Tahsilat performansı yalnız vade tarihi bilinen ve kapanan tahsilatları ölçer; iptal edilen ve ödeme tarihi bilinmeyen eski ödemeler dışarıdadır. Planlanan ve gerçekleşen saat yan yana gösterilir, biri diğerinden türetilmez. Bu ekran saat ücreti veya çalışan başına maliyet döndürmez.
 
 ## Aday hattı: aşama geçmişi, kaynak ve kayıp kaydı
 

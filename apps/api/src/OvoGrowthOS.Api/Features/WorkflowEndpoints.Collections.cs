@@ -20,12 +20,18 @@ public static partial class WorkflowEndpoints
         {
             if (weeks is not (4 or 8 or 12) || currency is not null && (currency.Length != 3 || !currency.All(c => c is >= 'A' and <= 'Z')))
                 return Results.BadRequest(new { error = "4, 8 veya 12 hafta ve TRY gibi üç harfli para birimi seçin." });
-            var periods = await CollectionQuery(db).AsNoTracking().Include(x => x.Brand)
-                .Where(x => x.Status == MonthlyPerformanceStatus.Locked || x.Status == MonthlyPerformanceStatus.Invoiced || x.Status == MonthlyPerformanceStatus.Paid).ToListAsync();
+            var history = await CollectionQuery(db).AsNoTracking().Include(x => x.Brand).ToListAsync();
+            var today = TeamWork.Today(DateTimeOffset.UtcNow);
+            var periods = history.Where(x => x.Status is MonthlyPerformanceStatus.Locked or MonthlyPerformanceStatus.Invoiced or MonthlyPerformanceStatus.Paid).ToList();
             var currencies = periods.Select(x => x.Collection?.Currency ?? x.Deal!.Currency).Distinct().Order().ToArray();
             if (currencies.Length == 0) currencies = ["TRY"];
             var selected = currency ?? (currencies.Contains("TRY") ? "TRY" : currencies[0]);
-            return Results.Ok(new { currencies, plan = CollectionPlanning.Build(periods, TeamWork.Today(DateTimeOffset.UtcNow), selected, weeks) });
+            return Results.Ok(new
+            {
+                currencies,
+                plan = CollectionPlanning.Build(periods, today, selected, weeks),
+                performance = CollectionPerformance.Calculate(history, today, selected)
+            });
         }).RequireAuthorization("ReadAccess");
         var group = app.MapGroup("/api/performance/{id:guid}/collection").RequireAuthorization("ReadAccess");
         group.MapGet("/", async (Guid id, AppDbContext db) =>

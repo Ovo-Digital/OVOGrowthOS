@@ -49,6 +49,27 @@ public static partial class WorkflowEndpoints
         var byId = accounts.ToDictionary(x => x.Id, x => x);
         var vatRate = await db.GeneralSettings.AsNoTracking().Select(x => (decimal?)x.DefaultVatRate).SingleOrDefaultAsync() ?? .20m;
         var adConnected = (await db.BrandAdSettings.AsNoTracking().Select(x => x.BrandId).ToListAsync()).ToHashSet();
+        var periodKey = $"{year:0000}-{month:00}";
+        var autoAds = new Dictionary<Guid, (decimal? Amount, string Currency)>();
+        foreach (var audit in await db.AuditRecords.AsNoTracking()
+            .Where(a => a.Action == "AdSpendAutoSync" && a.NewValueJson.Contains($"\"period\":\"{periodKey}\"") && a.NewValueJson.Contains("\"ok\":true"))
+            .OrderByDescending(a => a.CreatedAt).ToListAsync())
+        {
+            if (!Guid.TryParse(audit.EntityId.Split(':')[0], out var autoBrand)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(audit.NewValueJson);
+                var amount = doc.RootElement.GetProperty("amount").GetDecimal();
+                var currency = doc.RootElement.GetProperty("currency").GetString() ?? "";
+                if (!autoAds.TryGetValue(autoBrand, out var existing))
+                    autoAds[autoBrand] = (amount, currency);
+                else if (existing.Currency == currency && existing.Amount is not null)
+                    autoAds[autoBrand] = (existing.Amount + amount, currency);
+                else
+                    autoAds[autoBrand] = (null, "");
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
 
         var rowIds = rows.Select(x => x.Id.ToString()).ToList();
         var created = await db.AuditRecords.AsNoTracking()
@@ -74,8 +95,10 @@ public static partial class WorkflowEndpoints
             var owner = owners.TryGetValue(id, out var ownerId) ? ownerId : (Guid?)null;
             var responsible = Responsible(current, origin.user, owner, byEmail, byId);
             var task = taskByBrand.TryGetValue(id, out var existing) ? existing : null;
+            var auto = autoAds.GetValueOrDefault(id);
             items.Add(DataQuality.Evaluate(new QualityInput(year, month, id, brand.Name, brand.Currency, deal, current, previous,
-                origin.kind, origin.detail, responsible.name, responsible.id, task?.Id, task?.CompletedAt is not null, vatRate, adConnected.Contains(id))));
+                origin.kind, origin.detail, responsible.name, responsible.id, task?.Id, task?.CompletedAt is not null, vatRate, adConnected.Contains(id),
+                auto.Amount, auto.Currency)));
         }
         items.Sort((a, b) => string.Compare(a.BrandName, b.BrandName, StringComparison.CurrentCultureIgnoreCase));
         return new QualityReport(period, DataQuality.Label(year, month), DataQuality.Summarize(items), items);

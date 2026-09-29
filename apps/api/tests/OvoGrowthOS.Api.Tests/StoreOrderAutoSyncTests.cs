@@ -27,11 +27,12 @@ public sealed class StoreOrderAutoSyncTests
     private sealed class FakeOrders : IStoreOrderClient
     {
         public List<StoreOrderDraft> Drafts { get; } = [];
+        public List<StoreOrderPeriod> Periods { get; } = [];
         public bool Fail { get; set; }
         public StoreOrderPeriod? LastPeriod { get; private set; }
         public Task<StoreOrderFetchResult> FetchAsync(string token, string storeUrl, StoreOrderPeriod period, StorePlatform platform, CancellationToken ct)
         {
-            LastPeriod = period;
+            LastPeriod = period; Periods.Add(period);
             return Task.FromResult(Fail ? new StoreOrderFetchResult(false, [], false) : new StoreOrderFetchResult(true, Drafts, false));
         }
         public Task<bool> TestAsync(StorePlatform platform, string token, string storeUrl, CancellationToken ct) => Task.FromResult(!Fail);
@@ -155,5 +156,83 @@ public sealed class StoreOrderAutoSyncTests
             Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
             Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSync"));
         });
+    }
+
+    [Fact]
+    public async Task Auto_sync_retries_failed_brands_after_cooldown_and_announces_the_fix()
+    {
+        await using var p = new WorkflowApiFactory(); var orders = new FakeOrders { Fail = true }; await using var f = Setup(p, new FakeToken(), orders);
+        var brand = await SeedBrandWithSettings(f);
+        orders.Drafts.Add(Draft(1));
+        var t0 = new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3));
+
+        await RunDue(f, t0);
+        await Db(f, async db =>
+        {
+            var brandFailure = await db.AuditRecords.SingleAsync(x => x.Action == "StoreOrdersAutoSyncBrand");
+            Assert.Contains("başarısız", brandFailure.Reason);
+            Assert.DoesNotContain("Store-secret-123", brandFailure.Reason);
+            Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSync"));
+        });
+
+        orders.Fail = false;
+        Assert.Equal(0, await RunDue(f, t0.AddMinutes(10)));
+        await Db(f, async db =>
+            Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSyncBrand")));
+
+        Assert.True(await RunDue(f, t0.AddHours(7)) >= 1);
+        await Db(f, async db =>
+        {
+            Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
+            Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSync"));
+            Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.StoreSync
+                && x.EventKey == $"store-sync-fixed:2026-08:{brand}"));
+        });
+        using var c = await Client(f);
+        var body = await c.GetStringAsync("/api/notifications");
+        Assert.Contains("tekrar denemesinde tamamlandı", body);
+
+        Assert.Equal(0, await RunDue(f, t0.AddHours(8)));
+    }
+
+    [Fact]
+    public async Task Manual_sync_for_the_period_makes_auto_sync_skip_it()
+    {
+        await using var p = new WorkflowApiFactory(); var orders = new FakeOrders(); await using var f = Setup(p, new FakeToken(), orders);
+        var brand = await SeedBrandWithSettings(f);
+        orders.Drafts.Add(Draft(1));
+        using var c = await Client(f);
+        var response = await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/sync", new { period = "2026-08" });
+        response.EnsureSuccessStatusCode();
+
+        Assert.Equal(0, await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3))));
+        await Db(f, async db =>
+        {
+            Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
+            Assert.False(await db.AuditRecords.AnyAsync(x => x.Action == "StoreOrdersAutoSync"));
+        });
+    }
+
+    [Fact]
+    public async Task Backfill_pulls_previous_months_oldest_first_and_validates_input()
+    {
+        await using var p = new WorkflowApiFactory(); var orders = new FakeOrders(); await using var f = Setup(p, new FakeToken(), orders);
+        var brand = await SeedBrandWithSettings(f);
+        using var c = await Client(f);
+
+        var response = await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/backfill", new { months = 3 });
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(3, payload.GetProperty("results").GetArrayLength());
+        foreach (var item in payload.GetProperty("results").EnumerateArray())
+            Assert.True(item.GetProperty("ok").GetBoolean(), item.GetProperty("error").GetString());
+        var trNow = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3));
+        var expected = Enumerable.Range(1, 3).Reverse().Select(back => { var d = trNow.Date.AddMonths(-back); return $"{d.Year:0000}-{d.Month:00}"; }).ToArray();
+        Assert.Equal(expected, orders.Periods.Select(x => x.Key).ToArray());
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/backfill", new { months = 0 })).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/backfill", new { months = 13 })).StatusCode);
+        using var partner = await Client(f, "partner");
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await partner.PostAsJsonAsync($"/api/brands/{brand}/store-orders/backfill", new { months = 3 })).StatusCode);
     }
 }

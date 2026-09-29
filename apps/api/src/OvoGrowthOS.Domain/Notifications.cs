@@ -1,6 +1,6 @@
 namespace OvoGrowthOS.Domain;
 
-public enum NotificationKind { DailyTasks, TaskDue, PortalQuestion, PortalReply, PortalReport, PromiseReminder, WeeklyDigest, StoreSync, RenewalDue }
+public enum NotificationKind { DailyTasks, TaskDue, PortalQuestion, PortalReply, PortalReport, PromiseReminder, WeeklyDigest, StoreSync, RenewalDue, AdSpendSync }
 
 public sealed class NotificationPreference
 {
@@ -23,6 +23,7 @@ public sealed class NotificationPreference
         NotificationKind.WeeklyDigest => WeeklyDigestEmail,
         NotificationKind.StoreSync => false,
         NotificationKind.RenewalDue => false,
+        NotificationKind.AdSpendSync => false,
         _ => PortalMessagesEmail
     };
 }

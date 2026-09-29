@@ -70,12 +70,36 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
             }
             var renewals = await db.Deals.AsNoTracking()
                 .Where(x => x.Status == DealStatus.Active && x.EndDate != null && x.EndDate >= today && x.EndDate <= today.AddDays(30))
+                .Include(x => x.Brand)
                 .ToListAsync(ct);
             foreach (var deal in renewals)
             {
                 var days = deal.EndDate!.Value.DayNumber - today.DayNumber;
                 var prefix = days <= 7 ? "renewal-7" : "renewal-30";
                 Add(NotificationKind.RenewalDue, deal.Id, $"{prefix}:{deal.Id}:{deal.EndDate:yyyy-MM-dd}", now, deal.EndDate);
+                if (!await db.WorkTasks.AsNoTracking().AnyAsync(x => x.Kind == WorkKind.ContractRenewal && x.DealId == deal.Id, ct))
+                {
+                    var assigneeId = await db.UserAccounts.AsNoTracking()
+                        .Where(x => x.IsActive && !x.InvitationPending && x.Role == "Admin")
+                        .OrderBy(x => x.Email).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+                    if (assigneeId is not null)
+                    {
+                        var task = new WorkTask
+                        {
+                            Id = Guid.NewGuid(), BrandId = deal.BrandId, AssigneeId = assigneeId.Value,
+                            Kind = WorkKind.ContractRenewal, DealId = deal.Id,
+                            Title = $"Anlaşma yenilemesi: {deal.Brand?.Name ?? "Marka"}",
+                            Description = $"Anlaşmanın bitiş tarihi {deal.EndDate:dd.MM.yyyy}. Yenileme kararını gözden geçirin. Bu görev sistem tarafından otomatik açıldı.",
+                            DueOn = deal.EndDate.Value, CreatedBy = "sistem (otomatik)"
+                        };
+                        db.Add(task);
+                        db.AuditRecords.Add(new AuditRecord
+                        {
+                            UserId = "sistem (otomatik)", Action = "WorkTaskCreated", EntityType = "WorkTask", EntityId = task.Id.ToString(),
+                            Reason = $"Yenileme hatırlatmasıyla otomatik açıldı: {deal.Brand?.Name ?? "Marka"} ({deal.EndDate:dd.MM.yyyy})"
+                        });
+                    }
+                }
             }
         }
         var brandId = await db.PortalAccesses.Where(x => x.UserId == userId).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(ct);
@@ -164,9 +188,37 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
         }
         if (n.Kind == NotificationKind.WeeklyDigest)
             return Staff(user) ? new("Haftalık yönetim özeti", "/reports") : null;
+        if (n.Kind == NotificationKind.AdSpendSync)
+        {
+            if (!Manager(user)) return null;
+            if (n.EventKey.StartsWith("ad-sync-fixed:", StringComparison.Ordinal))
+            {
+                var rest = n.EventKey["ad-sync-fixed:".Length..];
+                var parts = rest.Split(':');
+                if (parts.Length != 3 || !System.Guid.TryParse(parts[1], out var fixedBrand)) return null;
+                var fixedName = await db.Brands.AsNoTracking().Where(x => x.Id == fixedBrand).Select(x => x.Name).SingleOrDefaultAsync(ct);
+                return fixedName is null ? null
+                    : new($"Otomatik reklam harcaması tekrar denemesinde okundu: {fixedName} ({parts[0]})", "/brands");
+            }
+            if (!n.EventKey.StartsWith("ad-sync:", StringComparison.Ordinal)) return null;
+            var adPeriod = n.EventKey["ad-sync:".Length..];
+            var adClaim = await db.AuditRecords.AsNoTracking()
+                .Where(x => x.Action == "AdSpendAutoSyncSummary" && x.EntityId == adPeriod)
+                .OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync(ct);
+            return adClaim is null ? null : new(adClaim.Reason, "/brands");
+        }
         if (n.Kind == NotificationKind.StoreSync)
         {
-            if (!Manager(user) || !n.EventKey.StartsWith("store-sync:", StringComparison.Ordinal)) return null;
+            if (!Manager(user)) return null;
+            if (n.EventKey.StartsWith("store-sync-fixed:", StringComparison.Ordinal))
+            {
+                var rest = n.EventKey["store-sync-fixed:".Length..];
+                var sep = rest.LastIndexOf(':');
+                if (sep <= 0 || !System.Guid.TryParse(rest[(sep + 1)..], out var fixedBrand)) return null;
+                var fixedName = await db.Brands.AsNoTracking().Where(x => x.Id == fixedBrand).Select(x => x.Name).SingleOrDefaultAsync(ct);
+                return fixedName is null ? null : new($"Otomatik sipariş senkronu tekrar denemesinde tamamlandı: {fixedName} ({rest[..sep]})", "/brands");
+            }
+            if (!n.EventKey.StartsWith("store-sync:", StringComparison.Ordinal)) return null;
             var periodKey = n.EventKey["store-sync:".Length..];
             var claim = await db.AuditRecords.AsNoTracking()
                 .Where(x => x.Action == "StoreOrdersAutoSync" && x.EntityId == periodKey)

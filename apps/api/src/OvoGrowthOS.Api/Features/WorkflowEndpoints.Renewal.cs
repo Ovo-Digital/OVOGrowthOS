@@ -84,6 +84,7 @@ public static partial class WorkflowEndpoints
             },
             scope = new { activeItems = scopeItems, pendingRequests, rejectedRequests },
             months,
+            collectionPerformance = CollectionPerformance.Calculate(periods, today, deal.Currency),
             collections = new
             {
                 receivable = months.Sum(x => x.receivable ?? 0),

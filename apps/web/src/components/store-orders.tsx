@@ -42,6 +42,10 @@ export function StoreOrdersCard({ brandId }: { brandId: string }) {
     mutationFn: () => api<{ message: string }>(`/api/brands/${brandId}/store-orders/sync`, { method: 'POST', body: JSON.stringify({ period }) }),
     onSuccess: result => { notify(result.message); setPage(1); void cache.invalidateQueries({ queryKey: ['store-orders', brandId] }); }
   });
+  const backfill = useMutation({
+    mutationFn: () => api<{ message: string }>(`/api/brands/${brandId}/store-orders/backfill`, { method: 'POST', body: JSON.stringify({ months: 6 }) }),
+    onSuccess: result => { notify(result.message); void cache.invalidateQueries({ queryKey: ['store-orders', brandId] }); }
+  });
   if (me.isPending) return null;
   if (me.isError || !internal) return null;
   const isAdmin = me.data.role === 'Admin';
@@ -54,11 +58,13 @@ export function StoreOrdersCard({ brandId }: { brandId: string }) {
             {monthOptions().map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
-        {isAdmin && <button className={button} disabled={sync.isPending || !query.data?.configured} onClick={() => sync.mutate()}>{sync.isPending ? 'Siparişler alınıyor…' : 'Siparişleri getir'}</button>}
+        {isAdmin && <button className={button} disabled={sync.isPending || backfill.isPending || !query.data?.configured} onClick={() => sync.mutate()}>{sync.isPending ? 'Siparişler alınıyor…' : 'Siparişleri getir'}</button>}
+        {isAdmin && <button className={button} disabled={sync.isPending || backfill.isPending || !query.data?.configured} onClick={() => backfill.mutate()}>{backfill.isPending ? 'Geçmiş aylar alınıyor…' : 'Son 6 ayı geriye dönük çek'}</button>}
       </div>
     </div>
     <p className="mt-2 text-sm text-[#6d7175]">Bu bölüm, mağazadan gelen siparişleri yalnız görmek ve kontrol etmek içindir. Siparişler hakedişe, aylık sonuca veya anlaşma kayıtlarına otomatik yazılmaz; dönem onayı yine elle yapılır.</p>
     {sync.isError && <p role="alert" className="mt-3 text-sm text-red-700">{sync.error.message}</p>}
+    {backfill.isError && <p role="alert" className="mt-3 text-sm text-red-700">{backfill.error.message}</p>}
     {!isAdmin && <p className="mt-2 text-xs text-[#6d7175]">Siparişleri yenilemek yalnız yönetici yapabilir.</p>}
     {query.isPending ? <LoadingState label="Siparişler yükleniyor…" /> : query.isError ? <div className="mt-3"><ErrorState message={`Siparişler alınamadı. ${query.error.message}`} /><button className={`${button} mt-2`} onClick={() => void query.refetch()}>Yeniden dene</button></div> : <StoreOrdersView payload={query.data} period={period} isAdmin={isAdmin} busy={sync.isPending} onSync={() => sync.mutate()} page={page} onPage={setPage} />}
   </Card>;

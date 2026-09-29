@@ -10,6 +10,7 @@ using OvoGrowthOS.Domain;
 namespace OvoGrowthOS.Api.Features;
 
 public sealed record StoreOrderSyncRequest(string Period);
+public sealed record StoreOrderBackfillRequest(int Months);
 
 internal sealed record StoreOrderSyncOutcome(bool Ok, bool Conflict, string Error, int Added, int Updated, bool Truncated);
 
@@ -19,6 +20,7 @@ public static partial class WorkflowEndpoints
     {
         app.MapGet("/api/brands/{id:guid}/store-orders", GetStoreOrders).RequireAuthorization("ReadAccess");
         app.MapPost("/api/brands/{id:guid}/store-orders/sync", SyncStoreOrders).RequireAuthorization("AdminOnly").RequireRateLimiting("admin-action");
+        app.MapPost("/api/brands/{id:guid}/store-orders/backfill", BackfillStoreOrders).RequireAuthorization("AdminOnly").RequireRateLimiting("admin-action");
     }
 
     private static async Task<IResult> GetStoreOrders(Guid id, string? period, int? page, AppDbContext db, IDataProtectionProvider protection, CancellationToken ct)
@@ -41,6 +43,29 @@ public static partial class WorkflowEndpoints
         var message = $"Dönem siparişleri güncellendi: {outcome.Added} yeni, {outcome.Updated} güncellenen kayıt."
             + (outcome.Truncated ? " Sayfalamadaki üst sınıra gelindi; daha uzun dönemler için dönemleri ayrı ayrı çekin." : "");
         return Results.Ok(new { message, payload });
+    }
+
+    private static async Task<IResult> BackfillStoreOrders(Guid id, StoreOrderBackfillRequest r, AppDbContext db, IDataProtectionProvider protection,
+        IStoreTokenClient tokens, IStoreOrderClient orderClient, ClaimsPrincipal actor, CancellationToken ct)
+    {
+        if (r.Months is < 1 or > 12) return Results.BadRequest(new { error = "Geriye dönük çekim 1 ile 12 ay arasında olmalı." });
+        if (!await CurrentAdmin(db, actor)) return Results.Unauthorized();
+        if (!await db.Brands.AnyAsync(x => x.Id == id, ct)) return Results.NotFound(new { error = "Marka bulunamadı." });
+        var trNow = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3));
+        var results = new List<object>();
+        var okCount = 0; var failedCount = 0;
+        for (var monthsBack = r.Months; monthsBack >= 1; monthsBack--)
+        {
+            var date = trNow.Date.AddMonths(-monthsBack);
+            if (!StoreOrderPeriod.TryParse($"{date.Year:0000}-{date.Month:00}", out var period)) continue;
+            var outcome = await ExecuteStoreOrderSync(db, protection, tokens, orderClient, id, period, User(actor), ct);
+            if (outcome.Ok) { okCount++; results.Add(new { period = period.Key, ok = true, added = outcome.Added, updated = outcome.Updated, error = "" }); }
+            else { failedCount++; results.Add(new { period = period.Key, ok = false, added = 0, updated = 0, error = outcome.Error }); }
+        }
+        var message = failedCount == 0
+            ? $"Geriye dönük çekim tamamlandı: {okCount} dönem güncellendi."
+            : $"Geriye dönük çekim: {okCount} dönem güncellendi, {failedCount} dönem başarısız oldu.";
+        return Results.Ok(new { message, results });
     }
 
     // Shared by the manual endpoint and the scheduled queue; errors are already safe Turkish text.

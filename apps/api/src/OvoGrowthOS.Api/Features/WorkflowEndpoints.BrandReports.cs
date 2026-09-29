@@ -30,17 +30,37 @@ public sealed class BrandReportDocument
 
 public static partial class WorkflowEndpoints
 {
-    private static void MapBrandReports(WebApplication app) => app.MapGet("/api/reports/brands/{id:guid}", BrandReport).RequireAuthorization("ReadAccess");
+    private static void MapBrandReports(WebApplication app)
+    {
+        app.MapGet("/api/reports/brands/{id:guid}", BrandReport).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/reports/brands/{id:guid}/xlsx", BrandReportExcel).RequireAuthorization("ReadAccess");
+    }
 
     private static async Task<IResult> BrandReport(Guid id, int year, int month, AppDbContext db, ClaimsPrincipal user,
         ReportScope scope = ReportScope.Closed, string audience = "brand", string? currency = null)
     {
+        var (error, doc) = await BuildBrandReport(id, year, month, db, user, scope, audience, currency);
+        return error ?? Results.Ok(doc);
+    }
+
+    private static async Task<IResult> BrandReportExcel(Guid id, int year, int month, AppDbContext db, ClaimsPrincipal user,
+        ReportScope scope = ReportScope.Closed, string audience = "brand", string? currency = null)
+    {
+        var (error, doc) = await BuildBrandReport(id, year, month, db, user, scope, audience, currency);
+        if (error is not null) return error;
+        var bytes = BrandReportXlsx(doc!);
+        return Results.File(bytes, ExcelExport.MimeType, $"marka-raporu-{doc!.Year}-{doc.Month:00}-{doc.Audience}.xlsx");
+    }
+
+    private static async Task<(IResult? Error, BrandReportDocument? Doc)> BuildBrandReport(Guid id, int year, int month,
+        AppDbContext db, ClaimsPrincipal user, ReportScope scope, string audience, string? currency)
+    {
         if (year is < 2020 or > 2100 || month is < 1 or > 12 || !Enum.IsDefined(scope) || audience is not ("brand" or "internal"))
-            return Results.BadRequest(new { error = "Geçerli bir dönem, kapsam ve rapor görünümü seçin." });
-        if (audience == "internal" && !user.IsInRole("Admin") && !user.IsInRole("Partner")) return Results.Forbid();
-        var brand = await db.Brands.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id); if (brand is null) return Results.NotFound();
+            return (Results.BadRequest(new { error = "Geçerli bir dönem, kapsam ve rapor görünümü seçin." }), null);
+        if (audience == "internal" && !user.IsInRole("Admin") && !user.IsInRole("Partner")) return (Results.Forbid(), null);
+        var brand = await db.Brands.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id); if (brand is null) return (Results.NotFound(), null);
         currency = (currency ?? brand.Currency).Trim().ToUpperInvariant();
-        if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) return Results.BadRequest(new { error = "Üç harfli bir para birimi seçin." });
+        if (currency.Length != 3 || !currency.All(char.IsAsciiLetter)) return (Results.BadRequest(new { error = "Üç harfli bir para birimi seçin." }), null);
         var date = new DateOnly(year, month, 1); var previousDate = date.AddMonths(-1);
         var rows = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal).Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
             .Where(x => x.BrandId == id && x.Deal!.Currency.ToUpper() == currency &&
@@ -65,7 +85,57 @@ public static partial class WorkflowEndpoints
             RevenueChange = current is null ? null : BrandReporting.Change(current.NetRevenue, previous?.NetRevenue),
             Explanations = BrandReporting.Explain(metrics, previousMetrics, current is not null && previous is not null && current.DealId != previous.DealId), Internal = internalReport };
         doc.Csv = BrandReportCsv(doc);
-        return Results.Ok(doc);
+        return (null, doc);
+    }
+
+    private static string BrandReportStatus(BrandReportMetrics? metrics) => metrics?.Status switch
+    {
+        MonthlyPerformanceStatus.Draft => "Taslak", MonthlyPerformanceStatus.UnderReview => "Kontrolde",
+        MonthlyPerformanceStatus.Approved => "Onaylandı", MonthlyPerformanceStatus.Locked => "Kilitlendi",
+        MonthlyPerformanceStatus.Invoiced => "Faturalandı", MonthlyPerformanceStatus.Paid => "Ödendi", _ => "Veri yok"
+    };
+
+    internal static byte[] BrandReportXlsx(BrandReportDocument d)
+    {
+        object Cell(decimal? value) => value is { } number ? number : "Veri yok";
+        var rows = new List<object?[]>
+        {
+            new object?[] { "Kapsam", d.Scope switch { "Closed" => "Kapanmış dönemler", "Approved" => "Onaylı, kilit bekleyen", "Preparation" => "Hazırlık ve kontrol", _ => "Tüm kayıtlar - taslaklar dahil" } },
+            new object?[] { "Görünüm", d.Audience == "internal" ? "OVO iç yönetim - paylaşmayın" : "Markayla paylaşılabilir" },
+            new object?[] { "Hazırlanma zamanı (UTC)", d.GeneratedAt.ToString("O") },
+            new object?[] { "Uyarı", "Tutarlar KDV hariçtir. Katkı, vergi sonrası net kâr değildir. Eksik veri sıfır kabul edilmez." },
+            new object?[] { "Kesinleşme", d.Scope == "Closed" ? "Yalnız kapanmış dönem sonuçları" : "Kapanmamış veya taslak sonuçlar içerebilir; kesinleşmiş gelir değildir." },
+            new object?[] { },
+            new object?[] { "Dönem durumu", BrandReportStatus(d.Current), BrandReportStatus(d.Previous) },
+            new object?[] { "Net ciro değişimi (0-1)", Cell(d.RevenueChange), null },
+            new object?[] { "Net ciro", Cell(d.Current?.NetRevenue), Cell(d.Previous?.NetRevenue) },
+            new object?[] { "OVO hakedişi", Cell(d.Current?.OvoFee), Cell(d.Previous?.OvoFee) },
+            new object?[] { "Reklam gideri", Cell(d.Current?.AdSpend), Cell(d.Previous?.AdSpend) },
+            new object?[] { "Reklam verimliliği (x)", Cell(d.Current?.Mer), Cell(d.Previous?.Mer) },
+            new object?[] { "İade oranı (0-1)", Cell(d.Current?.RefundRate), Cell(d.Previous?.RefundRate) },
+            new object?[] { "Markaya kalan katkı", Cell(d.Current?.BrandContribution), Cell(d.Previous?.BrandContribution) },
+            new object?[] { "Hakedişe bağlı ödenen (eski tarihsizler dahil)", Cell(d.Current?.Paid), Cell(d.Previous?.Paid) },
+            new object?[] { "Kalan alacak", Cell(d.Current?.Outstanding), Cell(d.Previous?.Outstanding) }
+        };
+        if (d.Internal is { } i)
+        {
+            rows.Add([]);
+            rows.Add(new object?[] { "OVO iç bilgileri", "Yalnız yönetim" });
+            rows.Add(new object?[] { "Planlanan hizmet maliyeti", Cell(i.Costs.PlannedCost) });
+            rows.Add(new object?[] { "Girilen gerçek hizmet maliyeti", Cell(i.Costs.RecordedCost) });
+            rows.Add(new object?[] { "Maliyet kontrolü", i.Costs.Complete ? "Tamamlandı" : "Tamamlanmadı" });
+            rows.Add(new object?[] { "Gerçek gider sonrası katkı", Cell(i.Costs.ContributionAfterRecordedCosts) });
+            rows.Add(new object?[] { "Portföyde hakediş payı (pozitif hakedişler, 0-1)", Cell(i.PortfolioFeeShare) });
+            rows.Add(new object?[] { "Kayıtlı yatırım harcaması", Cell(i.Investment.RecordedInvestment) });
+            rows.Add(new object?[] { "Kayıtlı geri kazanım", Cell(i.Investment.RecordedRecovery) });
+            rows.Add(new object?[] { "Kalan kayıtlı yatırım", Cell(i.Investment.Remaining) });
+        }
+        rows.Add([]);
+        rows.Add(new object?[] { "Ne oldu?", "Neden dikkat gerekiyor?", "Sonraki adım" });
+        foreach (var e in d.Explanations) rows.Add(new object?[] { e.WhatHappened, e.WhyItMatters, e.NextStep });
+        var headers = new[] { "Ölçüm", "Seçili ay", "Önceki ay" };
+        return ExcelExport.Build("Marka raporu",
+            $"{d.BrandName} · {d.Month}/{d.Year} · {d.Currency}", headers, rows, autoFilter: false);
     }
 
     internal static string BrandReportCsv(BrandReportDocument d)

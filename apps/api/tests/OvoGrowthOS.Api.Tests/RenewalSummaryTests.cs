@@ -28,7 +28,11 @@ public sealed class RenewalSummaryTests
             Status = MonthlyPerformanceStatus.Locked, NetRevenue = 250_000, OvoFee = 80_000, OvoInternalCost = 20_000, OvoGrossProfit = 60_000 };
         var target = new MonthlyTarget { BrandId = brand, Year = 2026, Month = 8, Currency = "TRY", NetRevenueGoal = 300_000, ContributionMarginGoal = 0.2m, OwnerId = Analyst };
         var collection = new CollectionAccount { MonthlyPerformanceId = period.Id, ReceivableAmount = 80_000, Currency = "TRY", DueOn = new DateOnly(2026, 9, 10) };
-        db.AddRange(deal, period, target, collection);
+        var earlier = new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 7,
+            Status = MonthlyPerformanceStatus.Paid, NetRevenue = 200_000, OvoFee = 40_000, OvoInternalCost = 10_000, OvoGrossProfit = 30_000,
+            Collection = new CollectionAccount { ReceivableAmount = 40_000, Currency = "TRY", DueOn = new DateOnly(2026, 8, 20),
+                Payments = [new CollectionPayment { Amount = 40_000, PaidOn = new DateOnly(2026, 8, 18), Reference = "YEN-ODEME" }] } };
+        db.AddRange(deal, period, earlier, target, collection);
         db.DealScopeItems.Add(new DealScopeItem { DealId = deal.Id, Title = "Performans pazarlaması", Description = "Aylık yönetim", CreatedBy = "admin@ovo.test" });
         await db.SaveChangesAsync();
         var task = new WorkTask { BrandId = brand, DealId = deal.Id, AssigneeId = Analyst, Title = "Yenileme hazırlığı",
@@ -62,8 +66,16 @@ public sealed class RenewalSummaryTests
         Assert.Equal(6m, data.GetProperty("effort").GetProperty("actualHours").GetDecimal());
         Assert.Equal(9_000m, data.GetProperty("costs").GetProperty("recorded").GetDecimal());
         Assert.Equal(6m, data.GetProperty("costs").GetProperty("hours").GetDecimal());
-        Assert.Equal(80_000m, data.GetProperty("collections").GetProperty("receivable").GetDecimal());
-        Assert.Equal(1, data.GetProperty("months").GetArrayLength());
+        Assert.Equal(120_000m, data.GetProperty("collections").GetProperty("receivable").GetDecimal());
+        var performance = data.GetProperty("collectionPerformance");
+        Assert.Equal(1m, performance.GetProperty("onTimeRate").GetDecimal());
+        Assert.Equal(-2m, performance.GetProperty("averageDays").GetDecimal());
+        Assert.Equal(1, performance.GetProperty("recordCount").GetInt32());
+        Assert.Equal(1, performance.GetProperty("onTimePayments").GetInt32());
+        Assert.Equal(40_000m, performance.GetProperty("onTimeAmount").GetDecimal());
+        Assert.Equal(2, data.GetProperty("months").GetArrayLength());
+        Assert.Equal(7, data.GetProperty("months")[1].GetProperty("month").GetInt32());
+        Assert.Equal(40_000m, data.GetProperty("months")[1].GetProperty("paid").GetDecimal());
         Assert.Equal(300_000m, data.GetProperty("months")[0].GetProperty("target").GetDecimal());
         Assert.Equal(250_000m, data.GetProperty("months")[0].GetProperty("netRevenue").GetDecimal());
         Assert.False(string.IsNullOrEmpty(data.GetProperty("renewal").GetProperty("taskTitle").GetString()));

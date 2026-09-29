@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, money, moneyPrecise, percent } from '@/lib/api';
+import { API_URL, api, money, moneyPrecise, percent, token } from '@/lib/api';
 import { Badge, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '@/components/ui/core';
 import {
     ListControls,
@@ -41,6 +41,25 @@ export default function Page() {
     const [currency, setCurrency] = useState('');
     const [collection, setCollection] = useState('all');
     const term = useDebouncedValue(search);
+    const [exporting, setExporting] = useState(false);
+    async function downloadXlsx() {
+        if (exporting) return;
+        setExporting(true);
+        try {
+            const params = new URLSearchParams({ sort, scope, collection });
+            if (term) params.set('search', term);
+            if (status) params.set('status', status);
+            if (period) { params.set('year', period.split('-')[0]); params.set('month', period.split('-')[1]); }
+            if (currency) params.set('currency', currency);
+            const response = await fetch(`${API_URL}/api/commissions/export?${params}`, { headers: { authorization: 'Bearer ' + token() } });
+            if (!response.ok) throw new Error('Excel dosyası oluşturulamadı.');
+            const url = URL.createObjectURL(await response.blob());
+            const link = document.createElement('a'); link.href = url; link.download = `hakedisler${period ? '-' + period : ''}.xlsx`; link.click();
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            window.dispatchEvent(new CustomEvent('ovo:notice', { detail: { message: e instanceof Error ? e.message : 'Excel dosyası oluşturulamadı.', tone: 'error' } }));
+        } finally { setExporting(false); }
+    }
     const { data, error, isLoading } = useQuery({
         queryKey: ['commissions', term, status, sort, page, period, scope, currency, collection],
         queryFn: () =>
@@ -58,7 +77,8 @@ export default function Page() {
                 <div className="mb-4 flex flex-wrap items-center gap-3">
                     <Link href="/commissions/planning" className="text-sm font-semibold underline">Alacak yaşı ve vade takvimini aç</Link>
                     <button className="rounded-lg bg-[#303030] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={!data} onClick={() => window.print()}>PDF’ye kaydet / yazdır</button>
-                    <p className="text-xs text-[#6d7175]">Yazdırma, seçili filtrenin açık sayfasındaki kayıtları ve özet satırlarını içerir.</p>
+                    <button className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50" disabled={!data || exporting} onClick={() => void downloadXlsx()}>{exporting ? 'Dosya hazırlanıyor…' : 'Excel olarak indir (.xlsx)'}</button>
+                    <p className="text-xs text-[#6d7175]">Yazdırma, seçili filtrenin açık sayfasındaki kayıtları ve özet satırlarını içerir. Excel dosyası aynı filtredeki <strong>tüm sayfaları</strong> tek dosyada toplar.</p>
                 </div>
             <Card className="mb-4 p-4">
                 <div className="flex flex-wrap items-end gap-3">

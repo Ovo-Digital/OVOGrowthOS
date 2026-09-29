@@ -80,6 +80,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, ILogger<Noti
                     await scope.ServiceProvider.GetRequiredService<OvoGrowthOS.Api.Features.LeadTimeoutQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 await using (var scope = scopes.CreateAsyncScope())
                     await scope.ServiceProvider.GetRequiredService<StoreOrderSyncQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
+                await using (var scope = scopes.CreateAsyncScope())
+                    await scope.ServiceProvider.GetRequiredService<AdSpendSyncQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 Guid[] ids;
                 await using (var scope = scopes.CreateAsyncScope())
                     ids = await scope.ServiceProvider.GetRequiredService<AppDbContext>().UserAccounts.Where(x => x.IsActive && !x.InvitationPending).Select(x => x.Id).ToArrayAsync(stoppingToken);

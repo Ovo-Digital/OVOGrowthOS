@@ -9,6 +9,7 @@ public sealed record PortalMessageRequest(string Text, int Revision);
 public sealed record PortalTrackingRequest(PortalConversationStatus Status, Guid? OwnerId, int Revision);
 public sealed record PortalDataRequestCreate(string Title, string Instructions, DateOnly? DueOn);
 public sealed record PortalDataRequestUpdate(PortalRequestStatus Status, string Reason, int Revision);
+public sealed record PortalDataRequestRespond(string Text);
 
 public static partial class WorkflowEndpoints
 {
@@ -44,9 +45,16 @@ public static partial class WorkflowEndpoints
                 reading.FirstViewedAt, reading.LastViewedAt, reading.ReviewedAt }).ToListAsync()));
 
         portal.MapGet("/requests", async (AppDbContext db, ClaimsPrincipal user) => await ReadPortalRequests(db, await PortalBrand(db, user)));
+        portal.MapPost("/requests/{id:guid}/response", RespondToPortalDataRequest);
+        portal.MapPost("/requests/{id:guid}/attachments", UploadPortalDataRequestAttachment).DisableAntiforgery();
+        portal.MapGet("/requests/{id:guid}/attachments", async (Guid id, AppDbContext db, ClaimsPrincipal user) =>
+            await ReadPortalDataRequestAttachments(db, await PortalBrand(db, user), id));
+        portal.MapGet("/requests/{id:guid}/attachments/{attachmentId:guid}/download", DownloadPortalDataRequestAttachment);
         management.MapGet("/requests", async (Guid brandId, AppDbContext db) => await ReadPortalRequests(db, brandId));
         management.MapPost("/requests", CreatePortalDataRequest);
         management.MapPut("/requests/{id:guid}", UpdatePortalDataRequest);
+        management.MapGet("/requests/{id:guid}/attachments", async (Guid brandId, Guid id, AppDbContext db) =>
+            await ReadPortalDataRequestAttachments(db, brandId, id));
         management.MapGet("/report-updates", ReadPortalReportUpdates);
     }
 
@@ -132,9 +140,18 @@ public static partial class WorkflowEndpoints
         return Results.Ok(new { row.FirstViewedAt, row.LastViewedAt, row.ReviewedAt });
     }
 
-    private static async Task<IResult> ReadPortalRequests(AppDbContext db, Guid brandId) => Results.Ok(await db.PortalDataRequests.AsNoTracking()
-        .Where(x => x.BrandId == brandId).OrderByDescending(x => x.CreatedAt)
-        .Select(x => new { x.Id, x.Title, x.Instructions, x.DueOn, x.Status, x.Revision, x.CreatedAt, x.UpdatedAt }).ToListAsync());
+    private static async Task<IResult> ReadPortalRequests(AppDbContext db, Guid brandId)
+    {
+        var rows = await db.PortalDataRequests.AsNoTracking()
+            .Where(x => x.BrandId == brandId).OrderByDescending(x => x.CreatedAt).ToListAsync();
+        var keys = rows.Select(x => x.Id.ToString()).ToArray();
+        var files = await db.DocumentAttachments.AsNoTracking()
+            .Where(x => x.EntityType == "PortalDataRequest" && keys.Contains(x.EntityId))
+            .GroupBy(x => x.EntityId).Select(x => new { x.Key, Count = x.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count);
+        return Results.Ok(rows.Select(x => new { x.Id, x.Title, x.Instructions, x.DueOn, x.Status, x.Revision, x.CreatedAt, x.UpdatedAt,
+            x.ResponseText, x.RespondedAt, x.RespondedBy,
+            files = files.TryGetValue(x.Id.ToString(), out var count) ? count : 0 }));
+    }
 
     private static async Task<IResult> CreatePortalDataRequest(Guid brandId, PortalDataRequestCreate r, AppDbContext db, ClaimsPrincipal user)
     {
@@ -155,6 +172,74 @@ public static partial class WorkflowEndpoints
         var before = new { item.Id, item.Status, item.Revision }; item.Status = r.Status; item.Revision++; item.UpdatedAt = DateTimeOffset.UtcNow;
         Audit(db, user, "PortalDataRequestChanged", "Brand", brandId, before, new { item.Id, item.Status, item.Revision }, r.Reason.Trim());
         await db.SaveChangesAsync(); return Results.NoContent();
+    }
+
+    private static readonly string[] PortalRequestFileTypes =
+        ["application/pdf", "image/png", "image/jpeg", "text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"];
+
+    private static async Task<IResult> RespondToPortalDataRequest(Guid id, PortalDataRequestRespond r, AppDbContext db, ClaimsPrincipal user)
+    {
+        if (string.IsNullOrWhiteSpace(r.Text) || r.Text.Length > 2000)
+            return Results.BadRequest(new { error = "Yanıtınızı 1–2000 karakter arasında yazın." });
+        var brandId = await PortalBrand(db, user);
+        var item = await db.PortalDataRequests.SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId);
+        if (item is null) return Results.NotFound();
+        if (item.Status == PortalRequestStatus.Cancelled) return Results.Conflict(new { error = "Artık istenmeyen talebe yanıt gönderilemez." });
+        var before = new { item.Id, item.Status, item.Revision };
+        var now = DateTimeOffset.UtcNow;
+        item.ResponseText = r.Text.Trim(); item.RespondedAt = now; item.RespondedBy = User(user);
+        if (item.Status == PortalRequestStatus.Requested) item.Status = PortalRequestStatus.Answered;
+        item.Revision++; item.UpdatedAt = now;
+        Audit(db, user, "PortalDataRequestAnswered", "Brand", brandId, before, new { item.Id, item.Status, item.Revision });
+        await db.SaveChangesAsync();
+        return Results.Ok(new { item.Id, item.Status, item.Revision });
+    }
+
+    private static async Task<IResult> UploadPortalDataRequestAttachment(Guid id, HttpRequest request, AppDbContext db, ClaimsPrincipal user)
+    {
+        var brandId = await PortalBrand(db, user);
+        var item = await db.PortalDataRequests.SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId);
+        if (item is null) return Results.NotFound();
+        if (item.Status == PortalRequestStatus.Cancelled) return Results.Conflict(new { error = "Artık istenmeyen talebe dosya gönderilemez." });
+        if (!request.HasFormContentType) return Results.BadRequest(new { error = "Bir dosya seçin." });
+        var form = await request.ReadFormAsync();
+        var file = form.Files.FirstOrDefault();
+        if (file is null || file.Length == 0) return Results.BadRequest(new { error = "Bir dosya seçin." });
+        if (file.Length > 10 * 1024 * 1024) return Results.BadRequest(new { error = "Dosya boyutu 10 MB sınırını aşamaz." });
+        if (!PortalRequestFileTypes.Contains(file.ContentType)) return Results.BadRequest(new { error = "PDF, PNG, JPG, CSV veya Excel dosyası yükleyin." });
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream);
+        var attachment = new DocumentAttachment { EntityType = "PortalDataRequest", EntityId = id.ToString(),
+            FileName = Path.GetFileName(file.FileName), ContentType = file.ContentType, Content = stream.ToArray(), UploadedBy = User(user) };
+        var before = new { item.Id, item.Status, item.Revision };
+        var now = DateTimeOffset.UtcNow;
+        db.Add(attachment);
+        item.RespondedAt = now; item.RespondedBy = User(user);
+        if (item.Status == PortalRequestStatus.Requested) item.Status = PortalRequestStatus.Answered;
+        item.Revision++; item.UpdatedAt = now;
+        Audit(db, user, "DocumentUploaded", "Document", attachment.Id, null, new { attachment.EntityType, attachment.EntityId, attachment.FileName });
+        Audit(db, user, "PortalDataRequestAnswered", "Brand", brandId, before, new { item.Id, item.Status, item.Revision });
+        await db.SaveChangesAsync();
+        return Results.Created($"/api/portal/requests/{id}/attachments/{attachment.Id}",
+            new { attachment.Id, attachment.FileName, attachment.ContentType, attachment.CreatedAt, item.Status, item.Revision });
+    }
+
+    private static async Task<IResult> ReadPortalDataRequestAttachments(AppDbContext db, Guid brandId, Guid id)
+    {
+        if (!await db.PortalDataRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.BrandId == brandId)) return Results.NotFound();
+        return Results.Ok(await db.DocumentAttachments.AsNoTracking()
+            .Where(x => x.EntityType == "PortalDataRequest" && x.EntityId == id.ToString())
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new { x.Id, x.FileName, x.ContentType, size = x.Content.Length, x.UploadedBy, x.CreatedAt }).ToListAsync());
+    }
+
+    private static async Task<IResult> DownloadPortalDataRequestAttachment(Guid id, Guid attachmentId, AppDbContext db, ClaimsPrincipal user)
+    {
+        var brandId = await PortalBrand(db, user);
+        if (!await db.PortalDataRequests.AsNoTracking().AnyAsync(x => x.Id == id && x.BrandId == brandId)) return Results.NotFound();
+        var file = await db.DocumentAttachments.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == attachmentId && x.EntityType == "PortalDataRequest" && x.EntityId == id.ToString());
+        return file is null ? Results.NotFound() : Results.File(file.Content, file.ContentType, file.FileName);
     }
 
     private static async Task<IResult> ReadPortalReportUpdates(Guid brandId, AppDbContext db)

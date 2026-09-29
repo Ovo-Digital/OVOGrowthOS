@@ -20,7 +20,8 @@ public sealed record QualityReport(QualityPeriod Period, string Label, QualitySu
 public sealed record QualityInput(
     int Year, int Month, Guid BrandId, string BrandName, string Currency, Deal? Deal, MonthlyPerformance? Current, MonthlyPerformance? Previous,
     string Origin, string OriginDetail, string Responsible, Guid? ResponsibleId,
-    Guid? TaskId, bool TaskCompleted, decimal VatRate, bool AdConnected);
+    Guid? TaskId, bool TaskCompleted, decimal VatRate, bool AdConnected,
+    decimal? AutoAdSpend = null, string AutoAdSpendCurrency = "");
 
 public static class DataQuality
 {
@@ -157,6 +158,11 @@ public static class DataQuality
                 "Reklam bağlantısı kayıtlı ama bu ayın reklam harcaması 0.",
                 "Bağlantılı hesaptan harcama henüz getirilmemiş ya da bu ay gerçekten reklam yapılmamış olabilir.",
                 "Aylık sonuç girişinde “Reklam harcamasını getir” düğmesiyle bağlantıdan okuyun; reklam yoksa 0'ı kaynak raporuyla teyit edin."));
+        if (input.AdConnected && current.TotalAdSpend == 0 && input.AutoAdSpend is { } auto && auto >= 0)
+            alerts2.Add(new QualityAlert("ads_auto_read", "info",
+                $"Sistem bu ayın reklam harcamasını otomatik okudu: {auto.ToString("0.##", Tr)} {input.AutoAdSpendCurrency}".TrimEnd(),
+                "Otomatik okuma yalnız bilgilendirme amaçlıdır; aylık sonucu değiştirmez, değer formda siz kaydedene kadar işlenmez.",
+                "Tutarı aylık sonuç girişindeki reklam harcaması alanına elle yazın ya da “Reklam harcamasını getir” düğmesiyle forma doldurup kontrol edin."));
         if (current.GrossSales > 0 && costs == 0)
             alerts2.Add(new QualityAlert("missing_costs", "info",
                 "Brüt satış var ama gider raporu 0.",

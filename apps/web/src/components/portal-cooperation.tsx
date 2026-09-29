@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { API_URL, api, token } from '@/lib/api';
 import { Card } from '@/components/ui/core';
 import { useDialog } from '@/components/ui/modal';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
@@ -35,15 +35,23 @@ export function PortalReading({ reportId }: { reportId: string }) {
   </Card>;
 }
 
-type RequestStatus = 'Requested' | 'Received' | 'Cancelled';
-type DataRequest = { id: string; title: string; instructions: string; dueOn: string | null; status: RequestStatus; revision: number; updatedAt: string };
-const requestLabels: Record<RequestStatus, string> = { Requested: 'Sizden bekleniyor', Received: 'Ekip teslim aldı', Cancelled: 'Artık istenmiyor' };
+type RequestStatus = 'Requested' | 'Received' | 'Cancelled' | 'Answered';
+type RequestFile = { id: string; fileName: string; contentType: string; size: number; uploadedBy: string; createdAt: string };
+type DataRequest = { id: string; title: string; instructions: string; dueOn: string | null; status: RequestStatus; revision: number; updatedAt: string; responseText: string; respondedAt: string | null; respondedBy: string; files: number };
+const requestLabels: Record<RequestStatus, string> = { Requested: 'Sizden bekleniyor', Answered: 'Müşteri yanıtladı', Received: 'Ekip teslim aldı', Cancelled: 'Artık istenmiyor' };
+
+async function downloadRequestFile(path: string, name: string) {
+  const response = await fetch(API_URL + path, { headers: { authorization: 'Bearer ' + token() } });
+  if (!response.ok) throw new Error('Dosya indirilemedi.');
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url);
+}
 
 export function PortalRequests({ brandId }: { brandId?: string }) {
   const root = brandId ? `/api/portal-management/brands/${brandId}` : '/api/portal'; const qc = useQueryClient();
   const query = useQuery({ queryKey: ['portal-requests', root], queryFn: () => api<DataRequest[]>(root + '/requests'), refetchInterval: 30000 });
   const [creating, setCreating] = useState(false); const [notice, setNotice] = useState('');
-  return <Card className="space-y-3 p-5 print:hidden"><h2 className="font-semibold">{brandId ? '5. Müşteriden istenen bilgiler' : 'Sizden beklenen bilgi ve belgeler'}</h2><p className="text-sm">{brandId ? 'Oluşturduğunuz talep bu markanın tüm müşteri hesaplarına gösterilir. Ne gerektiğini ve mevcut güvenli teslim kanalını açıkça yazın. İç not yazmayın.' : 'İstenen bilgiyi açıklamadaki mevcut güvenli kanaldan OVO ekibine iletin. Teslim durumunu ekip kontrol edip günceller.'} Bu sayfadan dosya yüklenmez, e-posta gönderilmez. Talep metni sonradan değiştirilmez; yanlış talebi kapatıp yenisini oluşturun.</p>
+  return <Card className="space-y-3 p-5 print:hidden"><h2 className="font-semibold">{brandId ? '5. Müşteriden istenen bilgiler' : 'Sizden beklenen bilgi ve belgeler'}</h2><p className="text-sm">{brandId ? 'Oluşturduğunuz talep bu markanın tüm müşteri hesaplarına gösterilir. Ne gerektiğini açıkça yazın, iç not yazmayın. Müşteri yanıt verdiğinde metni, yüklediği dosyaları ve zamanını burada görürsünüz; teslim durumunu yine siz güncellersiniz. Talep metni sonradan değiştirilmez; yanlış talebi kapatıp yenisini oluşturun.' : 'İstenen bilgiyi bu sayfadan yanıtlayıp dosyanızı da aynı yerden gönderin: PDF, görsel, CSV veya Excel, en fazla 10 MB. E-posta göndermeye gerek yoktur. Teslim durumunu OVO ekibi kontrol edip günceller.'}</p>
     {notice && <p role="status">{notice}</p>}{query.isPending ? <p role="status">Talepler yükleniyor…</p> : query.isError ? <p role="alert">Talepler alınamadı. {query.error.message}</p> : <>{!query.data.length && <p>Henüz bilgi veya belge talebi yok.</p>}{query.data.map(item => <RequestItem key={item.id} item={item} root={root} staff={!!brandId} />)}</>}
     {brandId && (creating ? <RequestCreate root={root} done={() => { setCreating(false); setNotice('Talep markanın portalına eklendi.'); void qc.invalidateQueries({ queryKey: ['portal-requests', root] }); }} cancel={() => setCreating(false)} /> : <button className={button} onClick={() => { setCreating(true); setNotice(''); }}>Yeni bilgi veya belge iste</button>)}
   </Card>;
@@ -63,8 +71,36 @@ function RequestCreate({ root, done, cancel }: { root: string; done: () => void;
 }
 
 function RequestItem({ item, root, staff }: { item: DataRequest; root: string; staff: boolean }) {
-  const [editing, setEditing] = useState(false); const [notice, setNotice] = useState('');
-  return <article className="space-y-2 rounded-lg border p-3 text-sm"><h3 className="break-words font-semibold">{item.title} · {requestLabels[item.status]}</h3><p className="whitespace-pre-wrap break-words">{item.instructions}</p><p>İstenen tarih: {item.dueOn ? item.dueOn.split('-').reverse().join('.') : 'Belirtilmedi'} · Son güncelleme: {date(item.updatedAt)} (Türkiye)</p>{notice && <p role="status">{notice}</p>}{staff && (editing ? <RequestStatusEditor item={item} root={root} done={() => { setEditing(false); setNotice('Talebin durumu güncellendi.'); }} cancel={() => setEditing(false)} /> : <button className={button} onClick={() => { setEditing(true); setNotice(''); }}>Teslim durumunu güncelle</button>)}</article>;
+  const qc = useQueryClient(); const [editing, setEditing] = useState(false); const [notice, setNotice] = useState('');
+  const files = useQuery({ queryKey: ['portal-request-files', root, item.id], queryFn: () => api<RequestFile[]>(root + '/requests/' + item.id + '/attachments'), refetchInterval: 30000 });
+  return <article className="space-y-2 rounded-lg border p-3 text-sm"><h3 className="break-words font-semibold">{item.title} · {requestLabels[item.status]}</h3><p className="whitespace-pre-wrap break-words">{item.instructions}</p><p>İstenen tarih: {item.dueOn ? item.dueOn.split('-').reverse().join('.') : 'Belirtilmedi'} · Son güncelleme: {date(item.updatedAt)} (Türkiye)</p>
+    {(item.responseText || item.respondedAt) && <div className="space-y-1 rounded-lg border p-2"><p className="font-semibold">Müşteri yanıtı{item.respondedBy ? ` · ${item.respondedBy}` : ''} · {date(item.respondedAt)}</p><p className="whitespace-pre-wrap break-words">{item.responseText || 'Yazılmadı; yalnız dosya gönderildi.'}</p></div>}
+    {files.isError && <p role="alert">Ek dosyalar alınamadı. {files.error.message}</p>}
+    {!!files.data?.length && <ul className="space-y-1">{files.data.map(f => <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2"><span className="break-words">{f.fileName} · {Math.max(1, Math.round(f.size / 1024))} KB · {date(f.createdAt)}</span><button className={button} onClick={() => { void downloadRequestFile(staff ? `/api/documents/${f.id}/download` : `/api/portal/requests/${item.id}/attachments/${f.id}/download`, f.fileName).catch(e => setNotice(e instanceof Error ? e.message : 'Dosya indirilemedi.')); }}>İndir</button></li>)}</ul>}
+    {notice && <p role="status">{notice}</p>}{staff && (editing ? <RequestStatusEditor item={item} root={root} done={() => { setEditing(false); setNotice('Talebin durumu güncellendi.'); }} cancel={() => setEditing(false)} /> : <button className={button} onClick={() => { setEditing(true); setNotice(''); }}>Teslim durumunu güncelle</button>)}
+    {!staff && item.status !== 'Cancelled' && <RequestResponseForm item={item} root={root} done={() => { setNotice('Yanıtınız ve dosyanız OVO ekibine iletildi.'); void qc.invalidateQueries({ queryKey: ['portal-requests', root] }); void qc.invalidateQueries({ queryKey: ['portal-request-files', root, item.id] }); }} />}
+  </article>;
+}
+
+function RequestResponseForm({ item, root, done }: { item: DataRequest; root: string; done: () => void }) {
+  const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); if (busy) return;
+    const form = e.currentTarget; const data = new FormData(form);
+    const text = String(data.get('text') ?? '').trim();
+    const file = data.get('file') as File | null;
+    const hasFile = !!file && file.size > 0;
+    if (!text && !hasFile) { setError('Yanıt metni yazın veya bir dosya seçin.'); return; }
+    if (hasFile && file.size > 10 * 1024 * 1024) { setError('Dosya boyutu 10 MB sınırını aşamaz.'); return; }
+    setBusy(true); setError('');
+    try {
+      if (text) await api(root + '/requests/' + item.id + '/response', { method: 'POST', body: JSON.stringify({ text }) });
+      if (hasFile) { const body = new FormData(); body.append('file', file!); await api(root + '/requests/' + item.id + '/attachments', { method: 'POST', body }); }
+      form.reset(); setDirty(false); done();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Yanıt gönderilemedi.'); } finally { setBusy(false); }
+  }
+  return <form className="space-y-2 border-t pt-3" onSubmit={submit} onChange={() => setDirty(true)}>{error && <p role="alert">{error}</p>}<label className="block">Yanıtınız<textarea name="text" rows={3} maxLength={2000} className="input mt-1" placeholder="Talebe ilişkin açıklamanızı yazın." disabled={busy} /></label><label className="block">Dosya (isteğe bağlı; PDF, PNG, JPG, CSV veya Excel, en fazla 10 MB)<input name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx" className="input mt-1" disabled={busy} /></label><button className={button} disabled={busy}>Yanıtı ve dosyayı gönder</button></form>;
 }
 
 function RequestStatusEditor({ item, root, done, cancel }: { item: DataRequest; root: string; done: () => void; cancel: () => void }) {

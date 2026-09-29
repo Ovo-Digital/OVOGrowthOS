@@ -66,6 +66,7 @@ public static partial class WorkflowEndpoints
         group.MapPost("/{id:guid}/invoice", () => Results.Conflict(new { error = "Hakediş dökümündeki fatura ve tahsilat formunu kullanın." })).RequireAuthorization("OperationsWrite");
         group.MapPost("/{id:guid}/pay", () => Results.Conflict(new { error = "Hakediş dökümünden ödeme tutarı, tarihi ve referansı ile tahsilat kaydedin." })).RequireAuthorization("OperationsWrite");
         app.MapGet("/api/commissions", ListCommissions).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/commissions/export", ExportCommissions).RequireAuthorization("ReadAccess");
     }
 
     private static async Task<IResult> SavePerformance(Guid id, PerformanceRequest request, HttpRequest http, AppDbContext db, ClaimsPrincipal user)

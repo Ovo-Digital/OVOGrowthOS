@@ -32,6 +32,21 @@ public sealed class MonthlyTargetTests
         Assert.True(comparison.GetProperty("isClosed").GetBoolean());
         Assert.Equal(-299999.8744m, comparison.GetProperty("metrics")[0].GetProperty("difference").GetDecimal());
         Assert.Equal(before, await c.GetStringAsync($"/api/performance/{s.PeriodId}"));
+        using (var dealScope = f.Services.CreateScope())
+        {
+            var dealDb = dealScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await dealDb.Deals.SingleAsync(x => x.Name == "PRIVATE_DEAL")).RevenueShareRate = .08m;
+            await dealDb.SaveChangesAsync();
+        }
+        var projection = (await c.GetFromJsonAsync<JsonElement>(Path(s.BrandId))).GetProperty("projection");
+        Assert.True(projection.GetProperty("calculable").GetBoolean());
+        Assert.Equal(104_000m, projection.GetProperty("ovoFee").GetDecimal());
+        Assert.Equal(.08m, projection.GetProperty("effectiveRate").GetDecimal());
+        Assert.Equal(5_235m, projection.GetProperty("ovoGrossProfit").GetDecimal());
+        Assert.Equal(520_000m, projection.GetProperty("brandContributionProfit").GetDecimal());
+        Assert.Equal(.4m, projection.GetProperty("brandContributionMarginGoal").GetDecimal());
+        Assert.Equal("PRIVATE_DEAL", projection.GetProperty("dealName").GetString());
+        Assert.Equal(JsonValueKind.Null, (await c.GetFromJsonAsync<JsonElement>(Path(s.BrandId).Replace("TRY", "USD"))).GetProperty("projection").ValueKind);
     }
 
     [Fact]
@@ -51,6 +66,8 @@ public sealed class MonthlyTargetTests
         (await c.PutAsJsonAsync(Path(s.BrandId).Replace("TRY", "USD"), valid)).EnsureSuccessStatusCode();
         var otherCurrency = await c.GetFromJsonAsync<JsonElement>(Path(s.BrandId).Replace("TRY", "USD"));
         Assert.Equal(JsonValueKind.Null, otherCurrency.GetProperty("comparison").GetProperty("metrics")[0].GetProperty("actual").ValueKind);
+        Assert.False(otherCurrency.GetProperty("projection").GetProperty("calculable").GetBoolean());
+        Assert.Contains("etkin anlaşma", otherCurrency.GetProperty("projection").GetProperty("notReason").GetString());
         Assert.Equal(HttpStatusCode.BadRequest, (await c.PutAsJsonAsync(Path(s.BrandId).Replace("TRY", "try"), valid)).StatusCode);
     }
 

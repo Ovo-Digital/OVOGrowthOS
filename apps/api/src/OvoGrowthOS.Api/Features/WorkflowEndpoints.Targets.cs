@@ -35,13 +35,16 @@ public static partial class WorkflowEndpoints
         var brand = await db.Brands.AsNoTracking().Where(x => x.Id == brandId).Select(x => new { x.Name }).SingleOrDefaultAsync();
         if (brand is null) return Results.NotFound();
         var target = await db.MonthlyTargets.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == brandId && x.Year == year && x.Month == month && x.Currency == currency);
-        if (target is null) return Results.Ok(new { brandName = brand.Name, target = (MonthlyTarget?)null, comparison = (TargetComparison?)null });
+        if (target is null) return Results.Ok(new { brandName = brand.Name, target = (MonthlyTarget?)null, comparison = (TargetComparison?)null, projection = (TargetProjection?)null });
         var period = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal).SingleOrDefaultAsync(x => x.BrandId == brandId && x.Year == year && x.Month == month);
+        var deal = await db.Deals.AsNoTracking().Where(x => x.BrandId == brandId && x.Currency == currency && x.Status == DealStatus.Active)
+            .OrderByDescending(x => x.StartDate).ThenByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
         var owner = await db.UserAccounts.AsNoTracking().Where(x => x.Id == target.OwnerId).Select(x => new { x.Name, x.IsActive }).SingleAsync();
         var actions = await (from action in db.TargetActions.AsNoTracking() join task in db.WorkTasks on action.TaskId equals task.Id
             where action.TargetId == target.Id select new { action.Metric, action.TaskId, action.TargetRevision, action.PerformanceUpdatedAt,
                 task.Title, task.DueOn, task.CompletedAt, task.AssigneeId }).ToListAsync();
-        return Results.Ok(new { brandName = brand.Name, target, owner, comparison = MonthlyTargetEngine.Compare(target, period), actions });
+        return Results.Ok(new { brandName = brand.Name, target, owner, comparison = MonthlyTargetEngine.Compare(target, period),
+            projection = TargetProjectionEngine.Project(target, deal), actions });
     }
 
     private static async Task<IResult> SaveMonthlyTarget(Guid brandId, int year, int month, string currency, MonthlyTargetRequest r, AppDbContext db, ClaimsPrincipal user)

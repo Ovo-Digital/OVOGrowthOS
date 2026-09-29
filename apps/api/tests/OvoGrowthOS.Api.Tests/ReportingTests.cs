@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OvoGrowthOS.Api.Data;
+using OvoGrowthOS.Api.Features;
 using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Tests;
@@ -72,6 +73,35 @@ public sealed class ReportingTests
         using var client = Client(factory);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/dashboard?{query}")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/commissions?{query}")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/commissions/export?{query}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Commission_export_returns_a_readable_workbook_with_only_the_filtered_rows()
+    {
+        await using var factory = new WorkflowApiFactory();
+        await Seed(factory);
+        using var client = Client(factory);
+        var response = await client.GetAsync("/api/commissions/export?year=2026&month=9&scope=All&currency=TRY");
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(ExcelExport.MimeType, response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal(0x50, bytes[0]);
+        Assert.Equal(0x4B, bytes[1]);
+        using var workbook = new ClosedXML.Excel.XLWorkbook(new MemoryStream(bytes));
+        var sheet = workbook.Worksheets.Single();
+        Assert.Equal("Hakedişler", sheet.Name);
+        var cells = sheet.RangeUsed()!.CellsUsed().ToList();
+        var text = string.Join("\n", cells.Select(c => c.GetString()));
+        Assert.Contains("Hakediş listesi-2026-09 (TRY)", text);
+        Assert.Contains("Son hakediş", text);
+        Assert.Contains("Kayıt sayısı", text);
+        Assert.Contains("Ödenen", text);
+        Assert.Contains("Onaylandı", text);
+        Assert.DoesNotContain("Eski alacak", text);
+        Assert.DoesNotContain("Dolar markası", text);
+        Assert.Contains(cells, c => c.TryGetValue<decimal>(out var value) && value == 970_000m);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/commissions/export?scope=99")).StatusCode);
     }
 
     private static HttpClient Client(WorkflowApiFactory factory)

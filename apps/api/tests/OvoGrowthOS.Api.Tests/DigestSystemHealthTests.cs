@@ -57,13 +57,22 @@ public sealed class DigestSystemHealthTests
                 NewValueJson = """{"synced":3,"failed":0,"truncated":0,"errors":[]}""",
                 Reason = "3 marka güncellendi"
             });
+            db.AuditRecords.Add(new AuditRecord
+            {
+                UserId = "sistem",
+                Action = "AdSpendAutoSyncSummary",
+                EntityType = "Period",
+                EntityId = "2026-08",
+                NewValueJson = """{"read":2,"failed":1,"items":[],"failures":["Reklomark: hata"]}""",
+                Reason = "2 marka okundu; 1 marka başarısız"
+            });
             await db.SaveChangesAsync();
         });
 
         var body = await Build(f);
         Assert.Contains("Gönderilemeyen veya doğrulanamayan e-posta: 1 adet", body);
         Assert.Contains("Başarısız otomatik sipariş senkronu: 2026-08 (2 marka)", body);
-        Assert.DoesNotContain("2026-07", body);
+        Assert.Contains("Başarısız otomatik reklam harcaması senkronu: 2026-08 (1 marka)", body);
         Assert.DoesNotContain("Son 7 günde gönderilemeyen", body);
     }
 }

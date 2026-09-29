@@ -49,7 +49,7 @@ public sealed class PortalQuestion
 }
 
 public enum PortalConversationStatus { Open, AwaitingCustomer, Resolved }
-public enum PortalRequestStatus { Requested, Received, Cancelled }
+public enum PortalRequestStatus { Requested, Received, Cancelled, Answered }
 
 public sealed class PortalMessage
 {
@@ -80,6 +80,9 @@ public sealed class PortalDataRequest
     public string Instructions { get; set; } = "";
     public DateOnly? DueOn { get; set; }
     public PortalRequestStatus Status { get; set; }
+    public string ResponseText { get; set; } = "";
+    public DateTimeOffset? RespondedAt { get; set; }
+    public string RespondedBy { get; set; } = "";
     public int Revision { get; set; } = 1;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

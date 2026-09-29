@@ -125,6 +125,76 @@ public sealed class PortalCollaborationTests
         Assert.Equal(2, await db.AuditRecords.CountAsync(x => x.Action == "PortalDataRequestChanged"));
     }
 
+    private static Task<HttpResponseMessage> Upload(HttpClient c, Guid id, string name, string contentType, byte[] content)
+    {
+        var file = new ByteArrayContent(content);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        var form = new MultipartFormDataContent();
+        form.Add(file, "file", name);
+        return c.PostAsync($"/api/portal/requests/{id}/attachments", form);
+    }
+
+    [Fact]
+    public async Task Customer_answers_a_request_with_text_and_file_that_stay_inside_the_brand()
+    {
+        await using var f = new WorkflowApiFactory(); var s = await CustomerPortalTests.Seed(f); using var admin = CustomerPortalTests.Staff(f);
+        var (c, _) = await CustomerPortalTests.Customer(f, admin, s.BrandId); using var client = c;
+        var (other, _) = await CustomerPortalTests.Customer(f, admin, s.OtherBrandId, "other-requester@ovo.test"); using var otherClient = other;
+        var root = Root(s.BrandId);
+        var id = await Id(await admin.PostAsJsonAsync(root + "/requests", new PortalDataRequestCreate("Ciro tablosu", "PDF olarak güvenle iletin.", null)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsJsonAsync($"/api/portal/requests/{id}/response", new PortalDataRequestRespond(" "))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync($"/api/portal/requests/{id}/response", new PortalDataRequestRespond("Giremem"))).StatusCode);
+        (await c.PostAsJsonAsync($"/api/portal/requests/{id}/response", new PortalDataRequestRespond("Tablosu ekte, kontrol edin."))).EnsureSuccessStatusCode();
+
+        var answered = await First(c, "/api/portal/requests");
+        Assert.Equal("Answered", answered.GetProperty("status").GetString());
+        Assert.Equal("Tablosu ekte, kontrol edin.", answered.GetProperty("responseText").GetString());
+        Assert.Equal("client@ovo.test", answered.GetProperty("respondedBy").GetString());
+        Assert.False(answered.GetProperty("respondedAt").ValueKind == JsonValueKind.Null);
+        Assert.Equal(2, answered.GetProperty("revision").GetInt32());
+        Assert.Equal(0, answered.GetProperty("files").GetInt32());
+
+        var staffRow = await First(admin, root + "/requests");
+        Assert.Equal("Answered", staffRow.GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsJsonAsync(root + $"/requests/{id}", new PortalDataRequestUpdate(PortalRequestStatus.Received, "Eski ekran", 1))).StatusCode);
+        (await admin.PutAsJsonAsync(root + $"/requests/{id}", new PortalDataRequestUpdate(PortalRequestStatus.Received, "Portal üzerinden teslim alındı.", 2))).EnsureSuccessStatusCode();
+
+        var pdf = System.Text.Encoding.UTF8.GetBytes("%PDF-1.4 ciro eki");
+        (await Upload(c, id, "ciro.pdf", "application/pdf", pdf)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(c, id, "notlar.txt", "text/plain", System.Text.Encoding.UTF8.GetBytes("metin"))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Upload(c, id, "buyuk.pdf", "application/pdf", new byte[10 * 1024 * 1024 + 1])).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Upload(other, id, "ciro.pdf", "application/pdf", pdf)).StatusCode);
+
+        var files = await c.GetFromJsonAsync<JsonElement>($"/api/portal/requests/{id}/attachments");
+        var file = files.EnumerateArray().Single();
+        Assert.Equal("ciro.pdf", file.GetProperty("fileName").GetString());
+        Assert.Equal(pdf.Length, file.GetProperty("size").GetInt32());
+        var attachment = file.GetProperty("id").GetGuid();
+
+        var portalDownload = await c.GetAsync($"/api/portal/requests/{id}/attachments/{attachment}/download");
+        portalDownload.EnsureSuccessStatusCode();
+        Assert.Equal("%PDF-1.4 ciro eki", await portalDownload.Content.ReadAsStringAsync());
+        var staffDownload = await admin.GetAsync($"/api/documents/{attachment}/download");
+        staffDownload.EnsureSuccessStatusCode();
+        Assert.Equal("%PDF-1.4 ciro eki", await staffDownload.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/portal/requests/{id}/attachments")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/portal/requests/{id}/attachments/{attachment}/download")).StatusCode);
+        Assert.Single((await admin.GetFromJsonAsync<JsonElement>(root + $"/requests/{id}/attachments")).EnumerateArray());
+
+        var finalRow = await First(c, "/api/portal/requests");
+        Assert.Equal(4, finalRow.GetProperty("revision").GetInt32());
+        Assert.Equal(1, finalRow.GetProperty("files").GetInt32());
+
+        (await admin.PutAsJsonAsync(root + $"/requests/{id}", new PortalDataRequestUpdate(PortalRequestStatus.Cancelled, "Artık gerek yok.", finalRow.GetProperty("revision").GetInt32()))).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Conflict, (await c.PostAsJsonAsync($"/api/portal/requests/{id}/response", new PortalDataRequestRespond("Yine de yazıyorum"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await Upload(c, id, "gec.pdf", "application/pdf", pdf)).StatusCode);
+
+        using var scope = f.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(2, await db.AuditRecords.CountAsync(x => x.Action == "PortalDataRequestAnswered"));
+        Assert.Single(await db.DocumentAttachments.Where(x => x.EntityType == "PortalDataRequest").ToListAsync());
+    }
+
     [Fact]
     public async Task Partial_payment_and_void_change_the_warning_but_not_the_published_report()
     {
