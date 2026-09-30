@@ -241,6 +241,8 @@ public sealed class V6Dalga12ApiTests
             var digest = await db.UserNotifications.SingleAsync(x => x.Kind == NotificationKind.WeeklyDigest);
             Assert.StartsWith("digest:2026-W", digest.EventKey);
             Assert.NotNull(digest.EmailStatus);
+            digest.CreatedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
         });
 
         Assert.True(await Send(f));
