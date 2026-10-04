@@ -46,10 +46,11 @@ public static partial class WorkflowEndpoints
 
         var brandId = await PortalBrand(db, user);
         var actor = Guid.Parse(user.FindFirstValue("uid")!);
-        var row = await db.PortalPeriodSubmissions.SingleOrDefaultAsync(x => x.BrandId == brandId && x.Year == r.Year && x.Month == r.Month);
-        var created = row is null;
-        if (created) { row = new PortalPeriodSubmission { BrandId = brandId, Year = r.Year, Month = r.Month }; db.Add(row); }
-        object? before = created ? null : new { row.GrossSales, row.Refunds, row.MetaSpend, row.GoogleSpend, row.Note, row.Revision };
+        var existing = await db.PortalPeriodSubmissions.SingleOrDefaultAsync(x => x.BrandId == brandId && x.Year == r.Year && x.Month == r.Month);
+        var created = existing is null;
+        var row = existing ?? new PortalPeriodSubmission { BrandId = brandId, Year = r.Year, Month = r.Month };
+        if (created) db.Add(row);
+        object? before = existing is null ? null : new { existing.GrossSales, existing.Refunds, existing.MetaSpend, existing.GoogleSpend, existing.Note, existing.Revision };
         row.GrossSales = r.GrossSales; row.Refunds = r.Refunds; row.MetaSpend = r.MetaSpend; row.GoogleSpend = r.GoogleSpend;
         row.Note = note; row.SubmittedBy = actor; row.SubmittedAt = DateTimeOffset.UtcNow;
         if (!PortalSubmissions.HasContent(row))

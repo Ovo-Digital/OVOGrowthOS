@@ -1305,14 +1305,14 @@ Yeni kullanıcıya 10–256 karakterli bir şifre verin ve şifreyi güvenli bir
 
 ### Şifre göndermeden hesap daveti
 
-E-posta hizmeti yönetici tarafından açılmışsa **Ayarlar → Kullanıcılar → Çalışanı e-postayla davet et** bölümünü kullanabilirsiniz. Marka yetkilisi için **Müşteri portalı → Marka seçin → Marka yetkilisini e-postayla davet et** yolunu izleyin.
+E-posta hizmeti açıkken **Ayarlar → Kullanıcılar → Çalışanı e-postayla davet et** bölümünü kullanabilirsiniz. Marka yetkilisi için **Müşteri portalı → Marka seçin → Marka yetkilisini e-postayla davet et** yolunu izleyin. E-posta hizmeti kapalıysa bu bölümün alanları kapalı gelir; nedenini ve ne yapmanız gerektiğini gösteren turuncu bilgi kutusundaki **E-posta ayarlarını aç** bağlantısı sizi doğrudan ilgili ayara götürür. Ayarları kaydedip **Yeniden kontrol et** ile durumu yenileyin (sayfa açıkken durum yaklaşık 15 saniyede bir kendiliğinden de yenilenir); gönderim açılır açılmaz alanlar kullanılır hale gelir.
 
 1. Kişinin adını, kendisine ait e-posta adresini ve ekip hesabıysa doğru yetkiyi yazın. Müşteri daveti seçtiğiniz markaya bağlıdır.
 2. **Hesabı oluştur ve davet gönder** düğmesine basın; adresi ve yetkiyi kontrol edip onaylayın. Şifre yazmanız gerekmez.
 3. Kişi gelen bağlantıdan kendi şifresini belirler. Davet **24 saat**, şifre yenileme bağlantısı **30 dakika** geçerlidir; her bağlantı yalnız bir kez kullanılabilir. Bağlantıyı açmak tek başına hesabı etkinleştirmez; kişi formu doldurup kaydetmelidir.
 4. **Davet bekleniyor** yazan hesap, erişimi açık görünse bile kişi şifresini bağlantıdan belirleyene kadar giriş yapamaz. Yönetici şifre alanını doldurmak bekleyen daveti tamamlamaz; daveti yenileyin veya kişinin giriş ekranından yeni bağlantı istemesini sağlayın.
 
-Mevcut bir e-posta adresiyle ikinci hesap açılmaz. Davetle yeni yönetici oluşturmak son yöneticiye erişim güvencesi değildir: davet kabul edilene kadar mevcut son yöneticiyi kapatamazsınız. Gmail ayarları henüz girilmemişse davet düğmesi kapalıdır; mevcut şifreyle hesap oluşturma yöntemi çalışmaya devam eder.
+Mevcut bir e-posta adresiyle ikinci hesap açılmaz. Davetle yeni yönetici oluşturmak son yöneticiye erişim güvencesi değildir: davet kabul edilene kadar mevcut son yöneticiyi kapatamazsınız. E-posta ayarları henüz girilmemişse veya genel gönderim kapalıysa davet alanları kapalıdır ve bilgi kutusu hangi adımın eksik olduğunu söyler; **E-posta ayarlarını aç** bağlantısıyla ilgili bölümü tamamlayın. Bu arada mevcut şifreyle hesap oluşturma yöntemi çalışmaya devam eder.
 
 ### Şifremi unuttum veya bağlantım çalışmıyor
 

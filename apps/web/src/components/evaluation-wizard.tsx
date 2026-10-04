@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { api, money } from '@/lib/api';
@@ -172,6 +172,7 @@ function Wizard({
     const [result, setResult] = useState<Result | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const running = useRef(false);
     const locked =
         !!existing?.status &&
         ['Analyzed', 'Approved', 'Rejected', 'Archived'].includes(
@@ -210,20 +211,24 @@ function Wizard({
         setError('');
         setStep((x) => x + 1);
     }
+    async function persist() {
+        const payload = {
+            ...d,
+            currentStep: step + 1,
+            status: step === 0 ? 'Draft' : 'InProgress',
+        };
+        const saved = await api<Eval>(
+            id ? `/api/evaluations/${id}` : '/api/evaluations',
+            { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) },
+        );
+        setId(saved.id);
+        return saved;
+    }
     async function save(exit = false) {
         setBusy(true);
         setError('');
         try {
-            const payload = {
-                ...d,
-                currentStep: step + 1,
-                status: step === 0 ? 'Draft' : 'InProgress',
-            };
-            const saved = await api<Eval>(
-                id ? `/api/evaluations/${id}` : '/api/evaluations',
-                { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) },
-            );
-            setId(saved.id);
+            const saved = await persist();
             if (exit) router.push('/evaluations');
             return saved.id;
         } catch (e) {
@@ -236,16 +241,29 @@ function Wizard({
         }
     }
     async function analyze() {
+        // Tek analiz: düğme kaydetme biter bitmez açıldığı için ikinci tıklama,
+        // analizin değiştirdiği satırla çakışıp 409 (eşzamanlılık) hatası veriyordu.
+        if (running.current) return;
+        running.current = true;
+        setBusy(true);
+        setError('');
         try {
-            const evaluationId = await save();
+            const saved = await persist();
             const r = await api<Result>(
-                `/api/evaluations/${evaluationId}/analyze`,
+                `/api/evaluations/${saved.id}/analyze`,
                 { method: 'POST' },
             );
             setResult(r);
             setStep(9);
-            router.replace(`/evaluations/${evaluationId}`);
-        } catch {}
+            router.replace(`/evaluations/${saved.id}`);
+        } catch (e) {
+            setError(
+                e instanceof Error ? e.message : 'Analiz çalıştırılamadı.',
+            );
+        } finally {
+            running.current = false;
+            setBusy(false);
+        }
     }
     const frozen =
         existing?.recommendationSnapshotJson &&
