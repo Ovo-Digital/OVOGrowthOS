@@ -27,7 +27,7 @@ export function BrandTeam({ brandId }: { brandId: string }) {
   const history = useQuery({ queryKey: ['stage-history', brandId], queryFn: () => api<{ items: StageRow[] }>(`/api/brands/${brandId}/stage-history`) });
   const saveNote = useMutation({ mutationFn: () => api(`/api/brands/${brandId}/contact-notes`, { method: 'POST', body: JSON.stringify(note) }), onSuccess: () => { setNote(null); setPage(1); setMessage('Görüşme notu eklendi.'); cache.invalidateQueries({ queryKey: ['contact-notes', brandId] }); cache.invalidateQueries({ queryKey: ['follow-up', brandId] }); cache.invalidateQueries({ queryKey: ['lead-follow-ups'] }); } });
   const owner = team.data?.find(person => person.id === follow.data?.followUp.ownerId);
-  return <div id="team-work" className="mt-6 scroll-mt-20">
+  return <div id="team-work" className="mt-6 scroll-mt-32">
     <Card className="p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Sorumlu ve görüşme takibi</h2>{canManage && follow.data && <button className="underline" onClick={() => setEditing(!editing)}>{editing ? 'Vazgeç' : 'Takip bilgilerini düzenle'}</button>}</div>
       <p className="mt-2 text-xs text-[#6d7175]">Marka sorumluluğu finansal onay yetkisi vermez. Takip aşaması, markanın değerlendirme veya anlaşma durumundan ayrıdır.</p>
       {(follow.isPending || team.isPending) ? <p className="mt-3" role="status">Takip bilgileri yükleniyor…</p> : (follow.isError || team.isError) ? <p className="mt-3" role="alert">{follow.error?.message || team.error?.message} <button className="underline" onClick={() => { follow.refetch(); team.refetch(); }}>Yeniden dene</button></p> : follow.data && <>

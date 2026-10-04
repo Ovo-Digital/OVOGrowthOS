@@ -112,7 +112,7 @@ export function MeetingBrief({ brandId }: { brandId: string }) {
         </> : <p className="text-[#6d7175]">Bu marka için aylık kayıt yok.</p>}
       </Block>
     </div>
-    {b.notes.length === 0 && <p className="mt-3 text-xs text-[#6d7175]">Görüşme notu eklemek için sayfanın altındaki “Sorumlu ve görüşme takibi” bölümünü kullanın.</p>}
+    {b.notes.length === 0 && <p className="mt-3 text-xs text-[#6d7175]">Görüşme notu eklemek için aşağıdaki “Sorumlu ve görüşme takibi” bölümünü kullanın.</p>}
     <p className="mt-4 text-xs text-[#6d7175]">{b.note}</p>
   </Card>;
 }

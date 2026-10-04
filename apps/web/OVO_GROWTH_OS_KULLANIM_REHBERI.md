@@ -20,16 +20,16 @@ Rehberi baştan sona ezberlemeniz gerekmez. Sol menüden **Kullanım rehberi** s
 
 - **Güne başlıyorum:** **İşlerim** ekranında size atanmış işleri ve **Onay bekleyenler** listesini kontrol edin. Marka görüşmeleriniz için üstteki zil menüsüne de bakın.
 - **Hemen nelere dikkat etmem gerekiyor?** Ana sayfanın en üstündeki **Dikkat gerekenler** paneline bakın: eksik aylık kayıtlar, vadesi geçmiş alacaklar, gecikmiş ödeme sözleri, başa başın altındaki reklam verimliliği ve süresi geçen görevler burada toplanır. Panel yalnız uyarı verir; hiçbir kaydı kendiliğinden değiştirmez.
-- **Yeni bir markayla görüşeceğim:** Önce **Markalar** veya üst aramayla kaydın olup olmadığını kontrol edin. Yeni ise **Marka ekle**; kayıtlı ise marka sayfasındaki **Sorumlu ve görüşme takibi** ile devam edin.
+- **Yeni bir markayla görüşeceğim:** Önce **Markalar** veya üst aramayla kaydın olup olmadığını kontrol edin. Yeni ise **Marka ekle**; kayıtlı ise marka sayfasının **Görüşme ve ekip** sekmesindeki **Sorumlu ve görüşme takibi** ile devam edin.
 - **Bu markayla çalışmak mantıklı mı?** **Değerlendirmeler** üzerinden bilgileri hazırlayın; analiz, veri güveni, riskler ve senaryoları birlikte okuyun.
 - **Ücret ve iş birliği şartlarını belirleyeceğim:** **Anlaşmalar** üzerinden seçenekleri ve koşulları inceleyin. Sadece görüşme notu yazmak anlaşmayı etkinleştirmez.
 - **Bu ayın satış ve giderlerini gireceğim:** **Aylık sonuçlar** ekranını açın. Çok sayıda kayıt için aynı ekrandaki **Dosyadan aktar** yolunu kullanın; ayrıntıları rehberin raporlar bölümündedir.
 - **Hazırlanan ayı kontrol edeceğim:** **İşlerim → Onay bekleyenler** veya **Aylık sonuçlar** üzerinden dönemi açın. Hazırlayan kişiyle onaylayan kişi farklı olmalıdır.
 - **Bu ay hangi bilgi eksik, hangi marka kapanmaya hazır?** Sol menüden **Kapanış hazırlığı** ekranını açın; dönem seçip marka marka hangi kaynağın girildiğini, hangi uyarının çıktığını ve kimin sorumlu olduğunu görün.
-- **Bu ay hedefin neresindeyiz?** Markayı açıp **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
+- **Bu ay hedefin neresindeyiz?** Markayı açıp **Performans** sekmesindeki **Hedefleri ve takip işlerini aç** düğmesine basın. Aynı ay ve para birimindeki hedefi, gerçekleşeni ve farkı inceleyin; gerekiyorsa sorumluya takip işi atayın.
 - **Hedef tutarsa ne olur?** Aynı ekrandaki **Hedef senaryosu projeksiyonu** kartına bakın; anlaşma oranlarıyla beklenen OVO hakedişi ve markaya kalan katkı görünür. Bu bir tahmin değil, “eğer hedef tutarsa” senaryosudur.
-- **Markanın genel durumu veya sektördeki yerini merak ediyorum?** Marka sayfasındaki **Marka sağlık skoru** kartına ve **Raporlar** sayfasındaki **Sektör karşılaştırması** kartına bakın; ikisi de yalnız bilgi verir, kayıt değiştirmez.
-- **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın ekip alanındaki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
+- **Markanın genel durumu veya sektördeki yerini merak ediyorum?** Marka sayfasının **Performans** sekmesindeki **Marka sağlık skoru** kartına ve **Raporlar** sayfasındaki **Sektör karşılaştırması** kartına bakın; ikisi de yalnız bilgi verir, kayıt değiştirmez.
+- **Yeni markanın veya ay kapanışının işlerini hazırlamak istiyorum.** Markanın **Görüşme ve ekip** sekmesindeki **Hazır iş şablonları** bölümünü açın; önce görevleri, sorumluları ve tarihleri kontrol edin, sonra onaylayarak oluşturun.
 - **Ekibin bu hafta yeni işe zamanı var mı?** **İşlerim → Haftalık ekip kapasitesi** ekranını açın. Önce kapasite ve görev saatlerinin girildiğini kontrol edin; **Yeni marka veya ek iş ön izlemesi** ile ek yükü kaydetmeden deneyin.
 - **Hangi alacak gecikmiş, yakında ne kadar tahsilat bekliyoruz?** **Hakedişler → Alacak yaşı ve vade takvimini aç** bağlantısını kullanın. Para birimini ve 4/8/12 haftalık süreyi seçin. **Kayıtlı vadeler** ile **Bildirilen ödeme sözleri** ayrı görünümlerdir; birbirine eklemeyin. Ödeme sözü kaydetmek için ilgili hakedişte **Ödeme sözü ve takip** alanını açın. İki görünüm de banka bakiyesi veya tahsilat garantisi değildir. Aynı ekrandaki **Tahsilat performansı** kartı, geçmişte vadesinde tahsil edilen tutarın oranını ve ortalama vade farkını gösterir.
 - **Kimden ne kadar alacağımız var?** **Hakedişler** ekranında ayı, para birimini ve ödeme filtresini seçin. İlgili dökümde fatura ve gerçek ödeme kayıtlarını yönetin.
@@ -276,7 +276,7 @@ Aynı ekranın altındaki **Hızlı ön eleme** kartı, açık adayların görü
 
 ### Marka sorumlusu ve görüşme notları
 
-Marka sayfasındaki **Sorumlu ve görüşme takibi** bölümünde yönetici veya iş ortağı rolündeki kişi bir çalışanı marka sorumlusu seçebilir. Sorumlu kişi işleri takip eder; bu atama ona yeni bir finansal onay yetkisi vermez.
+Marka sayfasının **Görüşme ve ekip** sekmesindeki **Sorumlu ve görüşme takibi** bölümünde yönetici veya iş ortağı rolündeki kişi bir çalışanı marka sorumlusu seçebilir. Sorumlu kişi işleri takip eder; bu atama ona yeni bir finansal onay yetkisi vermez.
 
 1. **Takip bilgilerini düzenle** düğmesine basın.
 2. Sorumluyu, takip aşamasını ve varsa bekleme nedenini yazın. Bilgi beklenen veya beklemeye alınan kayıtta neden zorunludur.
@@ -290,7 +290,7 @@ Son görüşme tarihi, yazılan notlardaki en yeni gerçekleşmiş görüşmeden
 
 Sol menüde **İşlerim** bölümünü açın. **Benim işlerim**, size atanmış açık görevleri; **Tüm açık işler**, ekibin açık görevlerini; **Gecikenler**, son tarihi geçmiş açık görevleri; **Tamamlananlar**, biten işleri gösterir. **Onay bekleyenler** ise kontrol aşamasındaki aylık sonuçları ayrı listeler.
 
-Yeni görev için ilgili marka sayfasındaki **Markanın görevleri → Görev ekle** yolunu kullanın. Yönetici veya iş ortağı; başlığı, sorumlu çalışanı, gerçek son tarihi, önceliği ve açıklamayı girer. Son tarihler Türkiye takvimine göre değerlendirilir: bugün teslim edilecek iş henüz gecikmiş değildir. Tarihi ileri alırsanız görev, yeni tarihe göre gecikmiş listesinden çıkar.
+Yeni görev için ilgili marka sayfasının **Görüşme ve ekip** sekmesindeki **Markanın görevleri → Görev ekle** yolunu kullanın. Yönetici veya iş ortağı; başlığı, sorumlu çalışanı, gerçek son tarihi, önceliği ve açıklamayı girer. Son tarihler Türkiye takvimine göre değerlendirilir: bugün teslim edilecek iş henüz gecikmiş değildir. Tarihi ileri alırsanız görev, yeni tarihe göre gecikmiş listesinden çıkar.
 
 Üç görev türü vardır:
 
@@ -322,24 +322,18 @@ Bilgileri kaydettikten sonra değerlendirme sürecine geçebilirsiniz.
 
 ### Marka detay ekranı
 
-Marka adına tıklandığında markanın özet sayfası açılır. Burada:
+Marka adına tıklandığında markanın özet sayfası açılır. Sayfa, uzun bir liste yerine dört sekmeye ayrılır; açılışta **Genel bakış** sekmesi gelir ve seçtiğiniz sekme adres satırında da saklanır, sayfayı yenilediğinizde korunur:
 
-- aylık ciro,
-- brüt kâr marjı,
-- reklam harcaması,
-- iş ortaklığı puanı,
-- son değerlendirme,
-- mevcut anlaşma,
-- markanın güncel durumu,
-- marka sağlık skoru
+- **Genel bakış:** değerlendirme cirosu, brüt kâr marjı, reklam harcaması, iş ortaklığı puanı, son değerlendirme, mevcut anlaşma ve markanın güncel durumu.
+- **Görüşme ve ekip:** görüşme brief'i, müşteri memnuniyet puanı, sorumlu ve görüşme takibi, hazır iş şablonları, markanın görevleri, belgeler ve görüşme notları.
+- **Performans:** aylık hedef ve bütçe, marka sağlık skoru, reklam verimliliği (MER) ve gerçekleşen aylık sonuçlar.
+- **Veri bağlantıları:** reklam platformu ayarları, mağaza API ayarları ve mağaza siparişleri.
 
-görülebilir.
+Bu ekran, marka hakkında hızlı bir yönetim özeti almak için kullanılır. Sekme değiştirdiğinizde diğer bölümlerdeki bilgiler silinmez; yalnız görünüm değiştirir. **Marka bilgileri düzenle** düğmesi sekmelerin üzerinde durur ve her sekmeden açılıp kapatılabilir.
 
-Bu ekran, marka hakkında hızlı bir yönetim özeti almak için kullanılır.
+Performans sekmesindeki **Marka sağlık skoru** kartı markayı 100 puan üzerinden değerlendirir. Veri kalitesi, hedef sapması, tahsilat gecikmesi ve anlaşma durumu ayrı kalemler hâlinde puan etkisiyle tabloda gösterilir; üstteki **Güçlü** (85 ve üzeri), **İzlenmeli** (70–84), **Riskli** (50–69) ve **Kritik** (50 altı) rozeti genel durumu özetler. Skor yalnız bilgi verir; hakediş, dönem onayı veya anlaşma kararını etkilemez.
 
-Sayfanın devamındaki **Marka sağlık skoru** kartı markayı 100 puan üzerinden değerlendirir. Veri kalitesi, hedef sapması, tahsilat gecikmesi ve anlaşma durumu ayrı kalemler hâlinde puan etkisiyle tabloda gösterilir; üstteki **Güçlü** (85 ve üzeri), **İzlenmeli** (70–84), **Riskli** (50–69) ve **Kritik** (50 altı) rozeti genel durumu özetler. Skor yalnız bilgi verir; hakediş, dönem onayı veya anlaşma kararını etkilemez.
-
-Aşağıdaki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın mağazasından sipariş listesini okumak için gereken bağlantı bilgilerini kaydeder. Önce **Mağaza platformu** olarak **GrandNode** veya **Shopify** seçilir; seçime göre istenen alanlar değişir:
+**Veri bağlantıları** sekmesindeki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın mağazasından sipariş listesini okumak için gereken bağlantı bilgilerini kaydeder. Önce **Mağaza platformu** olarak **GrandNode** veya **Shopify** seçilir; seçime göre istenen alanlar değişir:
 
 - Mağaza adresi: GrandNode'da panel adresi, Shopify'da `https` ile başlayan ve `.myshopify.com` ile biten mağaza adresi.
 - GrandNode için panelin Ayarlar → API Kullanıcılar bölümünde oluşturulan API kullanıcısının e-postası. Shopify'da bu alan istenmez.
@@ -349,7 +343,7 @@ Aşağıdaki **Mağaza API ayarları** bölümünde yalnız yönetici, markanın
 
 ### Görüşme brief’i
 
-Marka sayfasında **Son değerlendirme** ve **Mevcut anlaşma** özetinin hemen altında **Görüşme brief’i** kartı görünür (yönetici, iş ortağı ve analist hesaplarında). Görüşme başlamadan önce tek ekranda hazırlanır:
+Marka sayfasının **Görüşme ve ekip** sekmesinde **Görüşme brief’i** kartı görünür (yönetici, iş ortağı ve analist hesaplarında). Görüşme başlamadan önce tek ekranda hazırlanır:
 
 - **Marka künyesi:** sektör, alt sektör, platform, iş modeli, ülke, internet sitesi ve durum.
 - **İletişim:** yetkili, e-posta, telefon, adayın geldiği kaynak ve kaynak notu.
@@ -372,7 +366,7 @@ Kart **salt okunurdur**: görüşme notu, aşama, görev veya başka bir kaydı 
 
 ### Mağaza siparişleri
 
-Aynı sayfadaki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgileri kullanılarak markanın mağazasından seçilen dönemin siparişleri salt okunur olarak getirilir:
+Aynı sekmedeki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgileri kullanılarak markanın mağazasından seçilen dönemin siparişleri salt okunur olarak getirilir:
 
 - Üstteki açılır listeden dönem (yıl ve ay) seçilir; dönem sınırları Türkiye saatiyle hesaplanır.
 - Siparişleri yenileme yalnız yönetici içindir; yönetici, iş ortağı ve analist aynı bilgileri okuyabilir.
@@ -386,7 +380,7 @@ Aynı sayfadaki **Mağaza siparişleri** bölümünde kayıtlı bağlantı bilgi
 
 ### Reklam platformu ayarları
 
-Aynı sayfadaki **Reklam platformu ayarları** bölümünde yalnız yönetici, **Meta reklamları** ve **Google Ads** sekmeleri arasında geçiş yaparak reklam hesaplarının salt okunur bağlantısını kaydeder:
+Aynı sekmedeki **Reklam platformu ayarları** bölümünde yalnız yönetici, **Meta reklamları** ve **Google Ads** sekmeleri arasında geçiş yaparak reklam hesaplarının salt okunur bağlantısını kaydeder:
 
 - Meta için reklam hesabı numarası ve erişim jetonu.
 - Google için reklam hesabı numarası, müşteri numarası, yenileme jetonu, istemci sırrı ve geliştirici jetonu.
@@ -403,7 +397,7 @@ Aynı bölümün altındaki **Kampanya kırılımı** alanı, seçili ayın harc
 
 ### Reklam verimliliği (MER)
 
-Marka sayfasında **Marka sağlık skoru** kartının hemen altında **Reklam verimliliği (MER)** kartı görünür (yönetici, iş ortağı ve analist hesaplarında). Kart yalnız kilitlenmiş dönem verilerinden hesaplanır:
+Marka sayfasının **Performans** sekmesinde **Marka sağlık skoru** kartının hemen altında **Reklam verimliliği (MER)** kartı görünür (yönetici, iş ortağı ve analist hesaplarında). Kart yalnız kilitlenmiş dönem verilerinden hesaplanır:
 
 - Üstte en son kilitli dönemin MER değeri, başa baş hedefi ve **Güçlü** / **İzlenmeli** / **Riskli** / **Bilinmiyor** rozeti görünür. MER, net ciroya bölünmüş toplam reklam harcamasıdır: reklam sonrası ciro harcamanın kaç katını getirdiğini anlatır.
 - **Başa baş hedefi**, o marka için en güncel onaylı veya analiz edilmiş değerlendirmedeki önerilen MER hedefinden gelir. Değerlendirme yoksa hedef boş kalır, bant tahmin edilmez ve **Bilinmiyor** yazar.
@@ -733,7 +727,7 @@ Sistem bu temel değerlerden net ciroyu, hesaplamaya esas ciroyu, katkı kârın
 
 ### Mağaza verisinden brüt satış öner
 
-Anlaşma, yıl ve ay seçiliyken **Mağaza verisinden brüt satış öner** düğmesi, markanın mağazasından çekilmiş siparişlerden o dönemin brüt satış tutarını **Brüt satış** alanına yazar. Birlikte sipariş adedi, paneldaki mevcut brüt satış ve Meta/Google reklam ayarlarının kayıtlı olup olmadığı da bildirilir. Öneri kendiliğinden kaydetmez; yazılan tutarı kontrol edip **Hesabı kontrol et** ile devam edin, istediğiniz değeri elle değiştirebilirsiniz. O dönem için henüz sipariş çekilmediyse sistem bunu bildirir; önce marka sayfasındaki **Mağaza siparişleri** bölümünden siparişleri getirin. Reklam harcaması bu düğmeyle önerilmez; elle girebilir veya hemen alttaki **Reklam harcamasını getir** ile bağlantıdan okutabilirsiniz.
+Anlaşma, yıl ve ay seçiliyken **Mağaza verisinden brüt satış öner** düğmesi, markanın mağazasından çekilmiş siparişlerden o dönemin brüt satış tutarını **Brüt satış** alanına yazar. Birlikte sipariş adedi, paneldaki mevcut brüt satış ve Meta/Google reklam ayarlarının kayıtlı olup olmadığı da bildirilir. Öneri kendiliğinden kaydetmez; yazılan tutarı kontrol edip **Hesabı kontrol et** ile devam edin, istediğiniz değeri elle değiştirebilirsiniz. O dönem için henüz sipariş çekilmediyse sistem bunu bildirir; önce marka sayfasının **Veri bağlantıları** sekmesindeki **Mağaza siparişleri** bölümünden siparişleri getirin. Reklam harcaması bu düğmeyle önerilmez; elle girebilir veya hemen alttaki **Reklam harcamasını getir** ile bağlantıdan okutabilirsiniz.
 
 ### Reklam harcamasını getir
 
@@ -929,7 +923,7 @@ Her ödeme referansı yalnızca bir hakedişte kullanılabilir. Aynı banka hare
 4. Eksik kayıt uyarılarını okuyun; eksik veriyi sıfır gelir kabul etmeyin.
 5. Marka satırlarından ilgili aylık sonuca veya hakediş dökümüne geçin.
 
-Marka detayındaki **Gerçekleşen aylık sonuçlar** bölümü de aynı raporun yalnızca o markaya ait görünümüdür; grafikleri ve basit trend satırı da bu tek markanın kayıtlarını kullanır (son 12 ayın ciro/kâr serisi, verimlilik gelişimi). Marka kartının üst kısmındaki değerlendirme cirosu ve reklam gideri, geçmiş değerlendirmede girilmiş bilgilerdir; belirli bir ayın gerçekleşen sonucuyla karıştırmayın.
+Marka detayının **Performans** sekmesindeki **Gerçekleşen aylık sonuçlar** bölümü de aynı raporun yalnızca o markaya ait görünümüdür; grafikleri ve basit trend satırı da bu tek markanın kayıtlarını kullanır (son 12 ayın ciro/kâr serisi, verimlilik gelişimi). Marka kartının üst kısmındaki değerlendirme cirosu ve reklam gideri, geçmiş değerlendirmede girilmiş bilgilerdir; belirli bir ayın gerçekleşen sonucuyla karıştırmayın.
 
 Raporu açmak eski kayıtları, ticari oranları veya kilitli hesapları değiştirmez.
 
@@ -1675,7 +1669,7 @@ Bu alan “Ne yapmayı planladık, sonuç ne oldu, şimdi kim ne yapacak?” sor
 
 ### Nereden açılır, kim kullanabilir?
 
-**Markalar → ilgili marka → Hedefleri ve takip işlerini aç** yolunu kullanın. Açıklamalı marka raporunda da **Aylık hedef ve bütçeyi karşılaştır** bağlantısı vardır. Rapordan geçerken hedef ekranında aynı ayı ve para birimini seçin.
+**Markalar → ilgili marka → Performans sekmesi → Hedefleri ve takip işlerini aç** yolunu kullanın. Açıklamalı marka raporunda da **Aylık hedef ve bütçeyi karşılaştır** bağlantısı vardır. Rapordan geçerken hedef ekranında aynı ayı ve para birimini seçin.
 
 Yönetici ve iş ortağı hedef belirleyebilir, gerekçeyle değiştirebilir ve takip işi oluşturabilir. Analist kayıtlı hedefi ve geçmişini okuyabilir; hedef yazamaz. Marka yetkilileri bu iç çalışma alanına erişemez. Hedefler müşteri portalına, markayla paylaşılabilir PDF'ye veya CSV'ye kendiliğinden eklenmez.
 
@@ -1740,7 +1734,7 @@ Bu bölüm, “Her yeni marka veya ay kapanışında hangi işleri açmalıyız?
 
 ### Kim kullanabilir, nereden açılır?
 
-**Markalar → ilgili marka → ekip ve görev alanı** içindeki **Hazır iş şablonları** bölümünden başlayın. Saatleri topluca görmek için **İşlerim → Haftalık ekip kapasitesi** bağlantısını açın. Bir görevin saatini girmek için markanın görev listesinde veya İşlerim ekranında o görevin **Haftalık saat planı** düğmesini kullanın.
+**Markalar → ilgili marka → Görüşme ve ekip sekmesi → Hazır iş şablonları** bölümünden başlayın. Saatleri topluca görmek için **İşlerim → Haftalık ekip kapasitesi** bağlantısını açın. Bir görevin saatini girmek için markanın görev listesinde veya İşlerim ekranında o görevin **Haftalık saat planı** düğmesini kullanın.
 
 Yönetici ve iş ortağı şablondan görev oluşturabilir, kapasite ve planlanan saatleri değiştirebilir. Analist mevcut saat planlarını ve ekip kapasitesini okuyabilir; bu kayıtları değiştiremez. Müşteri hesapları bu iç ekip alanlarına erişemez. Buradaki saatler müşteri raporuna kendiliğinden eklenmez.
 
@@ -1940,7 +1934,7 @@ Kapsam kalemi ve paket dışı talep müşteri portalında paylaşılmaz. Ekleme
 
 ### Gerçekleşen saatler
 
-**Nereden açılır?** **İşlerim** veya marka sayfasındaki görev listesinden ilgili görev → **Haftalık saat planı** düğmesi → panelin altındaki **Gerçekleşen saatler** alanı.
+**Nereden açılır?** **İşlerim** veya marka sayfasının **Görüşme ve ekip** sekmesindeki görev listesinden ilgili görev → **Haftalık saat planı** düğmesi → panelin altındaki **Gerçekleşen saatler** alanı.
 
 1. Üstte dört sayı yan yana durur: **Planlanan**, **Gerçekleşen**, **İptal edilen** ve **Kalan** saat. Bu iki sayı birbirinden hesaplanmaz: plan gerçek saat değildir, gerçekleşen saati plana yazamazsınız.
 2. Saat eklerken haftanın pazartesi gününü, çalışılan saati ve kısa notu girin. Saat sıfırdan büyük olmalı, bir haftada en fazla 168 olabilir.
@@ -1987,7 +1981,7 @@ Dönüşüm oranı, **ölçüm başlangıcından sonra** kaydedilen ve anlaşmay
 
 ### Aşama geçmişi ve kaynak
 
-**Nereden açılır?** **Markalar → ilgili marka → Sorumlu ve görüşme takibi → Takip bilgilerini düzenle**.
+**Nereden açılır?** **Markalar → ilgili marka → Görüşme ve ekip sekmesi → Sorumlu ve görüşme takibi → Takip bilgilerini düzenle**.
 
 1. **Kaynak kanalı** ile adayın nereden geldiğini seçin (referans, web sitesi, dışarıdan yapılan temas, etkinlik, iş ortağı, diğer). **Kaynak notu** kısa serbest metindir; öneren kişi veya kampanya adı gibi bilgileri buraya yazın.
 2. **Takip aşaması** her değiştirildiğinde geçmiş kendiliğinden kaydedilir. Aynı kartın altındaki **Aşama geçmişi** bölümünde her satır giriş ve çıkış tarihleri, bekleme süresi ve kaydeden kişiyle görünür.
@@ -2025,7 +2019,7 @@ Bu kart **yalnız bilgi verir**: aşama değiştirmez, kayıp kaydı açmaz veya
 
 OVO Growth OS mevcut hâliyle temel iş ortaklığı ve aylık kapanış akışını çalıştırır. Ancak aşağıdaki işler henüz tam otomatik değildir:
 
-- GrandNode ve Shopify'dan sipariş çekme ile Meta ve Google reklam harcamasının okunması (marka detayındaki **Mağaza API ayarları** ve **Reklam platformu ayarları** bağlantıları salt okunur çalışır; çekilen sipariş ve harcamalar yalnız kontrol içindir, hakedişe, aylık sonuca veya bütçeye otomatik yazılmaz ve örnek veriler gerçek bağlantı gibi gösterilmez)
+- GrandNode ve Shopify'dan sipariş çekme ile Meta ve Google reklam harcamasının okunması (marka detayının **Veri bağlantıları** sekmesindeki **Mağaza API ayarları** ve **Reklam platformu ayarları** bağlantıları salt okunur çalışır; çekilen sipariş ve harcamalar yalnız kontrol içindir, hakedişe, aylık sonuca veya bütçeye otomatik yazılmaz ve örnek veriler gerçek bağlantı gibi gösterilmez)
 - Muhasebe veya fatura sistemi entegrasyonu
 - Tam metin sözleşme oluşturma ve elektronik imza (anlaşma özeti ve ek protokol belgesi tarayıcıdan PDF olarak kaydedilebilir)
 - Kurumsal tek oturum açma ve çok şirketli kullanım (yönetici için isteğe bağlı iki aşamalı giriş; e-posta hizmeti açıksa davet ve şifre yenileme mevcuttur)
