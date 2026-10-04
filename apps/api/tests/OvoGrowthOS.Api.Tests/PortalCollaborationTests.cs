@@ -254,4 +254,39 @@ public sealed class PortalCollaborationTests
         (await admin.PostAsync(Root(s.BrandId) + $"/reports/{latest}/revoke", null)).EnsureSuccessStatusCode();
         Assert.True((await First(admin, path)).GetProperty("needsUpdate").GetBoolean());
     }
+
+    [Fact]
+    public async Task Review_acknowledgment_keeps_date_person_version_and_ip_and_never_becomes_a_signature()
+    {
+        await using var f = new WorkflowApiFactory(); var s = await CustomerPortalTests.Seed(f); using var admin = CustomerPortalTests.Staff(f);
+        var (c, userId) = await CustomerPortalTests.Customer(f, admin, s.BrandId); using var client = c;
+        var report = await Id(await admin.PostAsJsonAsync(Root(s.BrandId) + "/reports", new PortalPublishRequest(s.PeriodId)));
+        var path = $"/api/portal/reports/{report}";
+
+        (await c.PostAsync(path + "/viewed", null)).EnsureSuccessStatusCode();
+        Assert.Equal(JsonValueKind.Null, (await c.GetFromJsonAsync<JsonElement>(path + "/reading")).GetProperty("reviewedAt").ValueKind);
+        (await c.PostAsync(path + "/reviewed", null)).EnsureSuccessStatusCode();
+        Assert.False((await c.GetFromJsonAsync<JsonElement>(path + "/reading")).GetProperty("reviewedAt").ValueKind == JsonValueKind.Null);
+        (await c.PostAsync(path + "/reviewed", null)).EnsureSuccessStatusCode();
+
+        var first = (await admin.GetFromJsonAsync<JsonElement>(Root(s.BrandId) + "/readings"))[0];
+        Assert.Equal(report, first.GetProperty("reportId").GetGuid());
+        Assert.Equal(1, first.GetProperty("version").GetInt32());
+        Assert.Equal("Marka Yetkilisi", first.GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("revokedAt").ValueKind);
+        Assert.False(first.GetProperty("reviewedAt").ValueKind == JsonValueKind.Null);
+        var ip = first.GetProperty("reviewedIpAddress").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(ip));
+
+        var repeat = (await admin.GetFromJsonAsync<JsonElement>(Root(s.BrandId) + "/readings"))[0];
+        Assert.Equal(first.GetProperty("reviewedAt").GetString(), repeat.GetProperty("reviewedAt").GetString());
+        Assert.Equal(ip, repeat.GetProperty("reviewedIpAddress").GetString());
+
+        using var scope = f.Services.CreateScope(); var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var row = await db.PortalReportReadings.SingleAsync(x => x.ReportId == report && x.UserId == userId);
+        Assert.Equal(ip, row.ReviewedIpAddress);
+        var audit = await db.AuditRecords.SingleAsync(x => x.Action == "PortalReportReviewed");
+        Assert.Contains(ip, audit.NewValueJson);
+        Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "PortalReportReviewed"));
+    }
 }

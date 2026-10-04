@@ -7,6 +7,7 @@ public sealed class BrandMailPolicy
     public Guid BrandId { get; set; }
     public bool ReportEmailEnabled { get; set; }
     public bool ScheduledReportEnabled { get; set; }
+    public bool PdfAttachmentEnabled { get; set; }
     public int ScheduledSendDay { get; set; } = 5;
     public int ScheduledSendHour { get; set; } = 9;
     public string SubjectTemplate { get; set; } = "{marka} · {donem} raporunuz hazır";

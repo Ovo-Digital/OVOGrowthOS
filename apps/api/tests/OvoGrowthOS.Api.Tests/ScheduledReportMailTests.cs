@@ -129,6 +129,36 @@ public sealed class ScheduledReportMailTests
     }
 
     [Fact]
+    public async Task Report_mail_carries_the_published_report_as_a_pdf_when_the_policy_turns_it_on()
+    {
+        await using var parent = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(parent, sender);
+        using var c = await Client(f); var (day, hour, window) = OpenWindow();
+        var (brand, user) = await Seed(f, window.TargetYear, window.TargetMonth);
+        await Db(f, async db =>
+        {
+            var report = await db.PortalReports.SingleAsync();
+            report.SnapshotJson = JsonSerializer.Serialize(new PortalReportSnapshot("Lale", "TRY", 1, DateTimeOffset.UtcNow,
+                new BrandReportMetrics(report.Id, report.Year, report.Month, MonthlyPerformanceStatus.Locked, 1000, 100, 50, 20m, 0.01m, 500, 0, 500),
+                [new ReportExplanation("Net ciro yükseldi.", "Gelir artışı olduğu görülüyor.", "Bütçeyi gözden geçirin.")]));
+            await db.SaveChangesAsync();
+        });
+        (await c.PutAsJsonAsync(Root(brand), Request(day, hour) with { PdfAttachmentEnabled = true })).EnsureSuccessStatusCode();
+
+        await Refresh(f, user);
+        await RunDue(f);
+        await RunDue(f);
+        Assert.True(await Send(f));
+
+        var attachment = Assert.Single(sender.Messages).Attachment;
+        Assert.NotNull(attachment);
+        Assert.Equal("application/pdf", attachment.ContentType);
+        Assert.True(attachment.Content.Length > 500);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(attachment.Content, 0, 4));
+        Assert.EndsWith(".pdf", attachment.FileName);
+        await Db(f, async db => Assert.Equal(MailDeliveryStatus.Sent, (await db.UserNotifications.SingleAsync()).EmailStatus));
+    }
+
+    [Fact]
     public async Task Schedule_reaches_a_recipient_that_the_instant_notification_never_materialised()
     {
         await using var parent = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(parent, sender);

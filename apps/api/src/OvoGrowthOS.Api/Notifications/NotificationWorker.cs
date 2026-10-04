@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OvoGrowthOS.Api.Data;
+using OvoGrowthOS.Api.Features;
 using OvoGrowthOS.Api.Mail;
 using OvoGrowthOS.Domain;
 
@@ -42,19 +43,22 @@ public sealed class NotificationMailQueue(AppDbContext db, NotificationService n
                 timeout.CancelAfter(TimeSpan.FromSeconds(30));
                 var subject = "OVO Growth OS bildiriminiz";
                 var body = $"{content.Title}\n\nAyrıntılar için hesabınızla giriş yapın: {settings.WebOrigin}{content.Href}";
+                MailAttachment? attachment = null;
                 if (policy is not null && report is not null)
                 {
                     var name = await db.Brands.Where(x => x.Id == report.BrandId).Select(x => x.Name).SingleAsync(ct);
                     var period = $"{report.Month:00}/{report.Year}";
                     subject = ReportMailTemplate.Render(policy.SubjectTemplate, name, period, settings.WebOrigin + "/portal");
                     body = ReportMailTemplate.Render(policy.BodyTemplate, name, period, settings.WebOrigin + "/portal");
+                    if (policy.PdfAttachmentEnabled)
+                        attachment = PdfAttachment(report);
                 }
                 else if (mail.Kind == NotificationKind.WeeklyDigest)
                 {
                     subject = "OVO Growth OS haftalık yönetim özeti";
                     body = await WeeklyDigestReport.BuildAsync(db, DateTimeOffset.UtcNow, settings.WebOrigin, CancellationToken.None);
                 }
-                await sender.SendAsync(mail.Id, user.Email, subject, body + "\n\nE-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.", timeout.Token);
+                await sender.SendAsync(mail.Id, user.Email, subject, body + "\n\nE-posta tercihlerinizi panelde Bildirimler bölümünden değiştirebilirsiniz.", timeout.Token, attachment);
                 mail.EmailStatus = MailDeliveryStatus.Sent;
             }
             catch { mail.EmailStatus = MailDeliveryStatus.Uncertain; mail.ErrorCode = "SmtpNotConfirmed"; }
@@ -63,6 +67,17 @@ public sealed class NotificationMailQueue(AppDbContext db, NotificationService n
         await db.SaveChangesAsync(CancellationToken.None);
         if (tx is not null) await tx.CommitAsync(CancellationToken.None);
         return true;
+    }
+
+    // The PDF is best effort: a rendering problem must never turn a delivered notification into a retry.
+    private static MailAttachment? PdfAttachment(PortalReport report)
+    {
+        try
+        {
+            var bytes = PortalReportPdf.Build(WorkflowEndpoints.ReadPortalSnapshot(report), report.Year, report.Month);
+            return new MailAttachment($"rapor-{report.Year}-{report.Month:00}-v{report.Version}.pdf", "application/pdf", bytes);
+        }
+        catch { return null; }
     }
 }
 
@@ -82,6 +97,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, ILogger<Noti
                     await scope.ServiceProvider.GetRequiredService<StoreOrderSyncQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 await using (var scope = scopes.CreateAsyncScope())
                     await scope.ServiceProvider.GetRequiredService<AdSpendSyncQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
+                await using (var scope = scopes.CreateAsyncScope())
+                    await scope.ServiceProvider.GetRequiredService<QualityAutoTaskQueue>().RunDue(DateTimeOffset.UtcNow, stoppingToken);
                 Guid[] ids;
                 await using (var scope = scopes.CreateAsyncScope())
                     ids = await scope.ServiceProvider.GetRequiredService<AppDbContext>().UserAccounts.Where(x => x.IsActive && !x.InvitationPending).Select(x => x.Id).ToArrayAsync(stoppingToken);

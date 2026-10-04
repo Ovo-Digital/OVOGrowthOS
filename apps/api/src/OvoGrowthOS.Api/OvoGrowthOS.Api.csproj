@@ -17,6 +17,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.OpenApi" Version="3.10.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
@@ -33,5 +34,10 @@
   <ItemGroup>
     <Content Remove="bin/**;obj/**" />
     <None Remove="bin/**;obj/**" />
+  </ItemGroup>
+
+  <!-- Report PDF fonts are embedded so the server produces the same Turkish text everywhere. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/Fonts/*.ttf" LogicalName="OvoGrowthOS.Api.Fonts.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

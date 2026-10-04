@@ -27,9 +27,11 @@ public sealed class SmtpSettings(IConfiguration configuration)
         && parsed.Address == address;
 }
 
+public sealed record MailAttachment(string FileName, string ContentType, byte[] Content);
+
 public interface IAccountMailSender
 {
-    Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken);
+    Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken, MailAttachment? attachment = null);
 }
 
 public interface ISmtpTestSender
@@ -46,17 +48,33 @@ public sealed class SmtpTestSender : ISmtpTestSender
 
 public sealed class SmtpAccountMailSender(SmtpSettingsProvider provider) : IAccountMailSender
 {
-    public async Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken)
+    public async Task SendAsync(Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken, MailAttachment? attachment = null)
     {
         var settings = await provider.GetAsync(cancellationToken);
         if (!settings.Ready) throw new InvalidOperationException("Mail is disabled or unconfigured.");
-        await SendConfigured(settings, deliveryId, to, subject, body, cancellationToken);
+        await SendConfigured(settings, deliveryId, to, subject, body, cancellationToken, attachment);
     }
 
-    internal static async Task SendConfigured(SmtpSettings settings, Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken)
+    internal static async Task SendConfigured(SmtpSettings settings, Guid deliveryId, string to, string subject, string body, CancellationToken cancellationToken, MailAttachment? attachment = null)
     {
         if (!settings.Configured) throw new InvalidOperationException("Mail is unconfigured.");
-        var message = new MimeMessage { Subject = subject, MessageId = $"{deliveryId:N}@ovo-growth-os", Body = new TextPart("plain") { Text = body } };
+        var message = new MimeMessage { Subject = subject, MessageId = $"{deliveryId:N}@ovo-growth-os" };
+        if (attachment is null)
+        {
+            message.Body = new TextPart("plain") { Text = body };
+        }
+        else
+        {
+            var multipart = new Multipart("mixed") { new TextPart("plain") { Text = body } };
+            multipart.Add(new MimePart(attachment.ContentType)
+            {
+                Content = new MimeContent(new MemoryStream(attachment.Content)),
+                ContentDisposition = new ContentDisposition(ContentDisposition.Attachment),
+                ContentTransferEncoding = ContentEncoding.Base64,
+                FileName = attachment.FileName
+            });
+            message.Body = multipart;
+        }
         message.From.Add(MailboxAddress.Parse(settings.From));
         message.To.Add(MailboxAddress.Parse(to)); // MAIL_TO is deliberately never used for private account links.
         using var client = new SmtpClient { Timeout = 15000 };

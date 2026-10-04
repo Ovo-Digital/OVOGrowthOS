@@ -39,6 +39,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PortalMessage> PortalMessages => Set<PortalMessage>();
     public DbSet<PortalReportReading> PortalReportReadings => Set<PortalReportReading>();
     public DbSet<PortalDataRequest> PortalDataRequests => Set<PortalDataRequest>();
+    public DbSet<PortalPeriodSubmission> PortalPeriodSubmissions => Set<PortalPeriodSubmission>();
     public DbSet<MonthlyTarget> MonthlyTargets => Set<MonthlyTarget>();
     public DbSet<TargetAction> TargetActions => Set<TargetAction>();
     public DbSet<WorkTemplateRun> WorkTemplateRuns => Set<WorkTemplateRun>();
@@ -60,6 +61,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<StoreOrderStaging> StoreOrderStagings => Set<StoreOrderStaging>();
     public DbSet<BrandAdSettings> BrandAdSettings => Set<BrandAdSettings>();
     public DbSet<PeriodApproval> PeriodApprovals => Set<PeriodApproval>();
+    public DbSet<SatisfactionRating> SatisfactionRatings => Set<SatisfactionRating>();
+    public DbSet<AdCampaignSpend> AdCampaignSpends => Set<AdCampaignSpend>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -131,6 +134,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.UserEmail).HasMaxLength(320);
             e.HasIndex(x => new { x.BrandId, x.Year, x.Month }).IsUnique();
             e.ToTable(t => t.HasCheckConstraint("CK_PeriodApprovals_Values", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND length(\"Reason\") <= 1000"));
+        });
+        modelBuilder.Entity<SatisfactionRating>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Comment).HasMaxLength(1000);
+            e.Property(x => x.CreatedBy).HasMaxLength(320);
+            e.Property(x => x.UpdatedBy).HasMaxLength(320);
+            e.HasIndex(x => new { x.BrandId, x.Year, x.Month }).IsUnique();
+            e.ToTable(t => t.HasCheckConstraint("CK_SatisfactionRatings_Values", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Score\" BETWEEN 1 AND 5 AND length(\"Comment\") <= 1000"));
+        });
+        modelBuilder.Entity<AdCampaignSpend>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.CampaignName).HasMaxLength(AdCampaigns.MaxCampaignNameLength);
+            e.Property(x => x.Currency).HasMaxLength(3);
+            e.Property(x => x.Spend).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.BrandId, x.Year, x.Month, x.Platform, x.CampaignName }).IsUnique();
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_AdCampaignSpends_Values", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Platform\" BETWEEN 0 AND 1 AND \"Spend\" >= 0 AND length(\"CampaignName\") BETWEEN 1 AND 300 AND length(\"Currency\") = 3");
+            });
         });
         modelBuilder.Entity<AccountSecurity>(e =>
         {
@@ -291,6 +317,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             r.HasOne<PortalReport>().WithMany().HasForeignKey(x => new { x.ReportId, x.BrandId }).HasPrincipalKey(x => new { x.Id, x.BrandId }).OnDelete(DeleteBehavior.Restrict);
             r.HasOne<PortalAccess>().WithMany().HasForeignKey(x => new { x.UserId, x.BrandId }).HasPrincipalKey(x => new { x.UserId, x.BrandId }).OnDelete(DeleteBehavior.Restrict);
             r.HasIndex(x => x.BrandId);
+            r.Property(x => x.ReviewedIpAddress).HasMaxLength(45);
             r.ToTable(t => t.HasCheckConstraint("CK_PortalReportReadings_Dates", "\"LastViewedAt\" >= \"FirstViewedAt\" AND (\"ReviewedAt\" IS NULL OR \"ReviewedAt\" >= \"FirstViewedAt\")"));
         });
         modelBuilder.Entity<PortalDataRequest>(r =>
@@ -300,6 +327,22 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             r.Property(x => x.Revision).IsConcurrencyToken();
             r.HasIndex(x => new { x.BrandId, x.CreatedAt });
             r.ToTable(t => t.HasCheckConstraint("CK_PortalDataRequests_Values", "\"Revision\" > 0 AND \"Status\" BETWEEN 0 AND 2 AND length(btrim(\"Title\")) BETWEEN 1 AND 200 AND length(btrim(\"Instructions\")) BETWEEN 1 AND 2000 AND (\"DueOn\" IS NULL OR EXTRACT(YEAR FROM \"DueOn\") BETWEEN 2020 AND 2100)"));
+        });
+        modelBuilder.Entity<PortalPeriodSubmission>(s =>
+        {
+            s.HasOne<Brand>().WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+            s.Property(x => x.Note).HasMaxLength(PortalSubmissions.MaxNoteLength);
+            s.Property(x => x.GrossSales).HasPrecision(18, 2);
+            s.Property(x => x.Refunds).HasPrecision(18, 2);
+            s.Property(x => x.MetaSpend).HasPrecision(18, 2);
+            s.Property(x => x.GoogleSpend).HasPrecision(18, 2);
+            s.Property(x => x.Revision).IsConcurrencyToken();
+            // One live submission per brand and period; revising replaces it and the history stays in the audit log.
+            s.HasIndex(x => new { x.BrandId, x.Year, x.Month }).IsUnique();
+            s.ToTable(t => t.HasCheckConstraint("CK_PortalPeriodSubmissions_Values",
+                "\"Revision\" > 0 AND \"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2020 AND 2100 AND length(btrim(\"Note\")) <= 1000 AND " +
+                "(\"GrossSales\" IS NULL OR \"GrossSales\" BETWEEN 0 AND 1000000000000) AND (\"Refunds\" IS NULL OR \"Refunds\" BETWEEN 0 AND 1000000000000) AND " +
+                "(\"MetaSpend\" IS NULL OR \"MetaSpend\" BETWEEN 0 AND 1000000000000) AND (\"GoogleSpend\" IS NULL OR \"GoogleSpend\" BETWEEN 0 AND 1000000000000)"));
         });
         modelBuilder.Entity<ServiceCostAccount>(a =>
         {

@@ -172,7 +172,7 @@ public static partial class WorkflowEndpoints
         return new DateOnly(next.Year, next.Month, 5);
     }
 
-    private static string TaskDescription(BrandQuality item, QualityPeriod period)
+    internal static string TaskDescription(BrandQuality item, QualityPeriod period)
     {
         var lines = new List<string> { $"{DataQuality.Label(period.Year, period.Month)} dönemi veri kalitesi bulguları:" };
         foreach (var source in item.Sources.Where(x => x.State is "missing" or "zero").Take(4)) lines.Add($"{source.Label}: {source.Note}");

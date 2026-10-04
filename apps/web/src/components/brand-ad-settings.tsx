@@ -9,6 +9,8 @@ import { turkceTarih } from '@/lib/turkish';
 
 type AdSettings = { revision: number; platform: string; accountId: string; clientId: string; secretStored: boolean; clientSecretStored: boolean; developerTokenStored: boolean; configured: boolean; updatedAt: string | null; lastTestAt: string | null };
 type AdSpend = { platform: string; period: string; amount: number; currency: string; source: string };
+type AdCampaignRow = { platform: string; campaignName: string; spend: number; currency: string; readAt: string };
+type AdCampaignBreakdown = { period: string; campaigns: AdCampaignRow[]; totals: { platform: string; currency: string; spend: number }[]; readAt: string | null; message?: string };
 const button = 'rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50';
 
 export function BrandAdSettingsCard({ brandId }: { brandId: string }) {
@@ -48,6 +50,7 @@ function AdSettingsForm({ brandId, report }: { brandId: string; report: (text: s
       ? <ErrorState message={`Reklam ayarları alınamadı. ${query.error.message}`} />
       : <AdSettingsFields key={`${platform}:${query.data.revision}`} brandId={brandId} platform={platform} initial={query.data} report={report} reload={reload} onDirty={setDirty} />}
     <AdSpendReader brandId={brandId} platform={platform} />
+    <AdCampaignReader brandId={brandId} platform={platform} />
   </div>;
 }
 
@@ -125,5 +128,61 @@ function AdSpendReader({ brandId, platform }: { brandId: string; platform: strin
     </div>
     {error && <p role="alert" className="text-red-700">{error}</p>}
     {result && <p role="status">{result.period} dönemi {platform === 'Meta' ? 'Meta' : 'Google Ads'} harcaması: <strong>{moneyPrecise(result.amount, result.currency)}</strong> · Kaynak: {result.source}</p>}
+  </div>;
+}
+
+function AdCampaignReader({ brandId, platform }: { brandId: string; platform: string }) {
+  const now = new Date();
+  const [period, setPeriod] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['brand-ad-campaigns', brandId, period],
+    queryFn: () => api<AdCampaignBreakdown>(`/api/brands/${brandId}/ad-campaigns?period=${period}`),
+    enabled: period.length === 7, refetchOnWindowFocus: false
+  });
+  async function read() {
+    if (busy) return;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await api<AdCampaignBreakdown>(`/api/brands/${brandId}/ad-campaigns`, { method: 'POST', body: JSON.stringify({ platform, period }) });
+      setNotice(result.message ?? 'Kampanya kırılımı okundu.');
+      await qc.invalidateQueries({ queryKey: ['brand-ad-campaigns', brandId] });
+    } catch (e) { setError(e instanceof Error ? e.message : 'Kampanya harcamaları okunamadı.'); }
+    finally { setBusy(false); }
+  }
+  const rows = query.data?.campaigns ?? [];
+  return <div className="mt-4 space-y-3 border-t pt-4 text-sm">
+    <h3 className="font-semibold">Kampanya kırılımı</h3>
+    <p>Seçili ayın kampanya bazında reklam harcaması. Yalnız bilgi amaçlıdır; aylık sonuca, hakedişe veya bütçeye otomatik yazılmaz.</p>
+    <div className="flex flex-wrap items-end gap-3">
+      <label>Ay<input className="input ml-2 mt-1" type="month" value={period} onChange={e => setPeriod(e.target.value)} /></label>
+      <button className={button} disabled={busy || period.length !== 7} onClick={() => void read()}>{busy ? 'Okunuyor…' : 'Kampanyaları oku'}</button>
+    </div>
+    {notice && <p role="status" className="rounded-lg border bg-white p-3">{notice}</p>}
+    {error && <p role="alert" className="text-red-700">{error}</p>}
+    {query.isPending && period.length === 7 ? <LoadingState label="Kampanya kayıtları yükleniyor…" />
+      : query.isError ? <ErrorState message={`Kampanya kayıtları alınamadı. ${query.error.message}`} />
+      : rows.length === 0 ? <p className="text-[#6d7175]">Bu dönem için kayıtlı kampanya harcaması yok. {platform === 'Meta' ? 'Meta' : 'Google Ads'} kampanyalarını okuyarak kaydedebilirsiniz.</p>
+      : <>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[540px] text-left text-xs">
+            <thead><tr className="border-b text-[#6d7175]"><th scope="col" className="py-2 pr-3">Kampanya</th><th scope="col" className="py-2 pr-3">Platform</th><th scope="col" className="py-2 pr-3 text-right">Harcama</th></tr></thead>
+            <tbody>
+              {rows.map(row => <tr key={`${row.platform}:${row.campaignName}`} className="border-b last:border-0">
+                <td className="py-2 pr-3 font-medium">{row.campaignName}</td>
+                <td className="py-2 pr-3">{row.platform === 'Meta' ? 'Meta' : 'Google Ads'}</td>
+                <td className="py-2 pr-3 text-right">{moneyPrecise(row.spend, row.currency)}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-[#6d7175]">
+          {(query.data?.totals ?? []).map(t => `${t.platform === 'Meta' ? 'Meta' : 'Google Ads'} toplam ${moneyPrecise(t.spend, t.currency)}`).join(' · ')}
+          {query.data?.readAt ? ` · Son okuma: ${turkceTarih(query.data.readAt)}` : ''}
+        </p>
+      </>}
   </div>;
 }

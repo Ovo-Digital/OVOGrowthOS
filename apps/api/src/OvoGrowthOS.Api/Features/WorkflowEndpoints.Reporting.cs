@@ -261,4 +261,35 @@ public static partial class WorkflowEndpoints
             })
         });
     }
+
+    private static async Task<IResult> PortfolioStressReport(AppDbContext db, decimal shockRate, int? year = null, int? month = null,
+        ReportScope scope = ReportScope.Closed, Guid? brandId = null, string? currency = null)
+    {
+        if (shockRate is < PortfolioStress.MinShock or > PortfolioStress.MaxShock)
+            return Results.BadRequest(new { error = "Kayıp oranı -%90 ile 0 arasında olmalıdır; -20 yazımı %20 kayıp demektir." });
+        if (year.HasValue != month.HasValue || year is < 2020 or > 2100 || month is < 1 or > 12 || !Enum.IsDefined(scope))
+            return Results.BadRequest(new { error = "Geçerli bir yıl, ay ve rapor kapsamı seçin." });
+        if (brandId.HasValue && !await db.Brands.AnyAsync(x => x.Id == brandId)) return Results.NotFound();
+        var settings = await db.GeneralSettings.AsNoTracking().SingleAsync();
+        currency = (currency ?? settings.DefaultCurrency).Trim().ToUpperInvariant();
+        if (currency.Length != 3 || !currency.All(char.IsAsciiLetter))
+            return Results.BadRequest(new { error = "Üç harfli bir para birimi seçin." });
+
+        var history = (await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal)
+                .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync())
+            .Where(x => string.Equals(x.Deal?.Currency ?? x.Brand?.Currency ?? "", currency, StringComparison.OrdinalIgnoreCase)).ToList();
+        var periods = history.Select(x => new ReportPeriod(x.Year, x.Month)).Distinct()
+            .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).ToList();
+        var period = year.HasValue ? new ReportPeriod(year.Value, month!.Value) : periods.FirstOrDefault();
+        var rows = new List<StressRow>();
+        if (period is not null) rows = history
+            .Where(x => x.Year == period.Year && x.Month == period.Month && PortfolioReporting.Matches(x.Status, scope))
+            .Select(x => new StressRow(x.BrandId, x.Brand?.Name ?? "", x.NetRevenue, x.CommissionableRevenue, x.ContributionBeforeOvo,
+                x.OvoFee, x.OvoGrossProfit, x.Deal)).ToList();
+        return Results.Ok(new
+        {
+            period, scope, currency, shockRate,
+            stress = PortfolioStress.Calculate(rows, shockRate)
+        });
+    }
 }

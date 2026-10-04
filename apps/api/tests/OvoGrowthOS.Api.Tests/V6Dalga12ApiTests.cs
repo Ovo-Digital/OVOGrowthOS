@@ -25,6 +25,8 @@ public sealed class V6Dalga12ApiTests
         public AdSpendResult? Result { get; set; } = new(1234.56m, "TRY", "Meta reklam raporu");
         public Task<bool> TestAsync(AdConnection connection, CancellationToken ct) => Task.FromResult(Result is not null);
         public Task<AdSpendResult?> FetchAsync(AdConnection connection, StoreOrderPeriod period, CancellationToken ct) => Task.FromResult(Result);
+        public Task<IReadOnlyList<AdCampaignResult>?> FetchCampaignsAsync(AdConnection connection, StoreOrderPeriod period, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<AdCampaignResult>?>(Result is null ? null : new[] { new AdCampaignResult("Dönem kampanyası", 120m, Result.Currency) });
     }
 
     private static WebApplicationFactory<Program> AdsSetup(WorkflowApiFactory parent, FakeAds ads) =>

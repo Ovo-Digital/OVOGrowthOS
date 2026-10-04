@@ -33,6 +33,22 @@ public static partial class WorkflowEndpoints
                 performance = CollectionPerformance.Calculate(history, today, selected)
             });
         }).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/cash-projection", async (AppDbContext db, string? currency = null) =>
+        {
+            if (currency is not null && (currency.Length != 3 || !currency.All(c => c is >= 'A' and <= 'Z')))
+                return Results.BadRequest(new { error = "Para birimini TRY gibi üç harfli büyük harfle yazın." });
+            var history = await CollectionQuery(db).AsNoTracking().Include(x => x.Brand).ToListAsync();
+            var today = TeamWork.Today(DateTimeOffset.UtcNow);
+            var periods = history.Where(x => x.Status is MonthlyPerformanceStatus.Locked or MonthlyPerformanceStatus.Invoiced or MonthlyPerformanceStatus.Paid).ToList();
+            var currencies = periods.Select(x => x.Collection?.Currency ?? x.Deal!.Currency).Distinct().Order().ToArray();
+            if (currencies.Length == 0) currencies = ["TRY"];
+            var selected = currency ?? (currencies.Contains("TRY") ? "TRY" : currencies[0]);
+            return Results.Ok(new
+            {
+                currencies,
+                projection = CashProjection.Build(periods, today, selected)
+            });
+        }).RequireAuthorization("ReadAccess");
         var group = app.MapGroup("/api/performance/{id:guid}/collection").RequireAuthorization("ReadAccess");
         group.MapGet("/", async (Guid id, AppDbContext db) =>
         {

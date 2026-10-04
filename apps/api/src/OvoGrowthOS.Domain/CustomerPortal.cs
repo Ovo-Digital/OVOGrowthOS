@@ -70,6 +70,7 @@ public sealed class PortalReportReading
     public DateTimeOffset FirstViewedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastViewedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ReviewedAt { get; set; }
+    public string? ReviewedIpAddress { get; set; }
 }
 
 public sealed class PortalDataRequest

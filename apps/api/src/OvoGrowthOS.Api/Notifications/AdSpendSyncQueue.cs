@@ -44,15 +44,22 @@ public sealed class AdSpendSyncQueue(AppDbContext db, IDataProtectionProvider pr
             var hadFailure = lastFailureAt is not null;
             attempted++;
             var settings = await db.BrandAdSettings.AsNoTracking().SingleOrDefaultAsync(x => x.BrandId == row.BrandId && x.Platform == row.Platform, ct);
-            AdSpendResult? result = null; string? error = null;
+            AdSpendResult? result = null; string? error = null; AdConnection connection = null!;
             if (settings is null || !WorkflowEndpoints.IsAdSettingsValid(settings, protection))
                 error = "Reklam bağlantı ayarları eksik veya jeton çözülemiyor.";
-            else if (!WorkflowEndpoints.TryBuildConnection(settings, protection, out var connection))
+            else if (!WorkflowEndpoints.TryBuildConnection(settings, protection, out connection))
                 error = "Reklam bağlantı ayarları eksik veya jeton çözülemiyor.";
             else
             {
                 result = await adClient.FetchAsync(connection, period, ct);
                 if (result is null) error = $"{AdSettings.PlatformLabel(row.Platform)} harcaması okunamadı. Bağlantı ayarlarını ve hesap numarasını kontrol edin.";
+            }
+            var campaignCount = 0;
+            if (error is null)
+            {
+                // Campaign breakdown is stored best effort; a missing breakdown never fails the period read.
+                var campaigns = await adClient.FetchCampaignsAsync(connection, period, ct);
+                if (campaigns is not null) campaignCount = await StoreCampaignsAsync(db, row.BrandId, row.Platform, period, campaigns, now, ct);
             }
             var ok = error is null && result is not null;
             db.AuditRecords.Add(new AuditRecord
@@ -61,7 +68,8 @@ public sealed class AdSpendSyncQueue(AppDbContext db, IDataProtectionProvider pr
                 NewValueJson = JsonSerializer.Serialize(new
                 {
                     period = periodKey, platform = row.Platform.ToString(), ok,
-                    amount = result?.Amount ?? 0m, currency = result?.Currency ?? "", source = result?.Source ?? "", error = error ?? ""
+                    amount = result?.Amount ?? 0m, currency = result?.Currency ?? "", source = result?.Source ?? "",
+                    campaigns = campaignCount, error = error ?? ""
                 }),
                 Reason = ok
                     ? $"{row.Name} ({AdSettings.PlatformLabel(row.Platform)}) {periodKey} reklam harcaması okundu: {result!.Amount.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))} {result.Currency}".TrimEnd()
@@ -114,6 +122,24 @@ public sealed class AdSpendSyncQueue(AppDbContext db, IDataProtectionProvider pr
             return admins.Count;
         }
         return fixedCount;
+    }
+
+    private static async Task<int> StoreCampaignsAsync(AppDbContext db, Guid brandId, AdPlatform platform,
+        StoreOrderPeriod period, IEnumerable<AdCampaignResult> campaigns, DateTimeOffset now, CancellationToken ct)
+    {
+        var rows = AdCampaigns.Normalize(campaigns, "TRY").ToList();
+        var existing = await db.AdCampaignSpends
+            .Where(x => x.BrandId == brandId && x.Year == period.Year && x.Month == period.Month && x.Platform == platform)
+            .ToListAsync(ct);
+        if (existing.Count == 0 && rows.Count == 0) return 0;
+        if (existing.Count > 0) db.AdCampaignSpends.RemoveRange(existing);
+        foreach (var row in rows)
+            db.AdCampaignSpends.Add(new AdCampaignSpend
+            {
+                BrandId = brandId, Year = period.Year, Month = period.Month, Platform = platform,
+                CampaignName = row.CampaignName, Spend = row.Spend, Currency = row.Currency, ReadAt = now
+            });
+        return rows.Count;
     }
 
     private static string BuildReason(string periodKey, List<string> texts, int failed)

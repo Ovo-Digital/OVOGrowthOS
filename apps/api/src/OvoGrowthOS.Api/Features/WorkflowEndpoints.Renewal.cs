@@ -9,6 +9,50 @@ public static partial class WorkflowEndpoints
     private static void MapRenewalSummary(WebApplication app)
     {
         app.MapGet("/api/deals/{id:guid}/renewal-summary", RenewalSummary).RequireAuthorization("OperationsWrite");
+        app.MapGet("/api/deals/{id:guid}/renewal-simulation", RenewalSimulationRun).RequireAuthorization("OperationsWrite");
+    }
+
+    private static async Task<IResult> RenewalSimulationRun(Guid id, AppDbContext db,
+        decimal revenueRate = 0, decimal sharePoints = 0, decimal retainerChange = 0)
+    {
+        var deal = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+        if (deal is null) return Results.NotFound();
+        if (revenueRate is < RenewalSimulation.MinRevenueChange or > RenewalSimulation.MaxRevenueChange)
+            return Results.BadRequest(new { error = "Ciro değişimi -%90 ile +%300 arasında bir oran olmalıdır; 0.20 yazımı %20 artış demektir." });
+        if (sharePoints is < RenewalSimulation.MinSharePoints or > RenewalSimulation.MaxSharePoints)
+            return Results.BadRequest(new { error = "Pay değişimi -10 ile +20 puan arasında olmalıdır; 1 yazımı 1 puan artış demektir." });
+        if (retainerChange is < -RenewalSimulation.MaxRetainerChange or > RenewalSimulation.MaxRetainerChange)
+            return Results.BadRequest(new { error = "Sabit ücret değişimi kabul edilebilir aralığın dışında." });
+        if (retainerChange < 0 && deal.MonthlyRetainer + retainerChange < 0)
+            return Results.BadRequest(new { error = "Bu değişiklik aylık sabit ücreti sıfırın altına düşürür; daha küçük bir değişiklik girin." });
+
+        var period = await db.MonthlyPerformances.AsNoTracking()
+            .Where(x => x.BrandId == deal.BrandId && (x.Status == MonthlyPerformanceStatus.Locked
+                || x.Status == MonthlyPerformanceStatus.Invoiced || x.Status == MonthlyPerformanceStatus.Paid))
+            .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month)
+            .FirstOrDefaultAsync();
+        RenewalSimulationResult result;
+        try
+        {
+            result = RenewalSimulation.Simulate(deal, Math.Max(period?.CommissionableRevenue ?? 0, 0),
+                Math.Max(period?.ContributionBeforeOvo ?? 0, 0), revenueRate, sharePoints, retainerChange);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return Results.BadRequest(new { error = "Girilen değerlerle simülasyon hesaplanamadı; sayıları kontrol edin." });
+        }
+        return Results.Ok(new
+        {
+            basis = period is null ? null : new
+            {
+                period.Year, period.Month, period.Status, period.NetRevenue,
+                commissionableRevenue = period.CommissionableRevenue, contributionBeforeOvo = period.ContributionBeforeOvo
+            },
+            simulation = result,
+            notes = period is null
+                ? result.Notes.Append("Bu marka için kilitlenmiş dönem yok; dayanak ciro ve katkı sıfır alındı.").ToArray()
+                : result.Notes
+        });
     }
 
     private static async Task<IResult> RenewalSummary(Guid id, AppDbContext db)

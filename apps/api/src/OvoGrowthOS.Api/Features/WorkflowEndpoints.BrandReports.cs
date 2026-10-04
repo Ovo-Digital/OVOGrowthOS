@@ -88,7 +88,7 @@ public static partial class WorkflowEndpoints
         return (null, doc);
     }
 
-    private static string BrandReportStatus(BrandReportMetrics? metrics) => metrics?.Status switch
+    internal static string BrandReportStatus(BrandReportMetrics? metrics) => metrics?.Status switch
     {
         MonthlyPerformanceStatus.Draft => "Taslak", MonthlyPerformanceStatus.UnderReview => "Kontrolde",
         MonthlyPerformanceStatus.Approved => "Onaylandı", MonthlyPerformanceStatus.Locked => "Kilitlendi",

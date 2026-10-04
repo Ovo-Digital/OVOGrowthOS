@@ -20,6 +20,8 @@ public sealed class AdSpendSyncTests
         public Task<bool> TestAsync(AdConnection connection, CancellationToken ct) => Task.FromResult(!Fail);
         public Task<AdSpendResult?> FetchAsync(AdConnection connection, StoreOrderPeriod period, CancellationToken ct)
             => Task.FromResult(Fail ? null : new AdSpendResult(1234.56m, "USD", "meta"));
+        public Task<IReadOnlyList<AdCampaignResult>?> FetchCampaignsAsync(AdConnection connection, StoreOrderPeriod period, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<AdCampaignResult>?>(Fail ? null : new[] { new AdCampaignResult("Yaz kampanyası", 500m, "USD") });
     }
 
     private static WebApplicationFactory<Program> Setup(WorkflowApiFactory parent, FakeAds ads) =>
@@ -70,6 +72,9 @@ public sealed class AdSpendSyncTests
             Assert.Equal("2026-08", summary.EntityId);
             Assert.Contains("Reklomark", summary.Reason);
             Assert.Contains("1234,56 USD", summary.Reason);
+            var campaign = await db.AdCampaignSpends.SingleAsync();
+            Assert.Equal("Yaz kampanyası", campaign.CampaignName);
+            Assert.Equal(500m, campaign.Spend);
             Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.AdSpendSync && x.EventKey == "ad-sync:2026-08"));
         });
         using var c = await Client(f);

@@ -33,8 +33,8 @@ public static partial class WorkflowEndpoints
             var reading = await db.PortalReportReadings.AsNoTracking().SingleOrDefaultAsync(x => x.ReportId == id && x.UserId == actor && x.BrandId == brandId);
             return Results.Ok(new { reading?.FirstViewedAt, reading?.LastViewedAt, reading?.ReviewedAt });
         });
-        portal.MapPost("/reports/{id:guid}/viewed", async (Guid id, AppDbContext db, ClaimsPrincipal user) => await RecordPortalReading(id, false, db, user));
-        portal.MapPost("/reports/{id:guid}/reviewed", async (Guid id, AppDbContext db, ClaimsPrincipal user) => await RecordPortalReading(id, true, db, user));
+        portal.MapPost("/reports/{id:guid}/viewed", async (Guid id, AppDbContext db, ClaimsPrincipal user, HttpContext http) => await RecordPortalReading(id, false, db, user, http));
+        portal.MapPost("/reports/{id:guid}/reviewed", async (Guid id, AppDbContext db, ClaimsPrincipal user, HttpContext http) => await RecordPortalReading(id, true, db, user, http));
         management.MapGet("/readings", async (Guid brandId, AppDbContext db) => Results.Ok(await (
             from reading in db.PortalReportReadings.AsNoTracking()
             join user in db.UserAccounts on reading.UserId equals user.Id
@@ -42,7 +42,7 @@ public static partial class WorkflowEndpoints
             where reading.BrandId == brandId
             orderby reading.LastViewedAt descending
             select new { reading.ReportId, reading.UserId, user.Name, report.Year, report.Month, report.Version, report.RevokedAt,
-                reading.FirstViewedAt, reading.LastViewedAt, reading.ReviewedAt }).ToListAsync()));
+                reading.FirstViewedAt, reading.LastViewedAt, reading.ReviewedAt, reading.ReviewedIpAddress }).ToListAsync()));
 
         portal.MapGet("/requests", async (AppDbContext db, ClaimsPrincipal user) => await ReadPortalRequests(db, await PortalBrand(db, user)));
         portal.MapPost("/requests/{id:guid}/response", RespondToPortalDataRequest);
@@ -120,7 +120,7 @@ public static partial class WorkflowEndpoints
         await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync(); return Results.NoContent();
     }
 
-    private static async Task<IResult> RecordPortalReading(Guid id, bool reviewed, AppDbContext db, ClaimsPrincipal user)
+    private static async Task<IResult> RecordPortalReading(Guid id, bool reviewed, AppDbContext db, ClaimsPrincipal user, HttpContext http)
     {
         var brandId = await PortalBrand(db, user); var actor = Guid.Parse(user.FindFirstValue("uid")!);
         await using var tx = db.Database.IsRelational() ? await db.Database.BeginTransactionAsync() : null;
@@ -134,7 +134,8 @@ public static partial class WorkflowEndpoints
         if (reviewed && row.ReviewedAt is null)
         {
             row.ReviewedAt = now;
-            Audit(db, user, "PortalReportReviewed", "Brand", brandId, null, new { reportId = id, userId = actor, row.ReviewedAt });
+            row.ReviewedIpAddress = Http.ClientIp.From(http);
+            Audit(db, user, "PortalReportReviewed", "Brand", brandId, null, new { reportId = id, userId = actor, row.ReviewedAt, ipAddress = row.ReviewedIpAddress });
         }
         await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync();
         return Results.Ok(new { row.FirstViewedAt, row.LastViewedAt, row.ReviewedAt });

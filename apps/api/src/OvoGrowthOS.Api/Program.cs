@@ -12,6 +12,7 @@ using OvoGrowthOS.Api;
 using OvoGrowthOS.Api.Auth;
 using OvoGrowthOS.Api.Data;
 using OvoGrowthOS.Api.Features;
+using OvoGrowthOS.Api.Http;
 using OvoGrowthOS.Api.Validation;
 using Serilog;
 using Microsoft.AspNetCore.DataProtection;
@@ -38,6 +39,7 @@ builder.Services.AddScoped<ScheduledReportQueue>();
 builder.Services.AddScoped<OvoGrowthOS.Api.Features.LeadTimeoutQueue>();
 builder.Services.AddScoped<OvoGrowthOS.Api.Notifications.StoreOrderSyncQueue>();
 builder.Services.AddScoped<OvoGrowthOS.Api.Notifications.AdSpendSyncQueue>();
+builder.Services.AddScoped<OvoGrowthOS.Api.Notifications.QualityAutoTaskQueue>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<NotificationWorker>();
 if (!builder.Environment.IsEnvironment("Testing")) builder.Services.AddHostedService<AccountMailWorker>();
 builder.Services.AddExceptionHandler<DatabaseExceptionHandler>();
@@ -53,28 +55,10 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(
     npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "growth")));
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<AccountSecurityService>();
-static bool IsTrustedProxy(IPAddress? peer)
-{
-    if (peer is null) return false;
-    if (peer.IsIPv4MappedToIPv6) peer = peer.MapToIPv4();
-    var octets = peer.GetAddressBytes();
-    if (octets.Length != 4) return false;
-    return octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31 || octets[0] == 192 && octets[1] == 168;
-}
-static string ClientIp(HttpContext context)
-{
-    var peer = context.Connection.RemoteIpAddress;
-    if (IsTrustedProxy(peer) && context.Request.Headers.TryGetValue("X-Forwarded-For", out var values))
-    {
-        var entries = values.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (entries.Length > 0) return entries[^1];
-    }
-    return peer?.ToString() ?? "unknown";
-}
 static string RatePartitionKey(HttpContext context)
 {
     var uid = context.User.FindFirstValue("uid");
-    return string.IsNullOrEmpty(uid) ? "ip:" + ClientIp(context) : "user:" + uid;
+    return string.IsNullOrEmpty(uid) ? "ip:" + ClientIp.From(context) : "user:" + uid;
 }
 StartupGuard.Ensure(builder.Configuration, builder.Environment.EnvironmentName);
 builder.Services.AddRateLimiter(options =>

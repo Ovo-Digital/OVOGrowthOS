@@ -29,6 +29,8 @@ public sealed class DatabaseExceptionHandler : IExceptionHandler
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.ConstraintName == "IX_MonthlyPerformances_BrandId_Year_Month" => "Bu marka ve dönem için daha önce kayıt oluşturulmuş.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
+                when postgres.TableName is "SatisfactionRatings" => "Bu dönem için puan zaten kaydedilmiş. Sayfayı yenileyin; ikinci kayıt oluşmadı.",
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres }
                 when postgres.ConstraintName == "IX_PartnershipDeals_BrandId" => "Bu markanın zaten etkin bir anlaşması var.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.CheckViolation } } => "Veriler finansal güvenlik kurallarını karşılamıyor.",
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } } => "İlişkili kayıt bulunamadığı için işlem tamamlanamadı.",

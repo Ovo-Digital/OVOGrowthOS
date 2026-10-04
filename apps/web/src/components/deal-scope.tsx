@@ -1,7 +1,7 @@
 'use client';
 import { FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, money, percent, type SessionUser } from '@/lib/api';
+import { api, money, moneyPrecise, percent, type SessionUser } from '@/lib/api';
 import { notify } from '@/components/feedback';
 import { Badge, Card } from '@/components/ui/core';
 import { turkce, turkceTarih } from '@/lib/turkish';
@@ -114,6 +114,7 @@ export function RenewalSummaryPanel({ dealId }: { dealId: string }) {
         <Summary l="Gelir payı" v={percent(query.data.deal.revenueShareRate)} />
         <Summary l="Tahmini iç maliyet" v={money(query.data.deal.estimatedMonthlyInternalCost, query.data.deal.currency)} />
       </div>
+      <RenewalSimulationBox dealId={dealId} currency={query.data.deal.currency} />
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
         <Summary l="Kapsam kalemi" v={String(query.data.scope.activeItems)} />
         <Summary l="Bekleyen paket dışı talep" v={String(query.data.scope.pendingRequests)} />
@@ -152,6 +153,72 @@ export function RenewalSummaryPanel({ dealId }: { dealId: string }) {
       <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-[#6d7175]">{query.data.notes.map(n => <li key={n}>{n}</li>)}</ul>
     </>}
   </Card>;
+}
+
+type Simulation = {
+  currency: string; dealType: string;
+  revenueChangeRate: number; shareChangePoints: number; retainerChange: number;
+  baseRevenue: number; baseContribution: number; baseOvoFee: number; baseEffectiveRate: number; baseBrandContribution: number;
+  simRevenue: number; simContribution: number; simOvoFee: number; simEffectiveRate: number; simBrandContribution: number;
+  feeDelta: number; brandContributionDelta: number;
+  baseShareRate: number; simulatedShareRate: number; baseRetainer: number; simulatedRetainer: number;
+  shareApplied: boolean; retainerApplied: boolean;
+  notes: string[];
+};
+type SimulationResponse = { basis: { year: number; month: number; status: string; netRevenue: number; commissionableRevenue: number; contributionBeforeOvo: number } | null; simulation: Simulation; notes: string[] };
+
+function RenewalSimulationBox({ dealId, currency }: { dealId: string; currency: string }) {
+  const [revenue, setRevenue] = useState('0');
+  const [share, setShare] = useState('0');
+  const [retainer, setRetainer] = useState('0');
+  const [result, setResult] = useState<SimulationResponse | null>(null);
+  const [busy, setBusy] = useState(false);
+  const number = (value: string) => Number(String(value).trim().replace(',', '.'));
+
+  const run = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const revenueRate = number(revenue) / 100;
+    const sharePoints = number(share);
+    const retainerChange = number(retainer);
+    if (![revenueRate, sharePoints, retainerChange].every(Number.isFinite)) return;
+    setBusy(true);
+    try {
+      const query = new URLSearchParams({ revenueRate: String(revenueRate), sharePoints: String(sharePoints), retainerChange: String(retainerChange) });
+      setResult(await api<SimulationResponse>(`/api/deals/${dealId}/renewal-simulation?${query.toString()}`));
+    } catch { /* hata zaten ekranda bildirilir */ } finally { setBusy(false); }
+  };
+
+  return <div className="mt-4 rounded-lg border p-3 text-sm">
+    <strong>Yenileme müzakere simülatörü</strong>
+    <p className="mt-1 text-[#6d7175]">“Bu oranla anlatsak ne olur?” sorusunu masada cevaplarsınız. Simülasyon yalnız bilgi verir; kaydetmez, hiçbir anlaşma koşulunu, hakedişi veya dönemi değiştirmez.</p>
+    <form className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={run}>
+      <label className="block">Ciro değişimi (%)<input className={area} inputMode="decimal" value={revenue} onChange={e => setRevenue(e.target.value)} placeholder="20 = %20 artış, -50 = yarıya düşüş" /></label>
+      <label className="block">Pay değişimi (puan)<input className={area} inputMode="decimal" value={share} onChange={e => setShare(e.target.value)} placeholder="1 = 1 puan artış" /></label>
+      <label className="block">Aylık sabit ücret değişimi ({currency})<input className={area} inputMode="decimal" value={retainer} onChange={e => setRetainer(e.target.value)} placeholder="örnek: 5000" /></label>
+      <div className="sm:col-span-3"><button className={button} disabled={busy}>{busy ? 'Hesaplanıyor…' : 'Simülasyonu çalıştır'}</button></div>
+    </form>
+    {result && <div className="mt-4 space-y-3">
+      <p className="text-[#6d7175]">Dayanak: {result.basis ? `${result.basis.month}/${result.basis.year} kilitlenmiş dönem · katkı öncesi tutar ${money(result.basis.contributionBeforeOvo, currency)}` : 'Bu marka için kilitlenmiş dönem yok; dayanak ciro ve katkı sıfır alındı.'}</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SimulationSummary l="Ciro" before={money(result.simulation.baseRevenue, currency)} after={money(result.simulation.simRevenue, currency)} />
+        <SimulationSummary l="OVO hakedişi" before={money(result.simulation.baseOvoFee, currency)} after={money(result.simulation.simOvoFee, currency)} delta={moneyPrecise(result.simulation.feeDelta, currency)} />
+        <SimulationSummary l="Markaya kalan katkı" before={money(result.simulation.baseBrandContribution, currency)} after={money(result.simulation.simBrandContribution, currency)} delta={moneyPrecise(result.simulation.brandContributionDelta, currency)} />
+        <SimulationSummary l="Etkin oran" before={percent(result.simulation.baseEffectiveRate)} after={percent(result.simulation.simEffectiveRate)} />
+        <SimulationSummary l="Gelir payı" before={percent(result.simulation.baseShareRate)} after={percent(result.simulation.simulatedShareRate)} applied={result.simulation.shareApplied} />
+        <SimulationSummary l="Aylık sabit ücret" before={money(result.simulation.baseRetainer, currency)} after={money(result.simulation.simulatedRetainer, currency)} applied={result.simulation.retainerApplied} />
+      </div>
+      <ul className="list-disc space-y-1 pl-5 text-[#6d7175]">{result.notes.map(n => <li key={n}>{n}</li>)}</ul>
+    </div>}
+  </div>;
+}
+
+function SimulationSummary({ l, before, after, delta, applied }: { l: string; before: string; after: string; delta?: string; applied?: boolean }) {
+  return <div className="rounded-lg border p-3">
+    <div className="text-[#6d7175]">{l}</div>
+    <div className="font-semibold">{before} → {after}</div>
+    {delta !== undefined && <div className="text-xs">Fark: {delta}</div>}
+    {applied === false && <div className="text-xs text-[#6d7175]">Bu modelde uygulanmaz</div>}
+  </div>;
 }
 
 function Summary({ l, v }: { l: string; v: string }) { return <div><div className="text-[#6d7175]">{l}</div><div className="font-semibold">{v}</div></div>; }

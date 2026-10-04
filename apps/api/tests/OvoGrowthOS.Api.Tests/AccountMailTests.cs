@@ -20,11 +20,11 @@ public sealed class AccountMailTests
 {
     public sealed class Sender : IAccountMailSender
     {
-        public List<(string To, string Body)> Messages { get; } = [];
+        public List<(string To, string Body, MailAttachment? Attachment)> Messages { get; } = [];
         public bool Fail { get; set; }
-        public Task SendAsync(Guid id, string to, string subject, string body, CancellationToken ct)
+        public Task SendAsync(Guid id, string to, string subject, string body, CancellationToken ct, MailAttachment? attachment = null)
         {
-            Messages.Add((to, body));
+            Messages.Add((to, body, attachment));
             if (Fail) throw new IOException("Pretend ambiguous SMTP failure; must not be persisted.");
             return Task.CompletedTask;
         }

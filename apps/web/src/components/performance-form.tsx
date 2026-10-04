@@ -11,6 +11,7 @@ import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 type Deal = { id: string; brandId: string; name: string; currency: string; status: string; brand: { name: string } };
 type Preview = { netRevenue: number; ovoFee: number; brandContributionProfit: number; totalAdSpend: number };
 type Suggestion = { period: string; gross: { available: boolean; amount: number; currency: string; orderCount: number; lastSyncAt: string | null; panelGrossSales: number | null }; adSpend: { metaConfigured: boolean; googleConfigured: boolean } };
+type Submission = { id: string; year: number; month: number; grossSales: number | null; refunds: number | null; metaSpend: number | null; googleSpend: number | null; note: string; revision: number; submittedAt: string; submittedBy: string };
 const button = 'rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50';
 
 export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: PeriodSnapshot; onSaved: (id: string) => void; onCancel?: () => void }) {
@@ -104,6 +105,45 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
     } catch (e) { setError(e instanceof Error ? e.message : 'Reklam harcaması getirilemedi.'); }
     finally { inFlight.current = false; setBusy(false); }
   }
+  async function applySubmission() {
+    if (inFlight.current || busy || !form.current) return;
+    const f = new FormData(form.current);
+    let brandId = baseline?.brandId; let year = baseline?.year; let month = baseline?.month;
+    let currency = baseline?.deal.currency ?? 'TRY';
+    if (!baseline) {
+      const deal = deals.data?.find(d => d.id === String(f.get('dealId') ?? ''));
+      if (!deal) { setError('Müşteri bildirimi için önce etkin anlaşmayı seçin.'); return; }
+      brandId = deal.brandId; year = Number(f.get('year')); month = Number(f.get('month')); currency = deal.currency;
+    }
+    if (!year || !month || month < 1 || month > 12) { setError('Önce geçerli bir yıl ve ay seçin.'); return; }
+    inFlight.current = true; setBusy(true); setError(''); setHint(''); setReview(null);
+    try {
+      const list = await api<Submission[]>(`/api/portal-management/brands/${brandId}/submissions`);
+      const found = list.find(s => s.year === year && s.month === month);
+      if (!found) { setHint(`${month}/${year} dönemi için müşteri bildirimi yok. Bildirim geldiğinde bu düğme onu forma yazar.`); return; }
+      const ok = await confirm({ title: 'Müşteri bildirimiyle doldur',
+        message: `${month}/${year} dönemi için marka yetkilisinin bildirdiği değerler forma yazılacak ve onayınız işlem geçmişine kaydedilecek. Bu değerler hiçbir finansal kaydı kendiliğinden değiştirmez; kontrol edip “Hesabı kontrol et” ile devam edersiniz.`,
+        confirmLabel: 'Formu doldur' });
+      if (!ok) return;
+      const applied = await api<Submission>(`/api/portal-management/brands/${brandId}/submissions/${found.id}/apply`,
+        { method: 'POST', body: JSON.stringify({ reason: 'Müşteri bildirimi ön doldurma onayı' }) });
+      const written: string[] = [];
+      const write = (name: PeriodField, value: number | null, label: string) => {
+        if (value === null) return;
+        const el = form.current?.elements.namedItem(name);
+        if (el instanceof HTMLInputElement) el.value = new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 4 }).format(value);
+        written.push(`${label} ${moneyPrecise(value, currency)}`);
+      };
+      write('grossSales', applied.grossSales, 'Brüt satış');
+      write('refunds', applied.refunds, 'İadeler');
+      write('metaSpend', applied.metaSpend, 'Meta harcaması');
+      write('googleSpend', applied.googleSpend, 'Google harcaması');
+      setDirty(true);
+      setHint('Müşteri bildiriminden yazıldı: ' + (written.join(' · ') || 'alanların tamamı boş') + '.'
+        + ' Yazılan tutarları kontrol edip “Hesabı kontrol et” ile devam edin; kayıt kendiliğinden yapılmaz.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Müşteri bildirimi kullanılamadı.'); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
   async function save() {
     if (inFlight.current || !review) return;
     inFlight.current = true; setBusy(true); setError('');
@@ -132,8 +172,9 @@ export function PerformanceForm({ initial, onSaved, onCancel }: { initial?: Peri
       <div className="flex flex-wrap gap-2">
         <button type="button" className={button} disabled={busy} onClick={() => void suggest()}>Mağaza verisinden brüt satış öner</button>
         <button type="button" className={button} disabled={busy} onClick={() => void pullAds()}>Reklam harcamasını getir</button>
+        <button type="button" className={button} disabled={busy} onClick={() => void applySubmission()}>Müşteri bildirimini kullan</button>
       </div>
-      <p className="mt-1 text-xs text-[#6d7175]">Mağazadan çekilmiş siparişlerden bu dönemin brüt satış tutarını alan yazar. “Reklam harcamasını getir” ise Meta/Google bağlantıları kayıtlıysa bu dönemin harcamasını ilgili alanlara yazar. Her ikisi de otomatik kaydetmez, yazılanı siz kontrol edersiniz.</p>
+      <p className="mt-1 text-xs text-[#6d7175]">Mağazadan çekilmiş siparişlerden bu dönemin brüt satış tutarını alan yazar. “Reklam harcamasını getir” ise Meta/Google bağlantıları kayıtlıysa bu dönemin harcamasını ilgili alanlara yazar. “Müşteri bildirimini kullan” marka yetkilisinin bildirdiği brüt satış, iade ve reklam tutarlarını onayınızla forma yazar ve onayı kayda geçirir. Üçü de otomatik kaydetmez, yazılanı siz kontrol edersiniz.</p>
       {hint && <p role="status" className="mt-2 text-sm">{hint}</p>}
     </div>
     </Card>

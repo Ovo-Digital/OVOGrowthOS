@@ -9,6 +9,8 @@ import { notify } from '@/components/feedback';
 import { leadSources, leadStages } from '@/components/brand-team';
 import { dayText, type Paged, type TeamMember } from '@/components/work-tasks';
 import { ListControls, Pagination, useDebouncedValue } from '@/components/list-controls';
+import { LossFunnelAnalysis } from '@/components/loss-funnel-analysis';
+import { PreScreening } from '@/components/pre-screening';
 import { turkce } from '@/lib/turkish';
 
 type FollowUp = { ownerId: string | null; stage: string; waitingReason: string; nextContactOn: string | null; nextStep: string; revision: number; sourceChannel: string; sourceNote: string; lostOn: string | null; lostReason: string };
@@ -49,6 +51,8 @@ export default function Page() {
   return <>
     <PageHeader title="Potansiyel markalar" description="Aday, değerlendirme ve görüşme aşamasındaki markaların son temasını ve sıradaki adımını takip edin." action={<PrimaryLink href="/brands/new">Potansiyel marka ekle</PrimaryLink>} />
     <PipelineSummary summary={summary} />
+    <PreScreening />
+    <LossFunnelAnalysis />
     <Card className="mt-4 overflow-hidden">
       <ListControls
         search={search}

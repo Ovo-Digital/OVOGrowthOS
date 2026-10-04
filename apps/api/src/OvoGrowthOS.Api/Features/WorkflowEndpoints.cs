@@ -23,6 +23,7 @@ public static partial class WorkflowEndpoints
         MapBrandApiSettings(app);
         MapStoreOrders(app);
         MapAdSettings(app);
+        MapAdCampaigns(app);
         MapBrandHealth(app);
         MapSectorComparison(app);
         MapPerformanceSuggestions(app);
@@ -34,6 +35,12 @@ public static partial class WorkflowEndpoints
         MapTimeTracking(app);
         MapRenewalSummary(app);
         MapPipeline(app);
+        MapMeetingBrief(app);
+        MapPreScreening(app);
+        MapAlerts(app);
+        MapAdEfficiency(app);
+        MapSatisfaction(app);
+        MapHourDeviation(app);
         return app;
     }
 
@@ -303,6 +310,7 @@ public static partial class WorkflowEndpoints
     private static void MapDashboard(WebApplication app)
     {
         app.MapGet("/api/dashboard", PortfolioReport).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/dashboard/stress", PortfolioStressReport).RequireAuthorization("ReadAccess");
     }
 
     private static string BrandHealth(MonthlyPerformance current, IReadOnlyCollection<MonthlyPerformance> history)

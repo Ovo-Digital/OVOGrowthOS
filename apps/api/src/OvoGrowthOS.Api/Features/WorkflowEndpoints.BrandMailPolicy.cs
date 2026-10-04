@@ -7,7 +7,8 @@ using OvoGrowthOS.Domain;
 namespace OvoGrowthOS.Api.Features;
 
 public sealed record BrandMailPolicyRequest(bool ReportEmailEnabled, string SubjectTemplate, string BodyTemplate,
-    string Reason, int Revision, bool ScheduledReportEnabled = false, int ScheduledSendDay = 5, int ScheduledSendHour = 9);
+    string Reason, int Revision, bool ScheduledReportEnabled = false, int ScheduledSendDay = 5, int ScheduledSendHour = 9,
+    bool PdfAttachmentEnabled = false);
 
 public static partial class WorkflowEndpoints
 {
@@ -26,7 +27,8 @@ public static partial class WorkflowEndpoints
             {
                 policy.ReportEmailEnabled, policy.SubjectTemplate, policy.BodyTemplate, policy.Revision,
                 updatedAt = row?.UpdatedAt, emailReady = settings.Ready,
-                policy.ScheduledReportEnabled, policy.ScheduledSendDay, policy.ScheduledSendHour, schedule
+                policy.ScheduledReportEnabled, policy.ScheduledSendDay, policy.ScheduledSendHour, schedule,
+                policy.PdfAttachmentEnabled
             });
         });
         group.MapPut("/", async (Guid brandId, BrandMailPolicyRequest r, AppDbContext db, ClaimsPrincipal actor) =>
@@ -42,13 +44,14 @@ public static partial class WorkflowEndpoints
             if (!await db.Brands.AnyAsync(x => x.Id == brandId)) return Results.NotFound();
             var row = await db.BrandMailPolicies.SingleOrDefaultAsync(x => x.BrandId == brandId);
             if ((row?.Revision ?? 0) != r.Revision) return Results.Conflict(new { error = "Markanın e-posta kuralı değişmiş. Sayfayı yenileyip güncel bilgileri kontrol edin." });
-            var before = new { reportEmailEnabled = row?.ReportEmailEnabled ?? false, scheduledReportEnabled = row?.ScheduledReportEnabled ?? false };
+            var before = new { reportEmailEnabled = row?.ReportEmailEnabled ?? false, scheduledReportEnabled = row?.ScheduledReportEnabled ?? false, pdfAttachmentEnabled = row?.PdfAttachmentEnabled ?? false };
             if (row is null) { row = new BrandMailPolicy { BrandId = brandId, Revision = 0 }; db.Add(row); }
             row.ReportEmailEnabled = r.ReportEmailEnabled; row.SubjectTemplate = r.SubjectTemplate.Trim(); row.BodyTemplate = r.BodyTemplate.Trim();
             row.ScheduledReportEnabled = r.ScheduledReportEnabled; row.ScheduledSendDay = r.ScheduledSendDay; row.ScheduledSendHour = r.ScheduledSendHour;
+            row.PdfAttachmentEnabled = r.ReportEmailEnabled && r.PdfAttachmentEnabled;
             row.Revision++; row.UpdatedAt = DateTimeOffset.UtcNow;
             Audit(db, actor, "BrandMailPolicyChanged", "Brand", brandId, before,
-                new { row.ReportEmailEnabled, row.ScheduledReportEnabled, row.ScheduledSendDay, row.ScheduledSendHour, row.Revision, reason = r.Reason.Trim() });
+                new { row.ReportEmailEnabled, row.ScheduledReportEnabled, row.ScheduledSendDay, row.ScheduledSendHour, row.PdfAttachmentEnabled, row.Revision, reason = r.Reason.Trim() });
             await db.SaveChangesAsync(); if (tx is not null) await tx.CommitAsync();
             return Results.Ok(new
             {

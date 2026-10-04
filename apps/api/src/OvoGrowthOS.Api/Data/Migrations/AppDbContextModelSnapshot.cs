@@ -129,6 +129,52 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.AdCampaignSpend", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CampaignName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Platform")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Spend")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "Year", "Month", "Platform", "CampaignName")
+                        .IsUnique();
+
+                    b.ToTable("AdCampaignSpends", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_AdCampaignSpends_Values", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Platform\" BETWEEN 0 AND 1 AND \"Spend\" >= 0 AND length(\"CampaignName\") BETWEEN 1 AND 300 AND length(\"Currency\") = 3");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.AuditRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -675,6 +721,9 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("PdfAttachmentEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("ReportEmailEnabled")
                         .HasColumnType("boolean");
@@ -2123,6 +2172,63 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalPeriodSubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("GoogleSpend")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("GrossSales")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal?>("MetaSpend")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal?>("Refunds")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("PortalPeriodSubmissions", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_PortalPeriodSubmissions_Values", "\"Revision\" > 0 AND \"Month\" BETWEEN 1 AND 12 AND \"Year\" BETWEEN 2020 AND 2100 AND length(btrim(\"Note\")) <= 1000 AND (\"GrossSales\" IS NULL OR \"GrossSales\" BETWEEN 0 AND 1000000000000) AND (\"Refunds\" IS NULL OR \"Refunds\" BETWEEN 0 AND 1000000000000) AND (\"MetaSpend\" IS NULL OR \"MetaSpend\" BETWEEN 0 AND 1000000000000) AND (\"GoogleSpend\" IS NULL OR \"GoogleSpend\" BETWEEN 0 AND 1000000000000)");
+                        });
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.PortalQuestion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2247,6 +2353,10 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("ReviewedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ReviewedIpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
                     b.HasKey("ReportId", "UserId");
 
                     b.HasIndex("BrandId");
@@ -2356,6 +2466,56 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("RuleSets", "growth");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.SatisfactionRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BrandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BrandId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("SatisfactionRatings", "growth", t =>
+                        {
+                            t.HasCheckConstraint("CK_SatisfactionRatings_Values", "\"Year\" BETWEEN 2020 AND 2100 AND \"Month\" BETWEEN 1 AND 12 AND \"Score\" BETWEEN 1 AND 5 AND length(\"Comment\") <= 1000");
+                        });
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.Scenario", b =>
@@ -3105,6 +3265,15 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.AdCampaignSpend", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandAdSettings", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.Brand", null)
@@ -3432,6 +3601,15 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("OvoGrowthOS.Domain.PortalPeriodSubmission", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", null)
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("OvoGrowthOS.Domain.PortalQuestion", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.UserAccount", null)
@@ -3495,6 +3673,17 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("RuleSet");
+                });
+
+            modelBuilder.Entity("OvoGrowthOS.Domain.SatisfactionRating", b =>
+                {
+                    b.HasOne("OvoGrowthOS.Domain.Brand", "Brand")
+                        .WithMany()
+                        .HasForeignKey("BrandId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Brand");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.Scenario", b =>

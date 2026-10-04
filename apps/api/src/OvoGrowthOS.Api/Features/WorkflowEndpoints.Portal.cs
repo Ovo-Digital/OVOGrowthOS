@@ -61,6 +61,12 @@ public static partial class WorkflowEndpoints
                 Scope = "Closed", Audience = "brand", GeneratedAt = s.PublishedAt, Current = s.Metrics, Explanations = s.Explanations });
             return Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes($"\"Yayımlanan sürüm\";\"{s.Version}\"\r\n" + csv)).ToArray(), "text/csv; charset=utf-8", $"rapor-{report.Year}-{report.Month:00}-v{report.Version}.csv");
         });
+        portal.MapGet("/reports/{id:guid}/pdf", async (Guid id, AppDbContext db, ClaimsPrincipal user) =>
+        {
+            var brandId = await PortalBrand(db, user);
+            var report = await db.PortalReports.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId && x.RevokedAt == null);
+            return report is null ? Results.NotFound() : PortalReportFile(report);
+        });
         portal.MapGet("/documents/{id:guid}/download", async (Guid id, AppDbContext db, ClaimsPrincipal user) =>
         {
             var brandId = await PortalBrand(db, user);
@@ -83,6 +89,7 @@ public static partial class WorkflowEndpoints
 
         var management = app.MapGroup("/api/portal-management/brands/{brandId:guid}").RequireAuthorization("OperationsWrite");
         MapPortalCollaboration(portal, management);
+        MapPortalSubmissions(portal, management);
         MapBrandMailPolicy(management);
         management.MapGet("/accounts", async (Guid brandId, AppDbContext db) => Results.Ok(await db.PortalAccesses.AsNoTracking().Where(x => x.BrandId == brandId)
             .Select(x => new { id = x.UserId, x.User.Name, x.User.Email, x.User.IsActive, x.User.InvitationPending }).ToListAsync())).RequireAuthorization("AdminOnly");
@@ -122,6 +129,8 @@ public static partial class WorkflowEndpoints
             .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).Select(x => new { x.Id, x.Year, x.Month, x.Deal!.Currency }).ToListAsync()));
         management.MapGet("/reports/{id:guid}", async (Guid brandId, Guid id, AppDbContext db) =>
             await db.PortalReports.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId) is { } r ? Results.Ok(ReadPortalSnapshot(r)) : Results.NotFound());
+        management.MapGet("/reports/{id:guid}/pdf", async (Guid brandId, Guid id, AppDbContext db) =>
+            await db.PortalReports.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.BrandId == brandId) is { } r ? PortalReportFile(r) : Results.NotFound());
         management.MapPost("/reports", PublishPortalReport);
         management.MapPost("/reports/{id:guid}/revoke", async (Guid brandId, Guid id, AppDbContext db, ClaimsPrincipal user) =>
         {
@@ -166,7 +175,11 @@ public static partial class WorkflowEndpoints
         var id = Guid.Parse(user.FindFirstValue("uid")!);
         return db.PortalAccesses.Where(x => x.UserId == id).Select(x => x.BrandId).SingleAsync();
     }
-    private static PortalReportSnapshot ReadPortalSnapshot(PortalReport report) => JsonSerializer.Deserialize<PortalReportSnapshot>(report.SnapshotJson, Json)!;
+    internal static PortalReportSnapshot ReadPortalSnapshot(PortalReport report) => JsonSerializer.Deserialize<PortalReportSnapshot>(report.SnapshotJson, Json)!;
+
+    private static IResult PortalReportFile(PortalReport report) => Results.File(
+        PortalReportPdf.Build(ReadPortalSnapshot(report), report.Year, report.Month),
+        "application/pdf", $"rapor-{report.Year}-{report.Month:00}-v{report.Version}.pdf");
 
     private static async Task<IResult> ReadPortalBalance(AppDbContext db, ClaimsPrincipal user)
     {

@@ -15,6 +15,7 @@ public static partial class WorkflowEndpoints
     private static void MapPipeline(WebApplication app)
     {
         app.MapGet("/api/pipeline/summary", PipelineSummary).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/pipeline/loss-analysis", LossAnalysis).RequireAuthorization("ReadAccess");
         app.MapGet("/api/brands/{id:guid}/stage-history", StageHistory).RequireAuthorization("ReadAccess");
         app.MapPost("/api/brands/{id:guid}/pipeline/loss", RecordPipelineLoss)
             .AddEndpointFilter<ValidationFilter<PipelineLossRequest>>().RequireAuthorization("OperationsWrite");
@@ -66,6 +67,17 @@ public static partial class WorkflowEndpoints
         Audit(db, user, "BrandPipelineLossCancelled", "Brand", id, new { reason = old }, new { follow.Revision });
         await db.SaveChangesAsync();
         return Results.Ok(new { follow.BrandId, follow.LostOn, follow.Revision });
+    }
+
+    private static async Task<IResult> LossAnalysis(int? months, AppDbContext db)
+    {
+        var window = months ?? 6;
+        if (window is not (3 or 6 or 12)) return Results.BadRequest(new { error = "Zaman aralığı 3, 6 veya 12 ay seçilmelidir." });
+        var today = TeamWork.Today(DateTimeOffset.UtcNow);
+        var followUps = await db.BrandFollowUps.AsNoTracking().ToListAsync();
+        var histories = await db.BrandStageHistories.AsNoTracking().ToListAsync();
+        var dealBrandIds = (await db.Deals.AsNoTracking().Select(x => x.BrandId).Distinct().ToListAsync()).ToHashSet();
+        return Results.Ok(PipelineAnalysis.Build(today, window, followUps, histories, dealBrandIds));
     }
 
     private static async Task<IResult> PipelineSummary(AppDbContext db)

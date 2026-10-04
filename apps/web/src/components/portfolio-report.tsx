@@ -83,6 +83,7 @@ export function PortfolioReportView({ title, brandId, showCharts = false }: { ti
         <MetricCard label="MARKALARA KALAN KATKI" value={hasData ? amount(data.totals.brandContributionProfit) : 'Veri yok'} />
       </div>
       <p className="mt-3 text-xs text-[#6d7175]">OVO brüt kârı, kayıttaki hakedişten hizmet maliyeti çıkarılarak hesaplanır; bu maliyet mevcut sistemde anlaşmadaki tahmindir. Vergi sonrası net kâr veya banka bakiyesi değildir. Eski dönem hesapları bu rapor açılırken yeniden hesaplanmaz.</p>
+      <StressCard parameters={String(parameters)} currency={data.currency} />
       {data.currencyTotals.length > 0 && <Card className="mt-4 p-5">
         <h2 className="font-semibold">Para birimi bazında toplamlar</h2>
         <p className="mt-1 text-xs text-[#6d7175]">Seçili dönem ({periodLabel}) ve kapsam için her para birimi ayrı toplanır; farklı para birimleri birbiriyle toplanmaz.</p>
@@ -124,4 +125,57 @@ export function PortfolioReportView({ title, brandId, showCharts = false }: { ti
       </>}
     </>}
   </div>;
+}
+
+type Stress = {
+  period: { year: number; month: number } | null; scope: string; currency: string;
+  stress: {
+    shockRate: number; recordCount: number; brandId: string; brandName: string; brandHasAgreement: boolean;
+    baseRevenue: number; simRevenue: number; revenueDelta: number;
+    baseFee: number; simFee: number; feeDelta: number;
+    baseProfit: number; simProfit: number; profitDelta: number;
+    brandBaseRevenue: number; brandSimRevenue: number; brandBaseFee: number; brandSimFee: number;
+    notes: string[];
+  };
+};
+
+function StressCard({ parameters, currency }: { parameters: string; currency: string }) {
+  const [draft, setDraft] = useState('20');
+  const [loss, setLoss] = useState('20');
+  const query = useQuery({
+    queryKey: ['dashboard-stress', parameters, loss],
+    queryFn: () => api<Stress>(`/api/dashboard/stress?${parameters}&shockRate=${-(Number(loss.replace(',', '.')) / 100)}`),
+    retry: false, refetchOnWindowFocus: false
+  });
+  const value = Number(draft.replace(',', '.'));
+  const valid = Number.isFinite(value) && value >= 0 && value <= 90;
+  const s = query.data?.stress;
+  const total = (base: number, delta: number) => `${moneyPrecise(base, currency)} → ${moneyPrecise(base + delta, currency)}`;
+
+  return <Card className="mt-4 p-5">
+    <h2 className="font-semibold">En büyük marka stres testi</h2>
+    <p className="mt-1 text-sm text-[#6d7175]">Seçili dönemde cirosu en yüksek markanın geliri düşerse portföy ne olur? Simülasyon yalnız bilgi verir; kaydetmez, hiçbir dönem kaydını, hakedişi veya anlaşmayı değiştirmez.</p>
+    <form className="mt-3 flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); if (valid) setLoss(String(value)); }}>
+      <label><span className="label">En büyük markanın ciro kaybı (%)</span><input className="input mt-1.5 w-40" inputMode="decimal" value={draft} onChange={e => setDraft(e.target.value)} placeholder="20 = %20 kayıp" /></label>
+      <button className="rounded-lg border px-3 py-2 text-sm font-semibold" disabled={!valid}>Stres testini çalıştır</button>
+    </form>
+    {!valid && <p role="alert" className="mt-2 text-sm text-[#8e1f0b]">Ciro kaybı 0 ile 90 arasında bir sayı olmalıdır; 20 yazımı %20 kayıp demektir.</p>}
+    {query.isPending && <p className="mt-3 text-sm" role="status">Stres testi hesaplanıyor…</p>}
+    {query.isError && <p role="alert" className="mt-3 text-sm">{query.error.message} <button className="underline" onClick={() => query.refetch()}>Yeniden dene</button></p>}
+    {s && <div className="mt-4 space-y-3 text-sm">
+      <p className="text-[#6d7175]">Şok uygulanan marka: <strong>{s.recordCount === 0 ? 'Kayıt yok' : s.brandName}</strong>{s.recordCount > 0 && <> · {s.brandHasAgreement ? 'Anlaşması var' : 'Anlaşma kaydı yok'}</>} · {s.recordCount} dönem kaydı değerlendirildi.</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StressBox label="Portföy net cirosu" value={total(s.baseRevenue, s.revenueDelta)} delta={moneyPrecise(s.revenueDelta, currency)} />
+        <StressBox label="OVO hakedişi" value={total(s.baseFee, s.feeDelta)} delta={moneyPrecise(s.feeDelta, currency)} />
+        <StressBox label="OVO brüt kârı" value={total(s.baseProfit, s.profitDelta)} delta={moneyPrecise(s.profitDelta, currency)} />
+        <StressBox label="Şok uygulanan markanın cirosu" value={total(s.brandBaseRevenue, s.brandSimRevenue - s.brandBaseRevenue)} delta={moneyPrecise(s.brandSimRevenue - s.brandBaseRevenue, currency)} />
+        <StressBox label="Şok uygulanan markanın hakedişi" value={total(s.brandBaseFee, s.brandSimFee - s.brandBaseFee)} delta={moneyPrecise(s.brandSimFee - s.brandBaseFee, currency)} />
+      </div>
+      <ul className="list-disc space-y-1 pl-5 text-xs text-[#6d7175]">{s.notes.map(n => <li key={n}>{n}</li>)}</ul>
+    </div>}
+  </Card>;
+}
+
+function StressBox({ label, value, delta }: { label: string; value: string; delta: string }) {
+  return <div className="rounded-lg border p-3"><div className="text-xs text-[#6d7175]">{label}</div><div className="font-semibold">{value}</div><div className="text-xs">Fark: {delta}</div></div>;
 }

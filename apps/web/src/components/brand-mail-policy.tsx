@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Card } from '@/components/ui/core';
 
 type Schedule = { enabled: boolean; day: number; hour: number; nextOccurrenceAt: string; targetYear: number; targetMonth: number; targetReportId: string | null; targetReportPublished: boolean; sendingNow: boolean };
-type Policy = { reportEmailEnabled: boolean; subjectTemplate: string; bodyTemplate: string; revision: number; emailReady: boolean; scheduledReportEnabled: boolean; scheduledSendDay: number; scheduledSendHour: number; schedule: Schedule };
+type Policy = { reportEmailEnabled: boolean; subjectTemplate: string; bodyTemplate: string; revision: number; emailReady: boolean; scheduledReportEnabled: boolean; scheduledSendDay: number; scheduledSendHour: number; pdfAttachmentEnabled: boolean; schedule: Schedule };
 type Report = { id: string; year: number; month: number; version: number; revokedAt: string | null };
 type Preview = { subject: string; body: string; note: string; deferredUntil: string | null; recipients: { id: string; name: string; email: string; eligible: boolean; deferred: boolean; scheduledFor: string | null; reasons: string[] }[] };
 const button = 'rounded-lg border px-3 py-2 text-sm disabled:opacity-50';
@@ -28,6 +28,7 @@ function PolicyForm({ policy, brandId, root, reports, onNotice }: { policy: Poli
   const qc = useQueryClient();
   const [enabled, setEnabled] = useState(policy.reportEmailEnabled);
   const [scheduled, setScheduled] = useState(policy.scheduledReportEnabled);
+  const [pdf, setPdf] = useState(policy.pdfAttachmentEnabled);
   const [day, setDay] = useState(policy.scheduledSendDay);
   const [hour, setHour] = useState(policy.scheduledSendHour);
   const [subject, setSubject] = useState(policy.subjectTemplate);
@@ -35,13 +36,14 @@ function PolicyForm({ policy, brandId, root, reports, onNotice }: { policy: Poli
   const [reason, setReason] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [reportId, setReportId] = useState('');
   const dirty = enabled !== policy.reportEmailEnabled || subject !== policy.subjectTemplate || body !== policy.bodyTemplate
-    || scheduled !== policy.scheduledReportEnabled || day !== policy.scheduledSendDay || hour !== policy.scheduledSendHour;
+    || scheduled !== policy.scheduledReportEnabled || day !== policy.scheduledSendDay || hour !== policy.scheduledSendHour
+    || (enabled && pdf) !== policy.pdfAttachmentEnabled;
   const preview = useQuery({ queryKey: ['brand-mail-preview', brandId, reportId, policy.revision], queryFn: () => api<Preview>(`${root}/preview/${reportId}`), enabled: !!reportId && !dirty });
   async function save(e: FormEvent) {
     e.preventDefault(); if (busy) return;
     setBusy(true); setError(''); onNotice('');
     try {
-      const result = await api<{ message: string }>(root, { method: 'PUT', body: JSON.stringify({ reportEmailEnabled: enabled, subjectTemplate: subject, bodyTemplate: body, scheduledReportEnabled: scheduled, scheduledSendDay: day, scheduledSendHour: hour, reason, revision: policy.revision }) });
+      const result = await api<{ message: string }>(root, { method: 'PUT', body: JSON.stringify({ reportEmailEnabled: enabled, subjectTemplate: subject, bodyTemplate: body, scheduledReportEnabled: scheduled, scheduledSendDay: day, scheduledSendHour: hour, pdfAttachmentEnabled: pdf, reason, revision: policy.revision }) });
       onNotice(result.message);
       await Promise.all([qc.invalidateQueries({ queryKey: ['brand-mail-policy', brandId] }), qc.invalidateQueries({ queryKey: ['brand-mail-preview', brandId] })]);
     } catch (e) { setError(e instanceof Error ? e.message : 'Kural kaydedilemedi.'); } finally { setBusy(false); }
@@ -51,13 +53,15 @@ function PolicyForm({ policy, brandId, root, reports, onNotice }: { policy: Poli
     <p className="text-sm">Genel e-posta hizmeti: {policy.emailReady ? 'Hazır' : 'Kapalı veya eksik bilgi var'}. Bu ekran SMTP şifresini göstermez.</p>
     <form className="space-y-3" onSubmit={save}>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} disabled={busy} onChange={e => setEnabled(e.target.checked)} />Bu markanın rapor e-postalarına izin ver</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled && pdf} disabled={busy || !enabled} onChange={e => setPdf(e.target.checked)} />Rapor e-postasına PDF dosyası ekle</label>
+      {enabled && pdf && <p className="text-sm">E-posta, portalda yayımlanan raporun PDF sürümünü ek olarak taşır. PDF yalnız müşteri portalındaki rakamları ve açıklamaları içerir; iç maliyet, OVO kârı ve iç notlar eklenmez. PDF üretilemezse e-posta yine de gönderilir.</p>}
       <fieldset disabled={busy} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-2">
         <legend className="px-1 text-sm font-semibold">Aylık zamanlanmış gönderim</legend>
         <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={scheduled} disabled={!enabled} onChange={e => setScheduled(e.target.checked)} />Her ayın belirli gününde bir önceki ayın paylaşılmış raporunu gönder</label>
         <label className="block text-sm">Ayın günü<select className="input mt-1" value={day} disabled={!enabled || !scheduled} onChange={e => setDay(Number(e.target.value))}>{Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}</select></label>
         <label className="block text-sm">Saat (Türkiye)<select className="input mt-1" value={hour} disabled={!enabled || !scheduled} onChange={e => setHour(Number(e.target.value))}>{Array.from({ length: 24 }, (_, i) => i).map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}</select></label>
         {!enabled && <p className="text-sm sm:col-span-2">Zamanlanmış gönderim için önce markanın rapor e-postası iznini açın.</p>}
-        {enabled && scheduled && <p className="text-sm sm:col-span-2">Yalnız bir önceki ayın, müşteri portalında paylaşılmış kapanmış raporu gönderilir. E-posta dosya eklemez; giriş gerektiren portal adresini içerir. Daha eski aylar toplu olarak gönderilmez.</p>}
+        {enabled && scheduled && <p className="text-sm sm:col-span-2">Yalnız bir önceki ayın, müşteri portalında paylaşılmış kapanmış raporu gönderilir. {enabled && pdf ? 'E-posta, yayımlanan raporun PDF dosyasını ek olarak taşır.' : 'E-posta dosya eklemez; giriş gerektiren portal adresini içerir.'} Daha eski aylar toplu olarak gönderilmez.</p>}
         {enabled && !scheduled && <p className="text-sm sm:col-span-2">Zamanlanmış gönderim kapalı. Yalnız rapor paylaşıldığı anda bildirim e-postası gider.</p>}
         {s && <p className="text-sm sm:col-span-2" role="status">
           {s.enabled
