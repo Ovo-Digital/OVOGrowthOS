@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -174,7 +175,9 @@ public sealed class PipelineInsightsApiTests
         var second = await admin.GetStringAsync($"/api/brands/{brandId}/meeting-brief");
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/brands/{Guid.NewGuid()}/meeting-brief")).StatusCode);
         Assert.Equal(auditBefore, await AuditCountAsync());
-        Assert.Equal((await admin.GetStringAsync($"/api/brands/{brandId}/meeting-brief")).Length, second.Length);
+
+        static string Stable(string body) => Regex.Replace(body, "\"generatedAt\":\"[^\"]*\"", "\"generatedAt\":\"x\"");
+        Assert.Equal(Stable(second), Stable(await admin.GetStringAsync($"/api/brands/{brandId}/meeting-brief")));
     }
 
     [Fact]
