@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import { api, money, percent } from '@/lib/api';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
 import { turkce } from '@/lib/turkish';
+import { notify } from '@/components/feedback';
 import { CollectionPanel } from '@/components/collection-panel';
 import { CollectionPromisePanel } from '@/components/collection-promise-panel';
+import { downloadPortal } from '@/components/portal-report';
 
 type Performance = { brand: { name: string }; deal: { currency: string }; year: number; month: number; status: string; commissionableRevenue: number; ovoFee: number; commissionBreakdownJson: string };
 type Breakdown = { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number; tiers: { revenueAmount: number; rate: number; fee: number }[] };
@@ -33,6 +35,7 @@ export default function Page() {
       <Row label="Gerçekleşen oran" value={percent(breakdown.effectiveRate)} />
       {breakdown.finalFee !== data.ovoFee && <p role="alert" className="mt-3 text-sm text-[#8e1f0b]">Hesap dökümü ile kayıtlı hakediş tutarı farklı. Bu kaydı kontrol için yöneticinize bildirin; rapor kayıtlı hakedişi kullanır.</p>}
       <Link href={`/performance/${id}`} className="mt-5 inline-block rounded-lg border px-4 py-2 text-sm font-semibold">Aylık sonucu aç</Link>
+      <button className="ml-2 mt-5 inline-block rounded-lg border px-4 py-2 text-sm font-semibold" onClick={() => { void downloadPortal(`/api/performance/${id}/statement-pdf`, `hakedis-${data.year}-${String(data.month).padStart(2, '0')}.pdf`).catch(() => notify('PDF indirilemedi. Sayfayı yenileyip tekrar deneyin.')); }}>Dökümü PDF indir</button>
     </Card>
     <CollectionPanel id={id} />
     <CollectionPromisePanel id={id} />

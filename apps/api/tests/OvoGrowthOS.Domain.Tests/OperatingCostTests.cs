@@ -36,4 +36,62 @@ public sealed class OperatingCostTests
         var a = new InvestmentAccount { Entries = [new() { Kind = InvestmentEntryKind.Investment, Amount = 100_000 }, new() { Kind = InvestmentEntryKind.Recovery, Amount = 40_000 }] };
         var s = OperatingCosts.InvestmentSummary(deal, a); Assert.Equal(100_000, s.RecordedInvestment); Assert.Equal(40_000, s.RecordedRecovery); Assert.Equal(60_000, s.Remaining);
     }
+
+    private static (MonthlyPerformance Period, ServiceCostAccount? Account, string BrandName) Profitable(
+        Guid brandId, string brand, int month, decimal fee, decimal? confirmedCost, decimal? draftCost = null)
+    {
+        var period = new MonthlyPerformance { BrandId = brandId, Status = MonthlyPerformanceStatus.Paid, Year = 2026, Month = month,
+            OvoFee = fee, Deal = new Deal { Name = "Kârlılık anlaşması", Currency = "TRY" } };
+        ServiceCostAccount? account = null;
+        if (confirmedCost.HasValue || draftCost.HasValue)
+        {
+            account = new ServiceCostAccount();
+            if (confirmedCost.HasValue)
+            {
+                account.ConfirmedAt = DateTimeOffset.UtcNow;
+                account.Entries.Add(new() { Kind = ServiceCostKind.DirectExpense, Amount = confirmedCost.Value });
+            }
+            if (draftCost.HasValue)
+                account.Entries.Add(new() { Kind = ServiceCostKind.DirectExpense, Amount = draftCost.Value });
+        }
+        return (period, account, brand);
+    }
+
+    [Fact]
+    public void Profitability_ranks_confirmed_costs_and_never_hides_drafts()
+    {
+        var a = Guid.NewGuid(); var b = Guid.NewGuid();
+        var rows = new[]
+        {
+            Profitable(a, "Kârlı Marka", 8, 100_000, 30_000),
+            Profitable(a, "Kârlı Marka", 9, 100_000, null, draftCost: 90_000),
+            Profitable(b, "Zararlı Marka", 8, 50_000, 60_000),
+        };
+        var rank = BrandProfitability.Rank(rows, "TRY");
+        Assert.Equal(2, rank.Count);
+        Assert.Equal(a, rank[0].BrandId);
+        Assert.Equal(200_000, rank[0].TotalFee);
+        Assert.Equal(30_000, rank[0].TotalRecordedCost);
+        Assert.Equal(170_000, rank[0].Contribution);
+        Assert.Equal(0.85m, rank[0].Margin);
+        Assert.Equal(1, rank[0].ConfirmedPeriods);
+        Assert.Equal(1, rank[0].UnconfirmedPeriods);
+        Assert.Equal(b, rank[1].BrandId);
+        Assert.Equal(-10_000, rank[1].Contribution);
+    }
+
+    [Fact]
+    public void Profitability_ignores_draft_other_currency_and_zero_fee_margin()
+    {
+        var a = Guid.NewGuid();
+        var draft = Profitable(a, "Taslak Marka", 8, 100_000, 10_000);
+        draft.Period.Status = MonthlyPerformanceStatus.Draft;
+        var foreign = Profitable(a, "Taslak Marka", 8, 100_000, 10_000);
+        foreign.Period.Deal = new Deal { Name = "Kârlılık anlaşması", Currency = "USD" };
+        var zero = Profitable(a, "Sıfır Marka", 8, 0, 5_000);
+        Assert.Empty(BrandProfitability.Rank([draft, foreign], "TRY"));
+        var rank = BrandProfitability.Rank([zero], "TRY");
+        Assert.Null(rank[0].Margin);
+        Assert.Equal(-5_000, rank[0].Contribution);
+    }
 }

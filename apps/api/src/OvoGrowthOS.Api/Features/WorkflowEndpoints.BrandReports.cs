@@ -34,6 +34,7 @@ public static partial class WorkflowEndpoints
     {
         app.MapGet("/api/reports/brands/{id:guid}", BrandReport).RequireAuthorization("ReadAccess");
         app.MapGet("/api/reports/brands/{id:guid}/xlsx", BrandReportExcel).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/reports/brands/{id:guid}/pdf", BrandReportPdf).RequireAuthorization("ReadAccess");
     }
 
     private static async Task<IResult> BrandReport(Guid id, int year, int month, AppDbContext db, ClaimsPrincipal user,
@@ -50,6 +51,15 @@ public static partial class WorkflowEndpoints
         if (error is not null) return error;
         var bytes = BrandReportXlsx(doc!);
         return Results.File(bytes, ExcelExport.MimeType, $"marka-raporu-{doc!.Year}-{doc.Month:00}-{doc.Audience}.xlsx");
+    }
+
+    private static async Task<IResult> BrandReportPdf(Guid id, int year, int month, AppDbContext db, ClaimsPrincipal user,
+        ReportScope scope = ReportScope.Closed, string audience = "brand", string? currency = null)
+    {
+        var (error, doc) = await BuildBrandReport(id, year, month, db, user, scope, audience, currency);
+        if (error is not null) return error;
+        var bytes = DealStatementPdf.BuildBrandReport(doc!);
+        return Results.File(bytes, "application/pdf", $"marka-raporu-{doc!.Year}-{doc.Month:00}-{doc.Audience}.pdf");
     }
 
     private static async Task<(IResult? Error, BrandReportDocument? Doc)> BuildBrandReport(Guid id, int year, int month,

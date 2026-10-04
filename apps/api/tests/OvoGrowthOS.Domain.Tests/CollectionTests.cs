@@ -56,4 +56,58 @@ public sealed class CollectionTests
         p.Status = MonthlyPerformanceStatus.Draft; Assert.Equal(0, Collections.Balance(p, Today).Outstanding);
         var zero = Period(0); Collections.UpdateSettlementStatus(zero, Today); Assert.Equal(MonthlyPerformanceStatus.Paid, zero.Status);
     }
+
+    private static MonthlyPerformance Allocated(int year, int month, decimal fee, DateOnly? dueOn, decimal paid = 0)
+    {
+        var p = Period(fee); p.Year = year; p.Month = month; p.Collection!.DueOn = dueOn; p.Collection.Currency = "TRY";
+        if (paid > 0) p.Collection.Payments.Add(new() { Amount = paid, PaidOn = Today });
+        return p;
+    }
+
+    [Fact]
+    public void Allocation_splits_oldest_due_first_and_reports_leftover()
+    {
+        var periods = new[]
+        {
+            Allocated(2026, 9, 50_000, Today.AddDays(-5)),
+            Allocated(2026, 8, 100_000, Today.AddDays(-30), paid: 20_000),
+            Allocated(2026, 10, 30_000, null),
+        };
+        var plan = PaymentAllocation.Build(periods, Today, "TRY", 120_000);
+        Assert.Equal(3, plan.Rows.Count);
+        Assert.Equal(8, plan.Rows[0].Month);
+        Assert.Equal(80_000, plan.Rows[0].Suggested);
+        Assert.Equal(0, plan.Rows[0].RemainingAfter);
+        Assert.Equal(40_000, plan.Rows[1].Suggested);
+        Assert.Equal(10_000, plan.Rows[1].RemainingAfter);
+        Assert.Equal(0, plan.Rows[2].Suggested);
+        Assert.Equal(120_000, plan.Allocated);
+        Assert.Equal(0, plan.Leftover);
+        Assert.Equal(160_000, plan.TotalOutstanding);
+
+        var over = PaymentAllocation.Build(periods, Today, "TRY", 200_000);
+        Assert.Equal(160_000, over.Allocated);
+        Assert.Equal(40_000, over.Leftover);
+
+        var settled = PaymentAllocation.Build(periods, Today, "TRY", 0);
+        Assert.Empty(settled.Rows.Where(x => x.Suggested > 0));
+        Assert.Equal(0, settled.Allocated);
+    }
+
+    [Fact]
+    public void Allocation_skips_review_draft_and_other_currencies()
+    {
+        var periods = new[]
+        {
+            Allocated(2026, 8, 100_000, Today.AddDays(-30)),
+            Allocated(2026, 7, -5_000, Today.AddDays(-40)),
+            Allocated(2026, 6, 10_000, Today.AddDays(-50)),
+        };
+        periods[2].Collection!.Currency = "USD";
+        var plan = PaymentAllocation.Build(periods, Today, "TRY", 200_000);
+        Assert.Single(plan.Rows);
+        Assert.Equal(8, plan.Rows[0].Month);
+        Assert.Equal(1, plan.SkippedReview);
+        Assert.Contains("USD", plan.OtherCurrencies);
+    }
 }

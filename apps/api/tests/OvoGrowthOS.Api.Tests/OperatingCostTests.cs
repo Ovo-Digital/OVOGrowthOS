@@ -41,6 +41,41 @@ public sealed class OperatingCostTests
         Assert.Equal(30_000, p!.OvoInternalCost); Assert.Equal(70_000, p.OvoGrossProfit); Assert.Equal(MonthlyPerformanceStatus.Locked, p.Status);
     }
     [Fact]
+    public async Task Brand_profitability_ranks_fees_minus_confirmed_costs_and_hides_nothing_from_managers()
+    {
+        await using var f = new WorkflowApiFactory(); var (first, _) = await Seed(f); using var c = Client(f); using var analyst = Client(f, "Analyst");
+        Guid brand, second;
+        using (var scope = f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            brand = (await db.MonthlyPerformances.SingleAsync(x => x.Id == first)).BrandId;
+            var deal = new Deal { BrandId = brand, Currency = "TRY", Name = "Kârlılık ikinci anlaşma" };
+            db.Add(deal);
+            var p = new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 9, Status = MonthlyPerformanceStatus.Locked, OvoFee = 50_000, OvoInternalCost = 10_000, OvoGrossProfit = 40_000 };
+            db.Add(p); await db.SaveChangesAsync(); second = p.Id;
+        }
+        (await c.PostAsJsonAsync($"/api/performance/{first}/costs/entries", Cost())).EnsureSuccessStatusCode();
+        (await c.PutAsJsonAsync($"/api/performance/{first}/costs/confirmation", new CostConfirmationRequest(true, "Kontrol edildi", 1))).EnsureSuccessStatusCode();
+        (await c.PostAsJsonAsync($"/api/performance/{second}/costs/entries", Cost() with { IncurredOn = new(2026, 9, 5), Reference = "GIDER-2" })).EnsureSuccessStatusCode();
+
+        var report = await c.GetFromJsonAsync<JsonElement>("/api/reports/brand-profitability?currency=TRY");
+        var rows = report.GetProperty("rows").EnumerateArray().ToList();
+        var mine = rows.Single(x => x.GetProperty("brandId").GetGuid() == brand);
+        Assert.Equal(150_000, mine.GetProperty("totalFee").GetDecimal());
+        Assert.Equal(10_000, mine.GetProperty("totalRecordedCost").GetDecimal());
+        Assert.Equal(140_000, mine.GetProperty("contribution").GetDecimal());
+        Assert.Equal(1, mine.GetProperty("confirmedPeriods").GetInt32());
+        Assert.Equal(1, mine.GetProperty("unconfirmedPeriods").GetInt32());
+
+        var august = await c.GetFromJsonAsync<JsonElement>("/api/reports/brand-profitability?currency=TRY&from=2026-08&to=2026-08");
+        var only = august.GetProperty("rows").EnumerateArray().ToList();
+        Assert.Equal(1, only.Single(x => x.GetProperty("brandId").GetGuid() == brand).GetProperty("periods").GetInt32());
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await analyst.GetAsync("/api/reports/brand-profitability?currency=TRY")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/reports/brand-profitability?currency=XX")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/reports/brand-profitability?currency=TRY&from=2026-13")).StatusCode);
+    }
+    [Fact]
     public async Task Analyst_cannot_read_sensitive_costs_investment_or_audit_details()
     {
         await using var f = new WorkflowApiFactory(); var (id, deal) = await Seed(f); using var c = Client(f); using var analyst = Client(f, "Analyst"); using var partner = Client(f, "Partner");

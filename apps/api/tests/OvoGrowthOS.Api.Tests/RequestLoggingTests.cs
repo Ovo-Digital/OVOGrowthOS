@@ -109,7 +109,11 @@ public sealed class RequestLoggingTests
             client.DefaultRequestHeaders.Authorization = new("Bearer", token);
             var health = await client.GetAsync("/health?gizli=sorgu-degeri-9911");
             health.EnsureSuccessStatusCode();
-            await Task.Delay(50);
+            // Console sink flushes asynchronously; under parallel load a fixed delay flakes.
+            // Poll for the expected line instead of assuming it arrives within 50 ms.
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(10);
+            while (!output.Text.Contains("/health") && DateTimeOffset.UtcNow < deadline)
+                await Task.Delay(50);
         }
         finally
         {

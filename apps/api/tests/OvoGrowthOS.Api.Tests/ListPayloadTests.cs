@@ -117,4 +117,33 @@ public sealed class ListPayloadTests
         var audit = JsonDocument.Parse(await client.GetStringAsync("/api/audit?page=1&pageSize=50")).RootElement;
         Assert.True(audit.GetProperty("total").GetInt32() >= 100);
     }
+
+    [Fact]
+    public async Task Dashboard_responses_stay_small_fast_and_snapshot_free()
+    {
+        await using var factory = new WorkflowApiFactory();
+        await factory.SeedAsync();
+        await SeedAsync(factory);
+
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+
+        foreach (var url in new[] { "/api/dashboard?year=2026&month=8", "/api/dashboard?year=2026&month=8&scope=All&currency=TRY" })
+        {
+            var warm = await client.GetAsync(url);
+            warm.EnsureSuccessStatusCode();
+
+            var watch = Stopwatch.StartNew();
+            var response = await client.GetAsync(url);
+            var content = await response.Content.ReadAsByteArrayAsync();
+            watch.Stop();
+            response.EnsureSuccessStatusCode();
+
+            var body = Encoding.UTF8.GetString(content);
+            Assert.True(content.Length <= 150_000, $"{url} → {content.Length} bayt, üst sınır 150000 bayt");
+            Assert.True(watch.ElapsedMilliseconds < 2000, $"{url} → {watch.ElapsedMilliseconds} ms, üst sınır 2000 ms");
+            foreach (var key in new[] { "snapshotjson", "oldvaluejson", "newvaluejson" })
+                Assert.DoesNotContain(key, body, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 }

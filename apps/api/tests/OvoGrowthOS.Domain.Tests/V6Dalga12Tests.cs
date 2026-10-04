@@ -181,12 +181,66 @@ public sealed class V6Dalga12Tests
     }
 
     [Fact]
-    public void Promise_reminder_is_only_due_tomorrow_or_overdue()
+    public void Reliability_counts_only_kept_and_broken_promises()
+    {
+        MonthlyPerformance Promised(Guid brand, int month, decimal amount, DateOnly promisedOn, decimal paidAfter, bool cancelled = false)
+        {
+            var before = Guid.NewGuid();
+            var period = new MonthlyPerformance
+            {
+                BrandId = brand, Status = MonthlyPerformanceStatus.Invoiced, Year = 2026, Month = month,
+                Deal = new Deal { Name = "Güven anlaşması", Currency = "TRY" },
+                Collection = new CollectionAccount
+                {
+                    ReceivableAmount = 100, Currency = "TRY",
+                    Payments = [new() { Id = before, Amount = 100 - amount, PaidOn = Today.AddDays(-20) }],
+                    Promise = new CollectionPromise
+                    {
+                        Amount = amount, PromisedOn = promisedOn, IsCancelled = cancelled,
+                        PaymentIdsAtRecording = [before],
+                    }
+                }
+            };
+            if (paidAfter > 0)
+                period.Collection.Payments.Add(new() { Amount = paidAfter, PaidOn = promisedOn });
+            return period;
+        }
+
+        var good = Guid.NewGuid(); var bad = Guid.NewGuid();
+        var rows = new[]
+        {
+            (Promised(good, 6, 60, Today.AddDays(-30), 60), "Düzenli Marka"),
+            (Promised(good, 7, 60, Today.AddDays(-10), 0), "Düzenli Marka"),
+            (Promised(good, 8, 60, Today.AddDays(5), 0), "Düzenli Marka"),
+            (Promised(bad, 7, 80, Today.AddDays(-12), 0), "Geciken Marka"),
+            (Promised(bad, 8, 80, Today.AddDays(-9), 0, cancelled: true), "Geciken Marka"),
+        };
+        var rank = PromiseReliability.Rank(rows, Today, "TRY");
+        Assert.Equal(2, rank.Count);
+        // Worst first: broken-only brand sorts before the half-kept one.
+        Assert.Equal(bad, rank[0].BrandId);
+        Assert.Equal(0, rank[0].Score);
+        Assert.Equal(1, rank[0].Broken);
+        Assert.Equal(12, rank[0].AvgOverdueDays);
+        Assert.Equal(good, rank[1].BrandId);
+        Assert.Equal(0.5m, rank[1].Score);
+        Assert.Equal(1, rank[1].Broken);
+        Assert.Equal(1, rank[1].Waiting);
+        Assert.Equal(10, rank[1].AvgOverdueDays);
+        Assert.Empty(PromiseReliability.Rank(rows, Today, "USD"));
+    }
+    [Fact]
+    public void Promise_reminder_follows_the_due_cascade()
     {
         Assert.Null(CollectionPromises.Reminder(null, Today));
-        Assert.Equal(CollectionPromises.ReminderOverdue, CollectionPromises.Reminder(new PromiseBalance(10, "Overdue", Today.AddDays(-2)), Today));
+        Assert.Equal(CollectionPromises.ReminderDueIn3, CollectionPromises.Reminder(new PromiseBalance(10, "Waiting", Today.AddDays(3)), Today));
         Assert.Equal(CollectionPromises.ReminderDueTomorrow, CollectionPromises.Reminder(new PromiseBalance(10, "Waiting", Today.AddDays(1)), Today));
-        Assert.Null(CollectionPromises.Reminder(new PromiseBalance(10, "Waiting", Today), Today));
+        Assert.Equal(CollectionPromises.ReminderDueToday, CollectionPromises.Reminder(new PromiseBalance(10, "Waiting", Today), Today));
+        Assert.Null(CollectionPromises.Reminder(new PromiseBalance(10, "Waiting", Today.AddDays(2)), Today));
+        Assert.Equal(CollectionPromises.ReminderOverdue, CollectionPromises.Reminder(new PromiseBalance(10, "Overdue", Today.AddDays(-2)), Today));
+        Assert.Equal(CollectionPromises.ReminderOverdue, CollectionPromises.Reminder(new PromiseBalance(10, "Overdue", Today.AddDays(-6)), Today));
+        Assert.Equal(CollectionPromises.ReminderOverdue7, CollectionPromises.Reminder(new PromiseBalance(10, "Overdue", Today.AddDays(-7)), Today));
+        Assert.Equal(CollectionPromises.ReminderOverdue7, CollectionPromises.Reminder(new PromiseBalance(10, "Overdue", Today.AddDays(-30)), Today));
         Assert.Null(CollectionPromises.Reminder(new PromiseBalance(10, "Covered", Today.AddDays(1)), Today));
         Assert.Null(CollectionPromises.Reminder(new PromiseBalance(0, "NeedsReview", Today.AddDays(1)), Today));
     }

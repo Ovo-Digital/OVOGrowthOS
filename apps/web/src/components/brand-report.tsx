@@ -33,6 +33,19 @@ export function BrandReportView({ id }: { id: string }) {
     const url = URL.createObjectURL(new Blob(['\uFEFF', d.csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = `ovo-marka-raporu-${d.year}-${String(d.month).padStart(2, '0')}-${d.audience}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  async function downloadPdf() {
+    if (exporting || !d) return;
+    setExporting(true);
+    try {
+      const response = await fetch(`${API_URL}/api/reports/brands/${id}/pdf?year=${d.year}&month=${d.month}&scope=${d.scope}&audience=${d.audience}&currency=${encodeURIComponent(d.currency)}`, { headers: { authorization: 'Bearer ' + token() } });
+      if (!response.ok) throw new Error('PDF dosyası oluşturulamadı.');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a'); link.href = url; link.download = `ovo-marka-raporu-${d.year}-${String(d.month).padStart(2, '0')}-${d.audience}.pdf`; link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent('ovo:notice', { detail: { message: e instanceof Error ? e.message : 'PDF dosyası oluşturulamadı.', tone: 'error' } }));
+    } finally { setExporting(false); }
+  }
   async function downloadXlsx() {
     if (exporting || !d) return;
     setExporting(true);
@@ -55,7 +68,7 @@ export function BrandReportView({ id }: { id: string }) {
         <label>Para birimi<input aria-describedby="report-currency-help" className="input mt-1 w-28" maxLength={3} value={currency || d?.currency || ''} onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="TRY" /></label>
         <button className="rounded-lg border px-3 py-2 text-sm" onClick={() => query.refetch()} disabled={query.isFetching || !period || !validCurrency}>Raporu yenile</button>
       </div><p id="report-currency-help" className="mt-3 text-xs">Üç harfli para birimi kullanın (TRY, USD, EUR). Dönem/kapsam değişince yeni rapor hazırlanır. İndirilen tablo ve PDF’ye kaydedilen görünüm, ekrandaki aynı rapor anını kullanır; Excel dosyası aynı filtreyle sunucuda hazırlanır ve birkaç saniye fark edebilir.</p></Card>
-      <div className="mb-4 flex flex-wrap gap-3"><button disabled={!d || query.isFetching || query.isError} onClick={() => window.print()} className="rounded-lg bg-[#303030] px-3 py-2 text-sm text-white">PDF’ye kaydet / yazdır</button><button disabled={!d || query.isFetching || query.isError} onClick={downloadCsv} className="rounded-lg border px-3 py-2 text-sm">Tabloyu indir (CSV)</button><button disabled={!d || query.isFetching || query.isError || exporting} onClick={() => void downloadXlsx()} className="rounded-lg border px-3 py-2 text-sm">{exporting ? 'Dosya hazırlanıyor…' : 'Excel olarak indir (.xlsx)'}</button><Link href={`/brands/${id}`} className="rounded-lg border px-3 py-2 text-sm">Markayı aç</Link></div>
+      <div className="mb-4 flex flex-wrap gap-3"><button disabled={!d || query.isFetching || query.isError} onClick={() => window.print()} className="rounded-lg bg-[#303030] px-3 py-2 text-sm text-white">PDF’ye kaydet / yazdır</button><button disabled={!d || query.isFetching || query.isError} onClick={downloadCsv} className="rounded-lg border px-3 py-2 text-sm">Tabloyu indir (CSV)</button><button disabled={!d || query.isFetching || query.isError || exporting} onClick={() => void downloadXlsx()} className="rounded-lg border px-3 py-2 text-sm">{exporting ? 'Dosya hazırlanıyor…' : 'Excel olarak indir (.xlsx)'}</button><button disabled={!d || query.isFetching || query.isError || exporting} onClick={() => void downloadPdf()} className="rounded-lg border px-3 py-2 text-sm">{exporting ? 'Dosya hazırlanıyor…' : 'PDF olarak indir'}</button><Link href={`/brands/${id}`} className="rounded-lg border px-3 py-2 text-sm">Markayı aç</Link></div>
       <p className="mb-3 text-sm"><Link className="underline" href={`/brands/${id}/targets`}>Aylık hedef ve bütçeyi karşılaştır</Link> · Hedef ekranında aynı ayı ve para birimini seçin. İç ekip hedefleri bu PDF/CSV çıktısına eklenmez.</p>
       <p className="mb-4 text-xs">PDF düğmesinden sonra tarayıcının hedef bölümünde “PDF olarak kaydet” seçin; yazıcıya göndermek zorunda değilsiniz. Paylaşmadan önce görünümün “Markayla paylaşılabilir” olduğundan emin olun.</p>
     </div>

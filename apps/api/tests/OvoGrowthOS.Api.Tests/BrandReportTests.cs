@@ -50,6 +50,21 @@ public sealed class BrandReportTests
         Assert.Contains("OVO iç yönetim - paylaşmayın", d.GetProperty("csv").GetString());
     }
     [Fact]
+    public async Task Pdf_export_matches_the_whitelisted_view_and_blocks_internal_for_analysts()
+    {
+        await using var f = new WorkflowApiFactory(); var id = await Seed(f);
+        using var analyst = Client(f, "Analyst"); using var admin = Client(f);
+        Assert.Equal(HttpStatusCode.Forbidden, (await analyst.GetAsync($"/api/reports/brands/{id}/pdf?year=2026&month=8&audience=internal")).StatusCode);
+        var response = await analyst.GetAsync($"/api/reports/brands/{id}/pdf?year=2026&month=8&audience=brand");
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("application/pdf", response.Content.Headers.ContentType?.MediaType);
+        Assert.EndsWith(".pdf", response.Content.Headers.ContentDisposition?.FileName);
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(await response.Content.ReadAsByteArrayAsync(), 0, 4));
+        var staff = await admin.GetAsync($"/api/reports/brands/{id}/pdf?year=2026&month=8&audience=internal");
+        staff.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/reports/brands/{Guid.NewGuid()}/pdf?year=2026&month=8")).StatusCode);
+    }
+    [Fact]
     public async Task Xlsx_export_matches_the_whitelisted_view_and_blocks_internal_for_analysts()
     {
         await using var f = new WorkflowApiFactory(); var id = await Seed(f);

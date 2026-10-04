@@ -32,6 +32,15 @@ public static partial class WorkflowEndpoints
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
             await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).Include(x => x.Adjustments)
                 .SingleOrDefaultAsync(x => x.Id == id) is { } p ? Results.Ok(p) : Results.NotFound());
+        group.MapGet("/{id:guid}/statement-pdf", async (Guid id, AppDbContext db) =>
+        {
+            var p = await CollectionQuery(db).AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).SingleOrDefaultAsync(x => x.Id == id);
+            if (p is null) return Results.NotFound();
+            var today = TeamWork.Today(DateTimeOffset.UtcNow);
+            var payments = (p.Collection?.Payments ?? []).ToList();
+            return Results.File(DealStatementPdf.BuildStatement(p, p.Brand?.Name ?? "Marka", Collections.Balance(p, today), payments),
+                "application/pdf", $"hakedis-{p.Year}-{p.Month:00}-{id:N}.pdf");
+        });
         group.MapPost("/calculate", async (PerformanceRequest request, AppDbContext db) =>
         {
             var deal = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active);

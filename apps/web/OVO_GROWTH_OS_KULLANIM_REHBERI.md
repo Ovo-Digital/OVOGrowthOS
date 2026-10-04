@@ -896,10 +896,20 @@ Listeyi ve özet satırları **PDF'ye kaydet / yazdır** düğmesiyle yazdırabi
 3. Para gerçekten geldiğinde **Gerçekleşmiş ödeme ekle** bölümüne KDV hariç ödeme payını, gerçek ödeme tarihini ve benzersiz ödeme referansını yazın. Tutarı kontrol ettiğinizi onaylayıp kaydedin. Bankadaki KDV dahil toplamı doğrudan bu alana yazmayın.
 4. Örneğin 100.000 TL hakedişe 40.000 TL girildiğinde **Kısmen ödendi**, **60.000 TL kalan alacak** görünür. Sonraki 60.000 TL de kaydedildiğinde alacak kapanır ve durum **Ödendi** olur. Hakediş, ciro ve kapalı dönemin kâr hesabı değişmez.
 5. **Hakedişler** listesindeki tahsilat görünümünden alacağı kalanları, kısmen ödenenleri, vadesi geçenleri veya alacağı kapananları seçin. Üstteki ödenen/kalan/geciken toplamları bütün sayfalardaki aynı filtreye uyan kayıtları kapsar. Farklı para birimlerini birbirine eklemeyin.
+6. Hakediş dökümü sayfasındaki **Dökümü PDF indir** düğmesi dönem sonucu, fatura bilgisi ve gerçekleşmiş ödemeleri tek dosya indirir. Dosya indirildiği andaki durumu gösterir; sonraki ödemeler kendiliğinden yansımaz.
 
 Yeni faturalarda tarih ve vade zorunludur. Önceden faturalanmış veya ödenmiş kayıtta belge tarihi bilinmiyorsa boş bırakılabilir; tahmini tarih yazmayın. Önceden **Ödendi** işaretlenmiş hakedişler ödenmiş olarak korunur. Bu tutarlar için yeniden ödeme girmek çift sayım olur; sistem buna izin vermez. Eski tarihsiz tutarı yeniden tarihlendirme bu aşamanın kapsamında değildir.
 
-Her ödeme referansı yalnızca bir hakedişte kullanılabilir. Aynı banka hareketini birden çok hakedişe otomatik bölme, fazla ödeme, gerçek para iadesi ve mahsup bu aşamada desteklenmez. Negatif hakediş **İnceleme gerekli** olarak gösterilir; otomatik olarak borç veya iade sayılmaz. Ödeme tutarları en fazla dört ondalık hanelidir; küçük kalanlar ödeme ekranında gizlenmez.
+Her ödeme referansı yalnızca bir hakedişte kullanılabilir. Fazla ödeme, gerçek para iadesi ve mahsup bu aşamada desteklenmez. Negatif hakediş **İnceleme gerekli** olarak gösterilir; otomatik olarak borç veya iade sayılmaz. Ödeme tutarları en fazla dört ondalık hanelidir; küçük kalanlar ödeme ekranında gizlenmez.
+
+### Toplu ödeme birden çok döneme nasıl dağıtılır?
+
+Marka tek havaleyle birden çok ayın borcunu gönderdiğinde **Hakedişler → Alacak yaşı ve vade takvimini aç → Toplu ödemeyi dönemlere dağıt** bölümünü kullanın (yönetici ve iş ortağı hesaplarında görünür).
+
+1. Markayı, bankaya gelen toplam tutarı, gerçek ödeme tarihini ve dekonttaki referansı yazıp **Dağıtımı hesapla** düğmesine basın.
+2. Sistem tutarı vadesi en eski açık alacaktan başlayarak dönemlere paylaştırır. Bu yalnız öneridir; hiçbir kayıt kendiliğinden oluşmaz.
+3. Her satırda önerilen tutarı ve kaydedilince kalacak tutarı görün. **Bu döneme kaydet** düğmesi o dönemin payını referansa sıra ekleyerek kaydeder (örneğin `BANKA-118-1/3`). Dağıtılmayan tutar kaydedilmez; tutarı ve açık alacakları kontrol edin.
+4. İnceleme gereken dönemler dağıtıma alınmaz; başka para birimindeki açık alacaklar ayrı belirtilir, birbirine eklenmez.
 
 ### Ödeme veya vade yanlış girildiyse
 
@@ -930,6 +940,10 @@ Raporu açmak eski kayıtları, ticari oranları veya kilitli hesapları değiş
 ### Sektör karşılaştırması
 
 **Raporlar** sayfasındaki **Sektör karşılaştırması** kartında bir ay seçerek sektörlerin ortalama brüt kâr marjını, iade oranını ve hedef gerçekleşme oranını yan yana görürsünüz. Yalnız o ay ekip onayı almış veya kilitli sonucu olan markalar hesaba katılır; hedefi olmayan ya da hedef para birimi anlaşma para birimiyle eşleşmeyen markalarda hedef gerçekleşme boş görünür. Seçili ayda uygun kayıt yoksa kart bunu açıkça yazar. Karşılaştırma bilgi amaçlıdır; hiçbir markanın sonucunu, onayını veya kilitli kaydını değiştirmez.
+
+### Hangi marka gerçekten kazandırıyor?
+
+Aynı sayfadaki **Hangi marka gerçekten kazandırıyor?** kartı, kapanmış dönemlerdeki OVO hakedişlerinden kontrolü tamamlanmış gerçek hizmet giderlerini düşerek markaları katkı büyüklüğüne göre sıralar (yönetici ve iş ortağı hesaplarında görünür; analist ve müşteri hesaplarında gösterilmez). Para birimi ve isteğe bağlı dönem aralığı seçilir. Kontrolü bitmemiş giderler katkıyı şişirmez; kaç dönemin gider kontrolü beklediği tabloda ayrıca yazılır. Hakedişi sıfır olan markada oran hesaplanamaz. Kart yalnız bilgi verir; müşteri portalında paylaşılmaz.
 
 ### Excel veya CSV dosyasından aylık sonuçları topluca girmek
 
@@ -973,8 +987,9 @@ Tutarlar KDV hariçtir. Katkı vergi sonrası net kâr, hakediş banka bakiyesi 
 1. Markayı, ayı, kapsamı, para birimini ve rapor görünümünü kontrol edin. Güncel bilgileri yeniden almak için **Raporu yenile** düğmesini kullanın.
 2. **Tabloyu indir (CSV)** ile ekrandaki raporun tablosunu indirin. Excel'de sütunlar tek alanda açılırsa ayırıcı olarak noktalı virgül, kodlama olarak UTF-8 seçin. “0–1” yazan oran sütununda 0,20 değeri %20 demektir.
 3. **Excel olarak indir (.xlsx)** ile aynı raporu resmi Excel dosyası olarak alın. Sayısal tutarlar gerçek sayı hücreleridir; dosya sunucuda, ekrandaki aynı filtreyle hazırlanır (birkaç saniye fark edebilir) ve CSV'den farklı olarak Excel'de açılışta ayıklama gerekmez.
-4. **PDF’ye kaydet / yazdır** ile tarayıcının yazdırma ekranını açın. Hedef olarak **PDF olarak kaydet**, kâğıt olarak A4 seçin. Tarayıcının eklediği web adresi ve sayfa başlığını istemiyorsanız üstbilgi/altbilgi seçeneğini kapatın. Kaydetmeden önce ön izlemeyi kontrol edin.
-5. Markaya göndermeden önce çıktının **Markayla paylaşılabilir** olduğunu doğrulayın. İç yönetim raporunu marka ile paylaşmayın.
+4. **PDF olarak indir** ile aynı raporu sunucuda hazırlanan PDF dosyası olarak alın. Dosya ekrandaki görünümle (paylaşılabilir veya iç yönetim) aynı içeriği taşır; iç yönetim PDF'i yalnız yönetici ve ortak indirebilir.
+5. **PDF’ye kaydet / yazdır** ile tarayıcının yazdırma ekranını açın. Hedef olarak **PDF olarak kaydet**, kâğıt olarak A4 seçin. Tarayıcının eklediği web adresi ve sayfa başlığını istemiyorsanız üstbilgi/altbilgi seçeneğini kapatın. Kaydetmeden önce ön izlemeyi kontrol edin.
+6. Markaya göndermeden önce çıktının **Markayla paylaşılabilir** olduğunu doğrulayın. İç yönetim raporunu marka ile paylaşmayın.
 
 Tablo ve yazdırılan görünüm aynı rapor anını kullanır; ay, kapsam, para birimi, hazırlanma zamanı ve kesinleşme uyarısı çıktıda bulunur. Excel dosyası indirildiği anda sunucuda yeniden hazırlanır, bu yüzden ekrandaki rapordan birkaç saniye farklı bir anı içerebilir. Başka bir ekranda kayıt değişirse elinizdeki indirilmiş dosya kendiliğinden değişmez; raporu yenileyip yeniden indirin. Açıklamalar otomatik ama sabit kurallara dayanır; yapay zekânın tahmini veya gelecek performans garantisi değildir.
 
@@ -1278,6 +1293,8 @@ Anlaşma ekranındaki **Sözleşme ve ek protokol belgesi (PDF)** düğmesi, anl
 
 Anlaşma; taslak, iç inceleme, markaya önerildi, görüşme, kabul edildi ve etkin durumlarından geçer. Etkin bir anlaşma gerekçesi kaydedilerek yenilenebilir, sonlandırılabilir veya süresi doldu olarak kapatılabilir. Kabul edilmiş ya da kapanmış ticari şartlar geriye dönük değiştirilemez.
 
+Anlaşma sayfasındaki **Anlaşma özetini indir (PDF)** düğmesi ticari koşullar ile koşulların o andaki durumunu tek dosya indirir. Bu özet iç ekip belgesidir; imzalı sözleşme yerine geçmez.
+
 ### Anlaşma şablonları
 
 Yöneticiler **Ayarlar → Anlaşma şablonları** sayfasından standart ticari seçenekleri yönetir. Şablondaki ücret, oran, süre ve model; değerlendirme sonrası oluşturulan seçeneklerin başlangıç değeridir. Şablon değişikliği eski anlaşmaları değiştirmez.
@@ -1358,7 +1375,7 @@ Yönetici hesabınızda **Ayarlar → Hesap güvenliği** yolunu açın. Bu koru
 - **Yaklaşan veya gecikmiş görev:** Son tarihi yarın, bugün veya geçmiş olan görev için hatırlatma oluşur. Aynı görev ve son tarih her kontrolde yeniden bildirilmez. Görev tamamlanırsa, başka kişiye atanırsa veya son tarihi değişirse eski bildirim görünmez.
 - **Müşteri konuşması:** Yeni soru ve devam mesajı atanmış yönetici/iş ortağına; henüz sorumlusu yoksa yöneticilere gösterilir. Ekip yanıtı yalnız soruyu açan müşteri hesabına gider, aynı markanın diğer müşteri hesaplarına gitmez.
 - **Yeni rapor:** Paylaşılmış yeni rapor, ilgili markanın etkin müşteri hesaplarına bildirilir. Paylaşımı geri çekilen raporun bildirimi artık açılmaz; henüz gönderilmemiş e-postası iptal edilir. Bu özellik kendiliğinden rapor yayımlamaz.
-- **Ödeme sözü hatırlatması:** Kendinize atanmış bir ödeme sözünün vadesi yarın geldiğinde veya geciktiğinde panelde hatırlatma oluşur; **E-posta tercihlerim**'den ilgili tercihi açtıysanız e-posta da gönderilir. Aynı söz ve tarih için tekrar bildirim yapılmaz. Hatırlatma ödeme alındığı anlamına gelmez; gerçek ödemeyi hakediş ekranından kontrol edin.
+- **Ödeme sözü hatırlatması:** Kendinize atanmış bir ödeme sözü için panelde kademeli hatırlatma oluşur: vadeden 3 gün önce, vade günü, vadeden 1 gün önce, gecikince ve gecikme 7 günü aşınca. **E-posta tercihlerim**'den ilgili tercihi açtıysanız e-posta da gönderilir. Her kademe aynı söz için bir kez bildirilir; söz güncellenirse eski kademenin bildirimi görünmez, güncel kademenin bildirimi oluşur. Hatırlatma ödeme alındığı anlamına gelmez; gerçek ödemeyi hakediş ekranından kontrol edin.
 - **Otomatik sipariş senkronu:** Mağaza API ayarı kayıtlı markaların bir önceki ayın siparişleri her ayın ilk günü otomatik getirildiğinde yönetici hesaplarına sonuç bildirimi düşer: hangi dönemde, kaç markanın güncellendiği ve kaçı başarısız olduğu yazılır. Bu bildirim için e-posta gönderilmez.
 - **Yenileme hatırlatması:** Etkin anlaşmanın bitiş tarihine 30 gün ve 7 gün kala yönetici ve iş ortağı hesaplarına panel bildirimi düşer; bitiş gününde ayrıca "bitiş günü" bildirimi görünür. Aynı anlaşma ve bitiş tarihi için tekrar bildirim yapılmaz; anlaşma sonlandığında eski bildirim görünmez. Bu bildirim için e-posta gönderilmez; yenileme kararı anlaşma ekranından verilir. İlk hatırlatmayla birlikte sistem aynı anlaşmanın bitiş tarihine göre bir **"Anlaşma yenilemesi" görevini otomatik açar** ve bu görevi hesaplardaki ilk yöneticiye atar; **İşlerim** listesinde görünür, tektir (tekrar açılmaz), elle açılmış görevler gibi tamamlanabilir ve düzenlenebilir; görev kapatılsa da sistem onu yeniden oluşturmaz.
 - **Haftalık yönetim özeti:** Yönetici ve iş ortağı hesaplarında her pazartesi Türkiye saatiyle 09.00'da bir özet hazırlanır: gecikmiş veya yaklaşan ödeme sözleri, onay bekleyen dönemler, veri kalitesi uyarıları, hedefin altındaki markalar ve son 7 günün sistem sağlığı (gönderilemeyen e-posta, başarısız otomatik sipariş veya reklam harcaması senkronu yoksa bu da ayrıca belirtilir). Tercih açıksa e-posta gönderilir; iletinin bağlantısı raporlar sayfasına götürür, değerler e-postaya yazılmaz.
@@ -1867,6 +1884,10 @@ Takvimin üstündeki **Tahsilat performansı** kartı, seçili para birimindeki 
 
 Yalnız **vade tarihi bilinen ve kapanan** tahsilatlar ölçülür. İptal edilen ödemeler, ödeme tarihi bilinmeyen eski “ödendi” tutarları, inceleme gereken kayıtlar ve henüz kapanmamış alacaklar dışarıdadır. Kart yalnız geçmiş bir durumu anlatır; tahsilat garantisi veya müşteri değerlendirme puanı değildir.
 
+### Hangi marka sözünü tutuyor?
+
+Aynı sayfadaki **Hangi marka sözünü tutuyor?** kartı, markaların kayıtlı ödeme sözlerindeki disiplinini yan yana gösterir: kalanı kalmayan söz tutmuş, vadesi geçip kalanı olan söz tutmamış sayılır. Bekleyen sözler ve kaldırılmış kayıtlar skora girmez. Skor yalnız kayıtlı sözlere dayanır; tahmin veya ödeme garantisi değildir. Yenileme görüşmesinde söz disiplinini anlatmak için kullanın; tek başına yenileme kararı vermeyin.
+
 ### Boş görünüm ve inceleme uyarısı
 
 - **Kapanmış dönem kaydı yok** mesajı, uygulamada bu para biriminde uygun kaynak olmadığı anlamına gelir; işletmenin hiç alacağı olmadığını kanıtlamaz.
@@ -1956,7 +1977,7 @@ Bu özet **yalnız bilgi verir**. Otomatik ücret artışı yapmaz, hiçbir anla
 
 ### Yenileme müzakere simülatörü
 
-Aynı kartın içindeki **Yenileme müzakere simülatörü**, masadaki “şu oranla anlatsak ne olur?” sorusunu üç alanda cevaplar: **Ciro değişimi (%)**, **Pay değişimi (puan)** ve **Aylık sabit ücret değişimi**. Değerleri yazıp **Simülasyonu çalıştır** düğmesine bastığınızda dayanak dönem bilgisi, o dönemin cirosu ve katkı tutarı, OVO hakedişi, markaya kalan katkı, etkin oran, gelir payı ve aylık sabit ücret “önce → sonra” biçiminde karşılaştırılır; hakediş ve katkı farkı ayrıca yazılır.
+Aynı kartın içindeki **Yenileme müzakere simülatörü**, masadaki “şu oranla anlatsak ne olur?” sorusunu üç alanda cevaplar: **Ciro değişimi (%)**, **Pay değişimi (puan)** ve **Aylık sabit ücret değişimi**. Sık kullanılanlar için **Hazır** düğmeleri (pay +1 puan, sabit +5.000, ciro +%10) alanları tek dokunuşla doldurur. Değerleri yazıp **Simülasyonu çalıştır** düğmesine bastığınızda dayanak dönem bilgisi, o dönemin cirosu ve katkı tutarı, OVO hakedişi, markaya kalan katkı, etkin oran, gelir payı ve aylık sabit ücret “önce → sonra” biçiminde karşılaştırılır; hakediş ve katkı farkı ayrıca yazılır. **Karşılaştırmaya ekle** ile en fazla üç senaryoyu (A, B, C) yan yana sabitleyip hangisinin hakedişi ve marka katkısı daha iyi görebilirsiniz; **Karşılaştırmayı temizle** tabloyu sıfırlar.
 
 **Okuma kuralları:** Simülasyon **yalnız bilgi verir; kaydetmez**, hiçbir anlaşma koşulunu, hakedişi veya dönemi değiştirmez. Dayanak olarak markanın **son kilitlenmiş dönemi** alınır: o dönemin hesaplanabilir cirosu ve katkı öncesi tutarı esas alınır; ciro değişimi katkı tutarını da aynı oranda değiştirdiği varsayılmıştır. Kademeli pay modelinde pay değişimi uygulanmaz, sabit ücretli anlaşmada pay değişimi yoktur; asgari ücretli modelde hesaplanan pay asgari ücretin altına inemez. Ciro değişimi -%90 ile +%300, pay değişimi -10 ile +20 puan aralığındadır; sabit ücret sıfırın altına inemez. Kilitlenmiş dönem yoksa dayanak sıfır alınır ve bu ekranda ayrıca belirtilir. Sonuçlar toplantı notudur; yenileme kararı ayrıca verilir.
 

@@ -42,7 +42,7 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
                 Add(NotificationKind.TaskDue, task.Id, $"due:{task.Id}:{task.DueOn:yyyy-MM-dd}", now, task.DueOn);
             var promiseFrom = today.AddDays(-60);
             var promises = await db.CollectionPromises.AsNoTracking()
-                .Where(x => x.OwnerId == userId && !x.IsCancelled && x.PromisedOn >= promiseFrom && x.PromisedOn <= today.AddDays(1))
+                .Where(x => x.OwnerId == userId && !x.IsCancelled && x.PromisedOn >= promiseFrom && x.PromisedOn <= today.AddDays(3))
                 .ToListAsync(ct);
             foreach (var promise in promises)
             {
@@ -53,7 +53,14 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
                 if (promisePeriod is null) continue;
                 var reminder = CollectionPromises.Reminder(CollectionPromises.Balance(promisePeriod, today), today);
                 if (reminder is null) continue;
-                var prefix = reminder == CollectionPromises.ReminderOverdue ? "promise-overdue" : "promise-due";
+                var prefix = reminder switch
+                {
+                    CollectionPromises.ReminderOverdue7 => "promise-overdue7",
+                    CollectionPromises.ReminderOverdue => "promise-overdue",
+                    CollectionPromises.ReminderDueIn3 => "promise-due3",
+                    CollectionPromises.ReminderDueToday => "promise-today",
+                    _ => "promise-due",
+                };
                 Add(NotificationKind.PromiseReminder, promise.Id, $"{prefix}:{promise.Id}:{promise.PromisedOn:yyyy-MM-dd}", now, today);
             }
         }
@@ -241,14 +248,24 @@ public sealed class NotificationService(AppDbContext db, SmtpSettingsProvider pr
             var balance = CollectionPromises.Balance(promisePeriod, TeamWork.Today(now));
             var reminder = CollectionPromises.Reminder(balance, TeamWork.Today(now));
             if (reminder is null || balance is null) return null;
-            var overdueRow = n.EventKey.StartsWith("promise-overdue:", StringComparison.Ordinal);
-            if (overdueRow != (reminder == CollectionPromises.ReminderOverdue)) return null;
+            var expected = n.EventKey.StartsWith("promise-overdue7:", StringComparison.Ordinal) ? CollectionPromises.ReminderOverdue7
+                : n.EventKey.StartsWith("promise-overdue:", StringComparison.Ordinal) ? CollectionPromises.ReminderOverdue
+                : n.EventKey.StartsWith("promise-due3:", StringComparison.Ordinal) ? CollectionPromises.ReminderDueIn3
+                : n.EventKey.StartsWith("promise-today:", StringComparison.Ordinal) ? CollectionPromises.ReminderDueToday
+                : n.EventKey.StartsWith("promise-due:", StringComparison.Ordinal) ? CollectionPromises.ReminderDueTomorrow
+                : null;
+            if (expected is null || reminder != expected) return null;
             var name = promisePeriod.Brand?.Name ?? "Marka";
             var currency = promisePeriod.Collection?.Currency ?? promisePeriod.Deal?.Currency ?? "";
             var remaining = balance.Remaining.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
-            return overdueRow
-                ? new($"Ödeme sözü gecikti: {name} ({remaining} {currency} kaldı)", "/commissions/planning")
-                : new($"Yarın ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning");
+            return expected switch
+            {
+                CollectionPromises.ReminderOverdue7 => new($"Ödeme sözü 7 günden uzun süredir gecikiyor: {name} ({remaining} {currency} kaldı)", "/commissions/planning"),
+                CollectionPromises.ReminderOverdue => new($"Ödeme sözü gecikti: {name} ({remaining} {currency} kaldı)", "/commissions/planning"),
+                CollectionPromises.ReminderDueIn3 => new($"3 gün sonra ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning"),
+                CollectionPromises.ReminderDueToday => new($"Bugün ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning"),
+                _ => new($"Yarın ödeme sözü var: {name} ({remaining} {currency})", "/commissions/planning"),
+            };
         }
         if (n.Kind == NotificationKind.RenewalDue)
         {

@@ -223,6 +223,58 @@ public sealed class StoreOrderSyncTests
         Assert.Equal(28.30m, panel.GetProperty("difference").GetDecimal());
     }
 
+    [Fact]
+    public async Task Shopify_sync_uses_admin_token_directly_without_grandnode_login()
+    {
+        await using var p = new WorkflowApiFactory();
+        var orders = new FakeOrders();
+        // GrandNode jeton akışı kapalı olsa bile Shopify senkronu çalışmalı;
+        // Shopify yolunda IStoreTokenClient hiç kullanılmaz.
+        await using var f = Setup(p, new FakeToken { Accepted = false }, orders);
+        var brand = await SeedBrand(f); using var c = await Client(f);
+        var save = await c.PutAsJsonAsync($"/api/brands/{brand}/api-settings",
+            new BrandApiSettingsRequest(0, "https://demo.myshopify.com", "", "shpat-test-token-12345", "Shopify"));
+        save.EnsureSuccessStatusCode();
+        orders.Drafts.Add(Draft(1001, 2500m, currency: "USD"));
+
+        var response = await c.PostAsJsonAsync(SyncUrl(brand), new StoreOrderSyncRequest("2026-08"));
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(StorePlatform.Shopify, orders.LastPlatform);
+        Assert.Contains("1 yeni, 0 güncellenen", await response.Content.ReadAsStringAsync());
+        await Db(f, async db =>
+        {
+            var row = Assert.Single(await db.StoreOrderStagings.ToListAsync());
+            Assert.Equal("USD", row.Currency);
+            Assert.Equal(2500m, row.OrderTotal);
+        });
+    }
+
+    [Fact]
+    public async Task Shopify_connection_test_uses_order_client_result()
+    {
+        await using var p = new WorkflowApiFactory();
+        var orders = new FakeOrders();
+        await using var f = Setup(p, new FakeToken { Accepted = false }, orders);
+        using var c = await Client(f);
+
+        var okBrand = await SeedBrand(f);
+        var okSave = await c.PutAsJsonAsync($"/api/brands/{okBrand}/api-settings",
+            new BrandApiSettingsRequest(0, "https://demo.myshopify.com", "", "shpat-test-token-12345", "Shopify"));
+        okSave.EnsureSuccessStatusCode();
+        var okRevision = JsonDocument.Parse(await okSave.Content.ReadAsStringAsync()).RootElement.GetProperty("revision").GetInt32();
+        var okBody = await (await c.PostAsJsonAsync($"/api/brands/{okBrand}/api-settings/test", new BrandApiTestRequest(okRevision))).Content.ReadAsStringAsync();
+        Assert.Contains("Shopify", okBody);
+
+        orders.Fail = true;
+        var failBrand = await SeedBrand(f);
+        var failSave = await c.PutAsJsonAsync($"/api/brands/{failBrand}/api-settings",
+            new BrandApiSettingsRequest(0, "https://baska.myshopify.com", "", "shpat-baska-jeton-67890", "Shopify"));
+        failSave.EnsureSuccessStatusCode();
+        var failRevision = JsonDocument.Parse(await failSave.Content.ReadAsStringAsync()).RootElement.GetProperty("revision").GetInt32();
+        var failBody = await (await c.PostAsJsonAsync($"/api/brands/{failBrand}/api-settings/test", new BrandApiTestRequest(failRevision))).Content.ReadAsStringAsync();
+        Assert.Contains("Admin API jetonunu", failBody);
+    }
+
     private static async Task<List<StoreOrderStaging>> Rows(WebApplicationFactory<Program> f, Guid brand)
     {
         List<StoreOrderStaging> rows = [];

@@ -172,8 +172,10 @@ function RenewalSimulationBox({ dealId, currency }: { dealId: string; currency: 
   const [share, setShare] = useState('0');
   const [retainer, setRetainer] = useState('0');
   const [result, setResult] = useState<SimulationResponse | null>(null);
+  const [pins, setPins] = useState<{ name: string; inputs: string; sim: Simulation }[]>([]);
   const [busy, setBusy] = useState(false);
   const number = (value: string) => Number(String(value).trim().replace(',', '.'));
+  const inputSummary = () => `ciro %${revenue.trim() || '0'} · pay ${share.trim() || '0'} puan · sabit ${retainer.trim() || '0'} ${currency}`;
 
   const run = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -188,9 +190,19 @@ function RenewalSimulationBox({ dealId, currency }: { dealId: string; currency: 
     } catch { /* hata zaten ekranda bildirilir */ } finally { setBusy(false); }
   };
 
+  const pin = () => {
+    if (!result || pins.length >= 3) return;
+    setPins([...pins, { name: ['A', 'B', 'C'][pins.length], inputs: inputSummary(), sim: result.simulation }]);
+  };
+
   return <div className="mt-4 rounded-lg border p-3 text-sm">
     <strong>Yenileme müzakere simülatörü</strong>
     <p className="mt-1 text-[#6d7175]">“Bu oranla anlatsak ne olur?” sorusunu masada cevaplarsınız. Simülasyon yalnız bilgi verir; kaydetmez, hiçbir anlaşma koşulunu, hakedişi veya dönemi değiştirmez.</p>
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button type="button" className={button} onClick={() => { setRevenue('0'); setShare('1'); setRetainer('0'); }}>Hazır: pay +1 puan</button>
+      <button type="button" className={button} onClick={() => { setRevenue('0'); setShare('0'); setRetainer('5000'); }}>Hazır: sabit +5.000</button>
+      <button type="button" className={button} onClick={() => { setRevenue('10'); setShare('0'); setRetainer('0'); }}>Hazır: ciro +%10</button>
+    </div>
     <form className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={run}>
       <label className="block">Ciro değişimi (%)<input className={area} inputMode="decimal" value={revenue} onChange={e => setRevenue(e.target.value)} placeholder="20 = %20 artış, -50 = yarıya düşüş" /></label>
       <label className="block">Pay değişimi (puan)<input className={area} inputMode="decimal" value={share} onChange={e => setShare(e.target.value)} placeholder="1 = 1 puan artış" /></label>
@@ -208,6 +220,22 @@ function RenewalSimulationBox({ dealId, currency }: { dealId: string; currency: 
         <SimulationSummary l="Aylık sabit ücret" before={money(result.simulation.baseRetainer, currency)} after={money(result.simulation.simulatedRetainer, currency)} applied={result.simulation.retainerApplied} />
       </div>
       <ul className="list-disc space-y-1 pl-5 text-[#6d7175]">{result.notes.map(n => <li key={n}>{n}</li>)}</ul>
+      <div className="flex flex-wrap gap-2">
+        <button className={button} disabled={pins.length >= 3} onClick={pin}>Karşılaştırmaya ekle ({['A', 'B', 'C'][pins.length] ?? 'dolu'})</button>
+        {pins.length > 0 && <button className={button} onClick={() => setPins([])}>Karşılaştırmayı temizle</button>}
+      </div>
+    </div>}
+    {pins.length > 0 && <div className="mt-4">
+      <strong>Senaryo karşılaştırması</strong>
+      <p className="mt-1 text-[#6d7175]">Masada konuşulan seçenekler yan yana; dayanak sütunu bugünkü durumu gösterir.</p>
+      <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[560px] text-sm">
+        <thead><tr className="text-left text-[#6d7175]"><th className="py-1 pr-3">Ölçü</th><th className="py-1 pr-3">Dayanak</th>{pins.map(p => <th key={p.name} className="py-1 pr-3">{p.name} · {p.inputs}</th>)}</tr></thead>
+        <tbody>
+          <tr className="border-t"><td className="py-1 pr-3">OVO hakedişi</td><td className="py-1 pr-3">{money(pins[0].sim.baseOvoFee, currency)}</td>{pins.map(p => <td key={p.name} className="py-1 pr-3 font-semibold">{money(p.sim.simOvoFee, currency)} ({moneyPrecise(p.sim.feeDelta, currency)})</td>)}</tr>
+          <tr className="border-t"><td className="py-1 pr-3">Markaya kalan katkı</td><td className="py-1 pr-3">{money(pins[0].sim.baseBrandContribution, currency)}</td>{pins.map(p => <td key={p.name} className="py-1 pr-3 font-semibold">{money(p.sim.simBrandContribution, currency)} ({moneyPrecise(p.sim.brandContributionDelta, currency)})</td>)}</tr>
+          <tr className="border-t"><td className="py-1 pr-3">Etkin oran</td><td className="py-1 pr-3">{percent(pins[0].sim.baseEffectiveRate)}</td>{pins.map(p => <td key={p.name} className="py-1 pr-3">{percent(p.sim.simEffectiveRate)}</td>)}</tr>
+        </tbody>
+      </table></div>
     </div>}
   </div>;
 }

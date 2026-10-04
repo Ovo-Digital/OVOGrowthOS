@@ -34,6 +34,39 @@ public static partial class WorkflowEndpoints
         });
         investment.MapPost("/entries", AddInvestmentEntry).AddEndpointFilter<ValidationFilter<InvestmentEntryRequest>>();
         investment.MapPost("/entries/{entryId:guid}/void", VoidInvestmentEntry).AddEndpointFilter<ValidationFilter<VoidPaymentRequest>>().RequireAuthorization("AdminOnly");
+        // Recorded costs are internal: unlike the other report endpoints this one stays on OperationsWrite
+        // so analysts without cost access cannot derive actual costs from the ranking.
+        app.MapGet("/api/reports/brand-profitability", BrandProfitabilityReport).RequireAuthorization("OperationsWrite");
+    }
+
+    private static async Task<IResult> BrandProfitabilityReport(AppDbContext db, string? currency, string? from, string? to)
+    {
+        var code = (currency ?? "").Trim().ToUpperInvariant();
+        if (code.Length != 3) return Results.BadRequest(new { error = "Para birimini TRY gibi üç harfli yazın." });
+        StoreOrderPeriod fromPeriod = new(2020, 1); var hasFrom = from is not null;
+        StoreOrderPeriod toPeriod = new(2020, 1); var hasTo = to is not null;
+        if (hasFrom && !StoreOrderPeriod.TryParse(from, out fromPeriod)) return Results.BadRequest(new { error = "Başlangıç dönemi 'YYYY-AA' biçiminde olmalı, örneğin 2026-01." });
+        if (hasTo && !StoreOrderPeriod.TryParse(to, out toPeriod)) return Results.BadRequest(new { error = "Bitiş dönemi 'YYYY-AA' biçiminde olmalı, örneğin 2026-12." });
+        if (hasFrom && hasTo && (toPeriod.Year < fromPeriod.Year || toPeriod.Year == fromPeriod.Year && toPeriod.Month < fromPeriod.Month))
+            return Results.BadRequest(new { error = "Bitiş dönemi başlangıç döneminden önce olamaz." });
+        var periods = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal)
+            .Where(x => !hasFrom || x.Year > fromPeriod.Year || x.Year == fromPeriod.Year && x.Month >= fromPeriod.Month)
+            .Where(x => !hasTo || x.Year < toPeriod.Year || x.Year == toPeriod.Year && x.Month <= toPeriod.Month)
+            .ToListAsync();
+        var accounts = await db.ServiceCostAccounts.AsNoTracking().Include(x => x.Entries)
+            .Where(x => periods.Select(p => p.Id).Contains(x.MonthlyPerformanceId)).ToDictionaryAsync(x => x.MonthlyPerformanceId);
+        var names = await db.Brands.AsNoTracking().Where(x => periods.Select(p => p.BrandId).Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name);
+        var rows = BrandProfitability.Rank(periods.Select(p => (p, accounts.GetValueOrDefault(p.Id), names.GetValueOrDefault(p.BrandId, ""))), code);
+        var currencies = await db.Deals.AsNoTracking().Select(x => x.Currency).Distinct().Order().ToListAsync();
+        return Results.Ok(new
+        {
+            currency = code, from = hasFrom ? fromPeriod.Key : null, to = hasTo ? toPeriod.Key : null, currencies,
+            rows = rows.Select(x => new
+            {
+                x.BrandId, x.BrandName, x.Currency, x.Periods, x.TotalFee, x.TotalRecordedCost,
+                x.ConfirmedPeriods, x.UnconfirmedPeriods, x.Contribution, x.Margin
+            })
+        });
     }
 
     private static object CostView(MonthlyPerformance p, ServiceCostAccount? account) => new

@@ -68,6 +68,46 @@ public sealed class CollectionTests
     }
 
     [Fact]
+    public async Task Payment_plan_splits_received_amount_oldest_due_first()
+    {
+        await using var factory = new WorkflowApiFactory();
+        var brand = await factory.SeedAsync();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var deal = new Deal { BrandId = brand, Currency = "TRY", Name = "Dağıtım test anlaşması" };
+            db.Add(deal);
+            db.Add(new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 8, Status = MonthlyPerformanceStatus.Locked, OvoFee = 100_000, NetRevenue = 1_000_000, OvoGrossProfit = 70_000, CommissionBreakdownJson = "{}" });
+            db.Add(new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 9, Status = MonthlyPerformanceStatus.Locked, OvoFee = 50_000, NetRevenue = 500_000, OvoGrossProfit = 35_000, CommissionBreakdownJson = "{}" });
+            await db.SaveChangesAsync();
+        }
+        using var client = Client(factory);
+        Guid august, september;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            august = await db.MonthlyPerformances.Where(x => x.BrandId == brand && x.Month == 8).Select(x => x.Id).SingleAsync();
+            september = await db.MonthlyPerformances.Where(x => x.BrandId == brand && x.Month == 9).Select(x => x.Id).SingleAsync();
+        }
+        // Older due date first: invoice August with an earlier due date than September.
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/performance/{august}/collection/invoice", new InvoiceRequest("FAT-8", Today.AddDays(-40), Today.AddDays(-30), "", 0))).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/performance/{september}/collection/invoice", new InvoiceRequest("FAT-9", Today.AddDays(-10), Today.AddDays(-5), "", 0))).StatusCode);
+
+        var plan = await client.GetFromJsonAsync<JsonElement>($"/api/brands/{brand}/payment-plan?amount=120000&currency=TRY");
+        var rows = plan.GetProperty("rows").EnumerateArray().ToList();
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(100_000, rows[0].GetProperty("suggested").GetDecimal());
+        Assert.Equal(20_000, rows[1].GetProperty("suggested").GetDecimal());
+        Assert.Equal(0, plan.GetProperty("leftover").GetDecimal());
+
+        var over = await client.GetFromJsonAsync<JsonElement>($"/api/brands/{brand}/payment-plan?amount=200000&currency=TRY");
+        Assert.Equal(50_000, over.GetProperty("leftover").GetDecimal());
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"/api/brands/{brand}/payment-plan?amount=abc&currency=TRY")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/brands/{Guid.NewGuid()}/payment-plan?amount=100&currency=TRY")).StatusCode);
+    }
+
+    [Fact]
     public async Task Legacy_paid_keeps_amount_but_no_fabricated_date_or_new_payment()
     {
         await using var factory = new WorkflowApiFactory(); var id = await Seed(factory, MonthlyPerformanceStatus.Paid, 30_000); using var client = Client(factory);

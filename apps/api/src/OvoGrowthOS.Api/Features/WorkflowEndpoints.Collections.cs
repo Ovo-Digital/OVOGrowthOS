@@ -49,6 +49,26 @@ public static partial class WorkflowEndpoints
                 projection = CashProjection.Build(periods, today, selected)
             });
         }).RequireAuthorization("ReadAccess");
+        app.MapGet("/api/promise-reliability", async (AppDbContext db, string? currency = null) =>
+        {
+            if (currency is not null && (currency.Length != 3 || !currency.All(c => c is >= 'A' and <= 'Z')))
+                return Results.BadRequest(new { error = "Para birimini TRY gibi üç harfli büyük harfle yazın." });
+            var history = await CollectionQuery(db).AsNoTracking().Include(x => x.Brand).ToListAsync();
+            var today = TeamWork.Today(DateTimeOffset.UtcNow);
+            var currencies = history.Select(x => x.Collection?.Currency ?? x.Deal!.Currency).Distinct().Order().ToArray();
+            if (currencies.Length == 0) currencies = ["TRY"];
+            var selected = currency ?? (currencies.Contains("TRY") ? "TRY" : currencies[0]);
+            var rank = PromiseReliability.Rank(history.Select(x => (x, x.Brand?.Name ?? "")), today, selected);
+            return Results.Ok(new
+            {
+                currencies, currency = selected,
+                rows = rank.Select(x => new
+                {
+                    x.BrandId, x.BrandName, x.Kept, x.Broken, x.Waiting, x.Score, x.AvgOverdueDays,
+                    periods = x.Rows.Select(r => new { r.Year, r.Month, r.PromisedOn, r.PromisedAmount, r.Remaining, r.Outcome, r.OverdueDays })
+                })
+            });
+        }).RequireAuthorization("ReadAccess");
         var group = app.MapGroup("/api/performance/{id:guid}/collection").RequireAuthorization("ReadAccess");
         group.MapGet("/", async (Guid id, AppDbContext db) =>
         {
@@ -58,6 +78,24 @@ public static partial class WorkflowEndpoints
         group.MapPut("/invoice", SaveInvoice).AddEndpointFilter<ValidationFilter<InvoiceRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/payments", AddPayment).AddEndpointFilter<ValidationFilter<PaymentRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/payments/{paymentId:guid}/void", VoidPayment).AddEndpointFilter<ValidationFilter<VoidPaymentRequest>>().RequireAuthorization("AdminOnly");
+        app.MapGet("/api/brands/{id:guid}/payment-plan", async (Guid id, AppDbContext db, string? amount, string? currency) =>
+        {
+            if (!await db.Brands.AsNoTracking().AnyAsync(x => x.Id == id)) return Results.NotFound(new { error = "Marka bulunamadı." });
+            if (!decimal.TryParse(amount, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var received)
+                || received <= 0 || decimal.Round(received, 4) != received)
+                return Results.BadRequest(new { error = "Dağıtılacak tutarı sıfırdan büyük, en fazla dört ondalıklı sayı olarak yazın." });
+            var code = (currency ?? "").Trim().ToUpperInvariant();
+            if (code.Length != 3) return Results.BadRequest(new { error = "Para birimini TRY gibi üç harfli yazın." });
+            var today = TeamWork.Today(DateTimeOffset.UtcNow);
+            var periods = await db.MonthlyPerformances.AsNoTracking().Where(x => x.BrandId == id)
+                .Include(x => x.Deal).Include(x => x.Collection)!.ThenInclude(x => x!.Payments).ToListAsync();
+            var plan = PaymentAllocation.Build(periods, today, code, received);
+            return Results.Ok(new
+            {
+                brandId = id, plan.Currency, plan.Received, plan.TotalOutstanding, plan.Allocated, plan.Leftover, plan.SkippedReview, plan.OtherCurrencies,
+                rows = plan.Rows.Select(x => new { performanceId = x.PerformanceId, x.Year, x.Month, x.DueOn, x.Outstanding, x.Suggested, x.RemainingAfter })
+            });
+        }).RequireAuthorization("ReadAccess");
     }
 
     private static IQueryable<MonthlyPerformance> CollectionQuery(AppDbContext db) => db.MonthlyPerformances

@@ -221,6 +221,47 @@ public sealed class V6Dalga12ApiTests
     }
 
     [Fact]
+    public async Task Promise_reminder_cascade_fires_due3_today_and_overdue7()
+    {
+        await using var f = new WorkflowApiFactory();
+        var today = TeamWork.Today(DateTimeOffset.UtcNow);
+        var (performanceId, noteId) = await SeedPromisePeriod(f, today);
+        using var c = await Client(f);
+
+        var in3 = await c.PutAsJsonAsync($"/api/performance/{performanceId}/collection/promise",
+            new CollectionPromiseRequest(60m, today.AddDays(3), noteId, Admin, "Ödeme sözü alındı.", 0, 1));
+        in3.EnsureSuccessStatusCode();
+        await Refresh(f, Admin);
+        await Refresh(f, Admin);
+        await Db(f, async db => Assert.Contains(
+            await db.UserNotifications.Where(x => x.Kind == NotificationKind.PromiseReminder).Select(x => x.EventKey).ToListAsync(),
+            k => k.StartsWith("promise-due3:")));
+
+        var dueToday = await c.PutAsJsonAsync($"/api/performance/{performanceId}/collection/promise",
+            new CollectionPromiseRequest(60m, today, noteId, Admin, "Ödeme sözü güncellendi.", 1, 1));
+        dueToday.EnsureSuccessStatusCode();
+        await Refresh(f, Admin);
+        await Db(f, async db => Assert.Contains(
+            await db.UserNotifications.Where(x => x.Kind == NotificationKind.PromiseReminder).Select(x => x.EventKey).ToListAsync(),
+            k => k.StartsWith("promise-today:")));
+
+        var (oldPerformanceId, oldNoteId) = await SeedPromisePeriod(f, today.AddDays(-10));
+        var overdue = await c.PutAsJsonAsync($"/api/performance/{oldPerformanceId}/collection/promise",
+            new CollectionPromiseRequest(40m, today.AddDays(-10), oldNoteId, Admin, "Geciken söz kaydedildi.", 0, 1));
+        overdue.EnsureSuccessStatusCode();
+        await Refresh(f, Admin);
+        await Db(f, async db => Assert.Contains(
+            await db.UserNotifications.Where(x => x.Kind == NotificationKind.PromiseReminder).Select(x => x.EventKey).ToListAsync(),
+            k => k.StartsWith("promise-overdue7:")));
+
+        var list = await c.GetFromJsonAsync<JsonElement>("/api/notifications");
+        var titles = list.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("title").GetString() ?? "").ToList();
+        Assert.Contains(titles, t => t.StartsWith("Bugün ödeme sözü var"));
+        Assert.Contains(titles, t => t.Contains("7 günden uzun süredir"));
+        Assert.DoesNotContain(titles, t => t.StartsWith("3 gün sonra"));
+    }
+
+    [Fact]
     public async Task Weekly_digest_opens_only_after_monday_morning_and_is_idempotent()
     {
         await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender();

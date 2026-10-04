@@ -37,13 +37,22 @@ public static class CollectionPromises
         && Collections.Balance(period, today) is { NeedsReview: false, Outstanding: > 0 };
 
     public const string ReminderDueTomorrow = "DueTomorrow";
+    public const string ReminderDueIn3 = "DueIn3";
+    public const string ReminderDueToday = "DueToday";
     public const string ReminderOverdue = "Overdue";
+    public const string ReminderOverdue7 = "Overdue7";
 
     public static string? Reminder(PromiseBalance? balance, DateOnly today)
     {
         if (balance is null) return null;
-        if (balance.State == ReminderOverdue) return ReminderOverdue;
-        if (balance.State == "Waiting" && balance.PromisedOn == today.AddDays(1)) return ReminderDueTomorrow;
+        if (balance.State == ReminderOverdue)
+            return today.DayNumber - balance.PromisedOn.DayNumber >= 7 ? ReminderOverdue7 : ReminderOverdue;
+        if (balance.State == "Waiting")
+        {
+            if (balance.PromisedOn == today.AddDays(3)) return ReminderDueIn3;
+            if (balance.PromisedOn == today.AddDays(1)) return ReminderDueTomorrow;
+            if (balance.PromisedOn == today) return ReminderDueToday;
+        }
         return null;
     }
 }

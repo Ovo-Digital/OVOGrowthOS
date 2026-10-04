@@ -53,6 +53,44 @@ public sealed class CollectionPromiseTests
     }
 
     [Fact]
+    public async Task Reliability_ranks_recorded_promise_discipline_per_brand()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        Guid august, september, augNote, sepNote;
+        using (var scope = f.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var deal = new Deal { BrandId = brand, Currency = "TRY", Name = "Güven test anlaşması" };
+            db.Add(deal);
+            var aug = new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 8, Status = MonthlyPerformanceStatus.Invoiced,
+                OvoFee = 100, NetRevenue = 1000, OvoGrossProfit = 80, CommissionBreakdownJson = "{}",
+                Collection = new() { ReceivableAmount = 100, Currency = "TRY", Revision = 1, DueOn = Today.AddDays(-20) } };
+            var sep = new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 9, Status = MonthlyPerformanceStatus.Invoiced,
+                OvoFee = 100, NetRevenue = 1000, OvoGrossProfit = 80, CommissionBreakdownJson = "{}",
+                Collection = new() { ReceivableAmount = 100, Currency = "TRY", Revision = 1, DueOn = Today.AddDays(-8) } };
+            var augN = new BrandContactNote { BrandId = brand, ContactOn = Today.AddDays(-11), Text = "Ağustos sözü görüşmesi." };
+            var sepN = new BrandContactNote { BrandId = brand, ContactOn = Today.AddDays(-6), Text = "Eylül sözü görüşmesi." };
+            db.AddRange(aug, sep, augN, sepN);
+            await db.SaveChangesAsync();
+            august = aug.Id; september = sep.Id; augNote = augN.Id; sepNote = sepN.Id;
+        }
+        using var c = CustomerPortalTests.Staff(f);
+        var owner = WorkflowApiFactory.AccountId("admin@ovo.test");
+        (await c.PutAsJsonAsync(Path(august), new CollectionPromiseRequest(60, Today.AddDays(-10), augNote, owner, "Ağustos sözü.", 0, 1))).EnsureSuccessStatusCode();
+        (await c.PostAsJsonAsync($"/api/performance/{august}/collection/payments",
+            new PaymentRequest(Guid.NewGuid(), 60, Today.AddDays(-9), "GUVEN-ODEME", "", 1))).EnsureSuccessStatusCode();
+        (await c.PutAsJsonAsync(Path(september), new CollectionPromiseRequest(70, Today.AddDays(-5), sepNote, owner, "Eylül sözü.", 0, 1))).EnsureSuccessStatusCode();
+
+        var report = await c.GetFromJsonAsync<JsonElement>("/api/promise-reliability?currency=TRY");
+        var row = report.GetProperty("rows").EnumerateArray().Single(x => x.GetProperty("brandId").GetGuid() == brand);
+        Assert.Equal(1, row.GetProperty("kept").GetInt32());
+        Assert.Equal(1, row.GetProperty("broken").GetInt32());
+        Assert.Equal(0.5m, row.GetProperty("score").GetDecimal());
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/promise-reliability?currency=XX")).StatusCode);
+    }
+
+    [Fact]
     public async Task Revised_promise_starts_from_remaining_not_original_amount_and_task_is_never_duplicated_or_reassigned()
     {
         await using var f = new WorkflowApiFactory(); var (id, note) = await Seed(f); using var c = CustomerPortalTests.Staff(f, "Partner");
