@@ -515,6 +515,8 @@ Sistem bu aşamada:
 
 Analiz sunucuda hesaplanır ve kaydedilir. Tarayıcı ekranı tek başına nihai karar üretmez.
 
+Düğmeye yanlışlıkla iki kez basarsanız ikinci istek çakışma hatası vermez; ilk hesaplamanın sonucu gösterilir. Aynı markada yarım kalmış bir değerlendirme varsa yeni kayıt açılmadan önce **Değerlendirmeler** listesinden ona devam edin; aynı anda yalnız bir açık değerlendirme bulunur.
+
 ### 10. Öneri
 
 Son adımda sistemin kararı gösterilir.

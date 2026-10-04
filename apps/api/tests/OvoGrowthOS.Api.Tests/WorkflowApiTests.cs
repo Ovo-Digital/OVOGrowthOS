@@ -231,6 +231,64 @@ public sealed class WorkflowApiTests : IClassFixture<WorkflowApiFactory>
     }
 
     [Fact]
+    public async Task Concurrent_analyze_requests_never_leave_a_conflict_error()
+    {
+        var brandId = await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        var draft = new
+        {
+            brandId, currentStep = 9, status = "InProgress", averageMonthlyRevenue = 1_000_000m,
+            revenueConfidence = "Verified", grossMarginRate = .55m, grossMarginConfidence = "Verified",
+            cogsRate = .45m, cogsConfidence = "Verified", averageOrderValue = 2_000m, aovConfidence = "Verified",
+            returnRate = .08m, returnRateConfidence = "Verified", currentAdSpend = 160_000m, adSpendConfidence = "Verified",
+            currentCac = 400m, cacConfidence = "Estimated", averageCustomerLtv = 4_000m, ltvConfidence = "Estimated",
+            stockCoverageDays = 75, stockCoverageConfidence = "Verified", monthlyOrders = 500, monthlySessions = 35_000,
+            newCustomers = 400, returningCustomers = 100, variableCostRate = .08m, productMarketFit = 5,
+            growthPotential = 4, operationalReadiness = 4, creativeCapability = 4, founderCooperation = 5,
+            dataMaturity = 4, internalMonthlyCost = 20_000m, setupInvestment = 120_000m
+        };
+        var evaluationId = (await (await client.PostAsJsonAsync("/api/evaluations", draft)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Same tick double fire, like a double-clicked analyze button.
+        var responses = await Task.WhenAll(
+            client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null),
+            client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null));
+        var bodies = new[] { await responses[0].Content.ReadAsStringAsync(), await responses[1].Content.ReadAsStringAsync() };
+        Assert.True(responses[0].IsSuccessStatusCode, bodies[0]);
+        Assert.True(responses[1].IsSuccessStatusCode, bodies[1]);
+        Assert.DoesNotContain("başka bir kullanıcı", bodies[0] + bodies[1]);
+    }
+
+    [Fact]
+    public async Task Repeated_analyze_returns_the_same_decision_without_conflict()
+    {
+        var brandId = await _factory.SeedAsync();
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", WorkflowApiFactory.Token("admin@ovo.test", "Admin"));
+        var draft = new
+        {
+            brandId, currentStep = 9, status = "InProgress", averageMonthlyRevenue = 1_000_000m,
+            revenueConfidence = "Verified", grossMarginRate = .55m, grossMarginConfidence = "Verified",
+            cogsRate = .45m, cogsConfidence = "Verified", averageOrderValue = 2_000m, aovConfidence = "Verified",
+            returnRate = .08m, returnRateConfidence = "Verified", currentAdSpend = 160_000m, adSpendConfidence = "Verified",
+            currentCac = 400m, cacConfidence = "Estimated", averageCustomerLtv = 4_000m, ltvConfidence = "Estimated",
+            stockCoverageDays = 75, stockCoverageConfidence = "Verified", monthlyOrders = 500, monthlySessions = 35_000,
+            newCustomers = 400, returningCustomers = 100, variableCostRate = .08m, productMarketFit = 5,
+            growthPotential = 4, operationalReadiness = 4, creativeCapability = 4, founderCooperation = 5,
+            dataMaturity = 4, internalMonthlyCost = 20_000m, setupInvestment = 120_000m
+        };
+        var evaluationId = (await (await client.PostAsJsonAsync("/api/evaluations", draft)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var first = await client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null);
+        first.EnsureSuccessStatusCode();
+        var second = await client.PostAsync($"/api/evaluations/{evaluationId}/analyze", null);
+        second.EnsureSuccessStatusCode();
+        var firstDecision = (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("decision").GetString();
+        var secondDecision = (await second.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("decision").GetString();
+        Assert.Equal(firstDecision, secondDecision);
+    }
+
+    [Fact]
     public async Task Rejected_evaluation_cannot_be_approved()
     {
         var evaluationId = await _factory.SeedRejectedEvaluationAsync();

@@ -194,7 +194,19 @@ public static partial class WorkflowEndpoints
         foreach (var stale in existing.Where(x => !kept.Contains(x)))
             if (stale.Status == ConditionStatus.Pending) db.PartnershipConditions.Remove(stale);
         Audit(db, user, "EvaluationAnalyzed", "Evaluation", id, null, result);
-        await db.SaveChangesAsync(); return Results.Ok(result);
+        try { await db.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Double-fired analyze: the winner already stored the deterministic result.
+            // Return it instead of a conflict so a second click never surfaces a 409.
+            db.ChangeTracker.Clear();
+            var fresh = await db.Evaluations.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+            if (fresh is not null && fresh.Status is not (EvaluationStatus.Draft or EvaluationStatus.InProgress)
+                && !string.IsNullOrWhiteSpace(fresh.RecommendationSnapshotJson) && fresh.RecommendationSnapshotJson != "{}")
+                return Results.Ok(JsonSerializer.Deserialize<JsonElement>(fresh.RecommendationSnapshotJson, Json));
+            return Results.Conflict(new { error = "Kayıt başka bir kullanıcı tarafından değiştirildi. Sayfayı yenileyip tekrar deneyin." });
+        }
+        return Results.Ok(result);
     }
 
     private static void Apply(BrandEvaluation e, EvaluationDraftRequest r)

@@ -509,6 +509,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             e.Property<uint>("xmin").IsRowVersion();
             e.HasIndex(x => new { x.BrandId, x.Status, x.CreatedAt });
+            // One open evaluation per brand: backs the application guard against double submits.
+            // Draft = 0, InProgress = 1, ReadyForAnalysis = 2.
+            e.HasIndex(x => x.BrandId).IsUnique().HasFilter("\"Status\" IN (0, 1, 2)");
             e.HasMany(x => x.Conditions).WithOne().HasForeignKey(x => x.EvaluationId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Scenarios).WithOne().HasForeignKey(x => x.EvaluationId).OnDelete(DeleteBehavior.Cascade);
         });
