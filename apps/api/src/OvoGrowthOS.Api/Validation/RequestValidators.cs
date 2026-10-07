@@ -52,6 +52,14 @@ public sealed class EvaluationDraftRequestValidator : AbstractValidator<Evaluati
             RuleFor(x => Score(x, score)).InclusiveBetween(0, 5).WithMessage("Değerlendirme puanları 0 ile 5 arasında olmalıdır.");
         this.NonNegative(x => x.InternalMonthlyCost, "Aylık iç maliyet");
         this.NonNegative(x => x.SetupInvestment, "Kurulum yatırımı");
+        When(x => x.RevenueChannels is not null, () =>
+        {
+            RuleFor(x => x.RevenueChannels!).Must(x => x.Count <= SalesChannelRules.MaxChannelsPerForecast)
+                .WithMessage($"Bir tahminde en fazla {SalesChannelRules.MaxChannelsPerForecast} kanal satırı olabilir.");
+            RuleFor(x => x.RevenueChannels!).Must(x => x.Select(r => r.SalesChannelId).Distinct().Count() == x.Count)
+                .WithMessage("Her satış kanalı bir tahminde yalnız bir kez yer alabilir.");
+            RuleForEach(x => x.RevenueChannels!).SetValidator(new RevenueChannelRequestValidator());
+        });
     }
 
     private static int Score(EvaluationDraftRequest x, string name) => name switch
@@ -80,8 +88,29 @@ public sealed class ScenarioRequestValidator : AbstractValidator<ScenarioRequest
         RuleFor(x => x.NewCustomers).GreaterThanOrEqualTo(0).WithMessage("Yeni müşteri sayısı negatif olamaz.");
         RuleFor(x => x.ContractMonths).InclusiveBetween(1, 120).WithMessage("Sözleşme süresi 1 ile 120 ay arasında olmalıdır.");
         RuleForEach(x => x.CommissionTiers).SetValidator(new CommissionTierValidator());
+        When(x => x.RevenueChannels is not null, () =>
+        {
+            RuleFor(x => x.RevenueChannels!).Must(x => x.Count <= SalesChannelRules.MaxChannelsPerForecast)
+                .WithMessage($"Bir tahminde en fazla {SalesChannelRules.MaxChannelsPerForecast} kanal satırı olabilir.");
+            RuleFor(x => x.RevenueChannels!).Must(x => x.Select(r => r.SalesChannelId).Distinct().Count() == x.Count)
+                .WithMessage("Her satış kanalı bir tahminde yalnız bir kez yer alabilir.");
+            RuleForEach(x => x.RevenueChannels!).SetValidator(new RevenueChannelRequestValidator());
+        });
     }
 }
+
+public sealed class RevenueChannelRequestValidator : AbstractValidator<RevenueChannelRequest>
+{
+    public RevenueChannelRequestValidator()
+    {
+        RuleFor(x => x.SalesChannelId).NotEmpty().WithMessage("Satış kanalı seçimi zorunludur.");
+        RuleFor(x => x.MonthlyRevenue).GreaterThanOrEqualTo(0).WithMessage("Kanal cirosu negatif olamaz.")
+            .LessThan(100000000000000m).WithMessage("Tutar izin verilen sınırı aşıyor.")
+            .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
+    }
+}
+
+
 
 public sealed class DealRequestValidator : AbstractValidator<DealRequest>
 {
@@ -97,6 +126,62 @@ public sealed class DealRequestValidator : AbstractValidator<DealRequest>
             .WithMessage("Baz dönem başlangıcı bitiş tarihinden sonra olamaz.");
         RuleForEach(x => x.CommissionTiers).SetValidator(new CommissionTierValidator());
     }
+}
+
+public sealed class DealChannelRatesRequestValidator : AbstractValidator<DealChannelRatesRequest>
+{
+    public DealChannelRatesRequestValidator()
+    {
+        RuleFor(x => x.Rates).NotNull().WithMessage("Kanal oranları listesi zorunludur.");
+        RuleFor(x => x.Rates).Must(x => x.Count <= SalesChannelRules.MaxChannelsPerPeriod)
+            .WithMessage($"Bir anlaşmada en fazla {SalesChannelRules.MaxChannelsPerPeriod} kanal oranı olabilir.");
+        RuleFor(x => x.Rates).Must(x => x.Select(r => r.SalesChannelId).Distinct().Count() == x.Count)
+            .WithMessage("Her satış kanalı için yalnız bir oran girin.");
+        RuleForEach(x => x.Rates).SetValidator(new DealChannelRateRequestValidator());
+    }
+}
+
+public sealed class DealChannelRateRequestValidator : AbstractValidator<DealChannelRateRequest>
+{
+    public DealChannelRateRequestValidator()
+    {
+        RuleFor(x => x.SalesChannelId).NotEmpty().WithMessage("Satış kanalı seçimi zorunludur.");
+        this.Rate(x => x.RevenueShareRate, "Kanal gelir payı oranı");
+    }
+}
+
+public sealed class SalesChannelRequestValidator : AbstractValidator<SalesChannelRequest>
+{
+    public SalesChannelRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().WithMessage("Kanal adı zorunludur.")
+            .MinimumLength(2).WithMessage("Kanal adı en az 2 karakter olmalıdır.")
+            .MaximumLength(SalesChannelRules.MaxNameLength).WithMessage($"Kanal adı en fazla {SalesChannelRules.MaxNameLength} karakter olabilir.");
+    }
+}
+
+public sealed class PerformanceChannelRequestValidator : AbstractValidator<PerformanceChannelRequest>
+{
+    public PerformanceChannelRequestValidator()
+    {
+        RuleFor(x => x.SalesChannelId).NotEmpty().WithMessage("Satış kanalı seçimi zorunludur.");
+        foreach (var field in ChannelFields())
+            RuleFor(x => ChannelValue(x, field)).GreaterThanOrEqualTo(0).WithMessage("Kanal tutarları negatif olamaz.")
+                .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
+        RuleFor(x => x).Must(x => x.Vat + x.Refunds + x.Cancellations + x.Chargebacks + x.CustomerPaidShipping + x.GiftCardTopups <= x.GrossSales)
+            .WithMessage("Kanalda cirodan düşülen tutarların toplamı kanalın brüt satışını geçemez.");
+    }
+
+    internal static string[] ChannelFields() => [nameof(PerformanceChannelRequest.GrossSales), nameof(PerformanceChannelRequest.Vat),
+        nameof(PerformanceChannelRequest.Refunds), nameof(PerformanceChannelRequest.Cancellations), nameof(PerformanceChannelRequest.Chargebacks),
+        nameof(PerformanceChannelRequest.CustomerPaidShipping), nameof(PerformanceChannelRequest.GiftCardTopups)];
+    internal static decimal ChannelValue(PerformanceChannelRequest x, string name) => name switch
+    {
+        nameof(PerformanceChannelRequest.GrossSales) => x.GrossSales, nameof(PerformanceChannelRequest.Vat) => x.Vat,
+        nameof(PerformanceChannelRequest.Refunds) => x.Refunds, nameof(PerformanceChannelRequest.Cancellations) => x.Cancellations,
+        nameof(PerformanceChannelRequest.Chargebacks) => x.Chargebacks,
+        nameof(PerformanceChannelRequest.CustomerPaidShipping) => x.CustomerPaidShipping, _ => x.GiftCardTopups
+    };
 }
 
 public sealed class CommissionTierValidator : AbstractValidator<CommissionTier>
@@ -126,7 +211,16 @@ public sealed class PerformanceRequestValidator : AbstractValidator<PerformanceR
         RuleFor(x => x).Must(x => (long)x.NewCustomers + x.ReturningCustomers <= x.Orders).WithMessage("Yeni ve tekrar gelen müşteri toplamı sipariş sayısını geçemez.");
         RuleFor(x => x).Must(x => DecimalFields().All(f => Value(x, f) is >= 0 and < 100000000000000m)
             && x.Vat + x.Refunds + x.Cancellations + x.Chargebacks + x.CustomerPaidShipping + x.GiftCardTopups <= x.GrossSales)
-            .WithMessage("Cirodan düşülen tutarların toplamı brüt satışı geçemez.");
+            .WithMessage("Cirodan düşülen tutarların toplamı brüt satışı geçemez.")
+            .When(x => x.Channels is null || x.Channels.Count == 0);
+        When(x => x.Channels is not null && x.Channels.Count > 0, () =>
+        {
+            RuleFor(x => x.Channels!).Must(x => x.Count <= SalesChannelRules.MaxChannelsPerPeriod)
+                .WithMessage($"Bir dönemde en fazla {SalesChannelRules.MaxChannelsPerPeriod} kanal satırı olabilir.");
+            RuleFor(x => x.Channels!).Must(x => x.Select(c => c.SalesChannelId).Distinct().Count() == x.Count)
+                .WithMessage("Her satış kanalı bir dönemde yalnız bir kez yer alabilir.");
+            RuleForEach(x => x.Channels!).SetValidator(new PerformanceChannelRequestValidator());
+        });
     }
 
     private static string[] DecimalFields() => [nameof(PerformanceRequest.GrossSales), nameof(PerformanceRequest.Vat), nameof(PerformanceRequest.Refunds), nameof(PerformanceRequest.Cancellations), nameof(PerformanceRequest.Chargebacks), nameof(PerformanceRequest.CustomerPaidShipping), nameof(PerformanceRequest.GiftCardTopups), nameof(PerformanceRequest.Cogs), nameof(PerformanceRequest.PaymentFees), nameof(PerformanceRequest.FulfillmentCosts), nameof(PerformanceRequest.ShippingSubsidy), nameof(PerformanceRequest.OtherVariableCosts), nameof(PerformanceRequest.MetaSpend), nameof(PerformanceRequest.GoogleSpend), nameof(PerformanceRequest.TikTokSpend), nameof(PerformanceRequest.InfluencerSpend), nameof(PerformanceRequest.OtherAdSpend)];

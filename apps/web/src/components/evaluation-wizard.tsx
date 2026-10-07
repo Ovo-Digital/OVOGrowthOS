@@ -6,6 +6,51 @@ import { api, money } from '@/lib/api';
 import { turkce } from '@/lib/turkish';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
 import { ConditionsPanel, Condition } from '@/components/record-panels';
+import type { SalesChannel } from '@/components/sales-channels';
+import { FieldHint } from '@/components/field-hint';
+const evaluationHints: Record<string, string> = {
+    averageMonthlyRevenue:
+        'Markanın bir ayda yaptığı ortalama satış tutarı. Puan ve öneri bu rakama göre hesaplanır.',
+    averageOrderValue:
+        'Bir siparişin ortalama tutarı (aylık ciro ÷ sipariş sayısı).',
+    monthlyOrders: 'Bir ayda alınan toplam sipariş adedi.',
+    monthlySessions:
+        'Mağazayı bir ayda ziyaret eden toplam oturum sayısı. Dönüşüm oranı buradan hesaplanır.',
+    grossMarginRate:
+        'Satıştan ürün maliyeti çıktıktan sonra kalan pay. %50, her 100 liralık satışta 50 lira kaldığı anlamına gelir.',
+    cogsRate: 'Satılan ürünlerin markaya maliyeti; ciroya oranla yazılır.',
+    returnRate:
+        'İade edilen siparişlerin oranı. Yüksek iade hem ciroyu hem puanı düşürür.',
+    variableCostRate:
+        'Ciroya bağlı değişen giderlerin (ödeme komisyonu, kargo desteği vb.) toplam oranı.',
+    currentAdSpend: 'Markanın şu an ayda harcadığı toplam reklam bütçesi.',
+    currentCac:
+        'Bir yeni müşteri kazanmanın ortalama maliyeti (reklam harcaması ÷ yeni müşteri).',
+    averageCustomerLtv:
+        'Bir müşterinin markaya ömrü boyunca bırakması beklenen toplam kazanç.',
+    stockCoverageDays:
+        'Mevcut stokun satış hızıyla kaç gün yeteceği. 60 günün altı risk sayılır.',
+    operationalReadiness:
+        'Sipariş, kargo ve iade süreçlerinin büyümeye ne kadar hazır olduğu. 1 çok zayıf, 5 çok hazır demektir.',
+    productMarketFit:
+        'Ürünün müşteriler tarafından ne kadar benimsendiği. 1 çok zayıf, 5 çok güçlü demektir.',
+    creativeCapability:
+        'Reklam için düzenli fotoğraf, video ve metin üretebilme gücü. 1 çok zayıf, 5 çok güçlü demektir.',
+    founderCooperation:
+        'Kurucunun OVO ekibiyle uyumu ve bilgi paylaşmaya açıklığı. 1 çok zayıf, 5 çok güçlü demektir.',
+    growthPotential:
+        'Markanın ciroyu büyütme alanı. 1 sınırlı, 5 çok yüksek demektir.',
+    dataMaturity:
+        'Markanın satış ve reklam verilerinin düzeni ve erişilebilirliği. 1 dağınık, 5 çok düzenli demektir.',
+    newCustomers: 'Bir ayda ilk kez alışveriş yapan müşteri sayısı.',
+    returningCustomers: 'Daha önce almış, tekrar alışveriş yapan müşteri sayısı.',
+    internalMonthlyCost:
+        "OVO'nun bu markaya ayda ayırdığı ekip ve araç maliyetinin tahmini.",
+    setupInvestment:
+        'Kurulumda yapılacak tek seferlik yatırım (entegrasyon ve kurulum çalışmaları).',
+};
+const confidenceHint =
+    'Bilginin kaynağını işaretleyin: doğrulanmış rapor, marka beyanı veya tahmin. Zayıf kaynak puanı düşürür ve ek bilgi istenmesine yol açabilir.';
 const steps = [
     'Firma',
     'Ciro ve satış',
@@ -55,6 +100,7 @@ type Draft = {
     dataMaturity: number;
     internalMonthlyCost: number;
     setupInvestment: number;
+    revenueChannels: { salesChannelId: string; monthlyRevenue: number }[];
 };
 type Eval = Draft & {
     id: string;
@@ -65,7 +111,14 @@ type Eval = Draft & {
     recommendedMinimumFee: number;
     recommendedTargetMer: number;
     recommendationSnapshotJson: string;
-    brand?: { economics: Partial<Draft> };
+    brand?: {
+        economics: Partial<Draft>;
+        revenueChannels?: {
+            salesChannelId: string;
+            monthlyRevenue: number;
+            salesChannel?: { name: string } | null;
+        }[];
+    };
     conditions?: Condition[];
 };
 type Result = {
@@ -116,6 +169,7 @@ const defaults: Draft = {
     dataMaturity: 3,
     internalMonthlyCost: 25_000,
     setupInvestment: 250_000,
+    revenueChannels: [],
 };
 export function EvaluationWizard({
     evaluationId,
@@ -142,6 +196,11 @@ export function EvaluationWizard({
               ...existing,
               ...existing.brand?.economics,
               brandId: existing.brandId,
+              revenueChannels:
+                  existing.brand?.revenueChannels?.map((r) => ({
+                      salesChannelId: r.salesChannelId,
+                      monthlyRevenue: r.monthlyRevenue,
+                  })) ?? [],
           }
         : { ...defaults, brandId: brandId ?? '' };
     return (
@@ -185,6 +244,15 @@ function Wizard({
         const message =
             step === 0 && !d.brandId
                 ? 'Devam etmek için bir marka seçin.'
+                : step === 1 &&
+                    d.revenueChannels.length > 0 &&
+                    d.revenueChannels.some((r) => !r.salesChannelId)
+                  ? 'Her kanal satırında satış kanalını seçin.'
+                : step === 1 &&
+                    d.revenueChannels.length > 0 &&
+                    new Set(d.revenueChannels.map((r) => r.salesChannelId))
+                        .size !== d.revenueChannels.length
+                  ? 'Her satış kanalı bir tahminde yalnız bir kez yer alabilir.'
                 : step === 1 &&
                     (d.averageMonthlyRevenue <= 0 ||
                         d.averageOrderValue <= 0 ||
@@ -439,6 +507,25 @@ function Fields({
     brands: Brand[];
     result: Result | null;
 }) {
+    const brandChannels = useQuery({
+        queryKey: ['sales-channels', d.brandId],
+        queryFn: () =>
+            api<SalesChannel[]>(`/api/brands/${d.brandId}/sales-channels`),
+        enabled: d.brandId !== '',
+    });
+    const active = (brandChannels.data ?? []).filter((c) => c.isActive);
+    const channeled = d.revenueChannels.length > 0;
+    const channelTotal = d.revenueChannels.reduce(
+        (sum, r) => sum + (Number(r.monthlyRevenue) || 0),
+        0,
+    );
+    function syncRows(rows: Draft['revenueChannels']) {
+        set('revenueChannels', rows);
+        set(
+            'averageMonthlyRevenue',
+            rows.reduce((sum, r) => sum + (Number(r.monthlyRevenue) || 0), 0),
+        );
+    }
     if (step === 0)
         return (
             <label className="block max-w-md">
@@ -460,14 +547,62 @@ function Fields({
         );
     if (step === 1)
         return (
-            <Grid>
-                <Num l="Aylık ciro" k="averageMonthlyRevenue" d={d} set={set} />
-                <Conf
-                    l="Ciro bilgisinin güven düzeyi"
-                    k="revenueConfidence"
-                    d={d}
-                    set={set}
-                />
+            <>
+                {active.length > 0 && (
+                    <fieldset className="mb-5 flex flex-wrap gap-4 text-sm">
+                        <legend className="label">CİRO GİRİŞİ</legend>
+                        <label>
+                            <input
+                                type="radio"
+                                checked={!channeled}
+                                onChange={() => set('revenueChannels', [])}
+                            />{' '}
+                            Tek toplam
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                checked={channeled}
+                                onChange={() => {
+                                    if (!channeled)
+                                        syncRows([
+                                            {
+                                                salesChannelId: '',
+                                                monthlyRevenue: 0,
+                                            },
+                                        ]);
+                                }}
+                            />{' '}
+                            Kanal kırılımlı ({active.length} kanal)
+                        </label>
+                    </fieldset>
+                )}
+                <Grid>
+                    {channeled ? (
+                        <div>
+                            <div className="label">
+                                AYLIK CİRO (KANALLAR TOPLAMI)
+                            </div>
+                            <div className="mt-1.5 text-sm font-semibold">
+                                {new Intl.NumberFormat('tr-TR').format(
+                                    channelTotal,
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <Num
+                            l="Aylık ciro"
+                            k="averageMonthlyRevenue"
+                            d={d}
+                            set={set}
+                        />
+                    )}
+                    <Conf
+                        l="Ciro bilgisinin güven düzeyi"
+                        k="revenueConfidence"
+                        d={d}
+                        set={set}
+                    />
                 <Num
                     l="Ortalama sepet tutarı"
                     k="averageOrderValue"
@@ -492,7 +627,108 @@ function Fields({
                     d={d}
                     set={set}
                 />
-            </Grid>
+                </Grid>
+                {channeled && (
+                    <div className="mt-5 space-y-3">
+                        {d.revenueChannels.map((row, i) => (
+                            <div
+                                key={i}
+                                className="grid gap-3 rounded-lg border p-3 md:grid-cols-[1fr_1fr_auto]"
+                            >
+                                <label>
+                                    <span className="label">
+                                        SATIŞ KANALI
+                                        <FieldHint text="Cironun hangi satış kanalından beklendiğini seçin." />
+                                    </span>
+                                    <select
+                                        className="input mt-1.5"
+                                        value={row.salesChannelId}
+                                        onChange={(e) =>
+                                            syncRows(
+                                                d.revenueChannels.map((r, j) =>
+                                                    j === i
+                                                        ? {
+                                                              ...r,
+                                                              salesChannelId:
+                                                                  e.target.value,
+                                                          }
+                                                        : r,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        <option value="">Kanal seçin</option>
+                                        {active.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label>
+                                    <span className="label">
+                                        TAHMİNİ AYLIK CİRO
+                                        <FieldHint text="Bu kanalın bir ayda yapması beklenen satış tutarı." />
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        className="input mt-1.5"
+                                        value={String(row.monthlyRevenue)}
+                                        onChange={(e) =>
+                                            syncRows(
+                                                d.revenueChannels.map((r, j) =>
+                                                    j === i
+                                                        ? {
+                                                              ...r,
+                                                              monthlyRevenue:
+                                                                  Number(
+                                                                      e.target
+                                                                          .value,
+                                                                  ),
+                                                          }
+                                                        : r,
+                                                ),
+                                            )
+                                        }
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    className="self-end text-sm underline"
+                                    onClick={() =>
+                                        syncRows(
+                                            d.revenueChannels.filter(
+                                                (_, j) => j !== i,
+                                            ),
+                                        )
+                                    }
+                                >
+                                    Kaldır
+                                </button>
+                            </div>
+                        ))}
+                        {d.revenueChannels.length < 20 && (
+                            <button
+                                type="button"
+                                className="rounded-lg border px-4 py-2 text-sm font-semibold"
+                                onClick={() =>
+                                    syncRows([
+                                        ...d.revenueChannels,
+                                        {
+                                            salesChannelId: '',
+                                            monthlyRevenue: 0,
+                                        },
+                                    ])
+                                }
+                            >
+                                Kanal satırı ekle
+                            </button>
+                        )}
+                    </div>
+                )}
+            </>
         );
     if (step === 2)
         return (
@@ -721,7 +957,12 @@ function Num<K extends keyof Draft>({
 }) {
     return (
         <label>
-            <span className="label">{l.toUpperCase()}</span>
+            <span className="label">
+                {l.toUpperCase()}
+                {evaluationHints[k as string] && (
+                    <FieldHint text={evaluationHints[k as string]} />
+                )}
+            </span>
             <input
                 type="number"
                 step="any"
@@ -745,7 +986,12 @@ function Rate<K extends keyof Draft>({
 }) {
     return (
         <label>
-            <span className="label">{l.toUpperCase()}</span>
+            <span className="label">
+                {l.toUpperCase()}
+                {evaluationHints[k as string] && (
+                    <FieldHint text={evaluationHints[k as string]} />
+                )}
+            </span>
             <div className="relative mt-1.5">
                 <input
                     type="number"
@@ -778,7 +1024,12 @@ function Score<K extends keyof Draft>({
 }) {
     return (
         <label>
-            <span className="label">{l.toUpperCase()}</span>
+            <span className="label">
+                {l.toUpperCase()}
+                {evaluationHints[k as string] && (
+                    <FieldHint text={evaluationHints[k as string]} />
+                )}
+            </span>
             <select
                 className="input mt-1.5"
                 value={String(d[k])}
@@ -804,7 +1055,10 @@ function Conf<K extends keyof Draft>({
 }) {
     return (
         <label>
-            <span className="label">{l.toUpperCase()}</span>
+            <span className="label">
+                {l.toUpperCase()}
+                <FieldHint text={confidenceHint} />
+            </span>
             <select
                 className="input mt-1.5"
                 value={String(d[k])}

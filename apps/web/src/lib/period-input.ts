@@ -5,8 +5,13 @@ export const periodGroups = [
   { title: 'Reklam harcamaları', fields: ['metaSpend', 'googleSpend', 'tikTokSpend', 'influencerSpend', 'otherAdSpend'] },
 ] as const;
 export type PeriodField = typeof periodGroups[number]['fields'][number];
-export type PeriodInput = Record<PeriodField, number> & { brandId: string; dealId: string; year: number; month: number };
-export type PeriodSnapshot = PeriodInput & { id: string; updatedAt: string; brand: { name: string }; deal: { name: string; currency: string } };
+// Kanal satırlarında girilen alanlar; üst toplamlar bu satırların toplamı olur.
+export const channelSalesFields = ['grossSales', 'vat', 'refunds', 'cancellations', 'chargebacks', 'customerPaidShipping', 'giftCardTopups'] as const;
+export type ChannelSalesField = typeof channelSalesFields[number];
+export type ChannelInput = { salesChannelId: string } & Record<ChannelSalesField, number>;
+export type ChannelLine = ChannelInput & { id?: string; salesChannel?: { name: string } | null };
+export type PeriodInput = Record<PeriodField, number> & { brandId: string; dealId: string; year: number; month: number; channels?: ChannelInput[] };
+export type PeriodSnapshot = Omit<PeriodInput, 'channels'> & { id: string; updatedAt: string; brand: { name: string }; deal: { name: string; currency: string }; channels: ChannelLine[] };
 export const periodLabels: Record<PeriodField, string> = {
   grossSales: 'Brüt satış', vat: 'KDV tutarı', refunds: 'İadeler', cancellations: 'İptaller', chargebacks: 'Ters ibrazlar',
   customerPaidShipping: 'Müşterinin ödediği kargo', giftCardTopups: 'Hediye kartı yüklemeleri', orders: 'Sipariş sayısı',

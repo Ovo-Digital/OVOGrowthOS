@@ -31,6 +31,7 @@ public static partial class WorkflowEndpoints
         });
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
             await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal).Include(x => x.Adjustments)
+                .Include(x => x.Channels).ThenInclude(c => c.SalesChannel)
                 .SingleOrDefaultAsync(x => x.Id == id) is { } p ? Results.Ok(p) : Results.NotFound());
         group.MapGet("/{id:guid}/statement-pdf", async (Guid id, AppDbContext db) =>
         {
@@ -43,19 +44,39 @@ public static partial class WorkflowEndpoints
         });
         group.MapPost("/calculate", async (PerformanceRequest request, AppDbContext db) =>
         {
-            var deal = await db.Deals.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active);
+            var deal = await db.Deals.AsNoTracking().Include(x => x.ChannelRates).SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active);
             if (deal is null) return Results.Conflict(new { error = "Etkin bir anlaşma gereklidir." });
             if (deal.BrandId != request.BrandId) return Results.Conflict(new { error = "Seçilen anlaşma bu markaya ait değildir." });
-            var p = ToPerformance(request); MonthlyPerformanceCalculator.Calculate(p, deal); return Results.Ok(p);
+            var p = ToPerformance(request);
+            if (request.Channels is { Count: > 0 })
+            {
+                var prepared = await BuildChannelLines(db, request.BrandId, request.Channels);
+                if (prepared.Error is not null) return prepared.Error;
+                p.Channels.AddRange(prepared.Lines);
+                MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels,
+                    deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names);
+            }
+            else MonthlyPerformanceCalculator.Calculate(p, deal);
+            return Results.Ok(p);
         }).AddEndpointFilter<ValidationFilter<PerformanceRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/", async (PerformanceRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
-            var deal = await db.Deals.SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active);
+            var deal = await db.Deals.Include(x => x.ChannelRates).SingleOrDefaultAsync(x => x.Id == request.DealId && x.Status == DealStatus.Active);
             if (deal is null) return Results.Conflict(new { error = "Etkin bir anlaşma gereklidir." });
             if (deal.BrandId != request.BrandId) return Results.Conflict(new { error = "Seçilen anlaşma bu markaya ait değildir." });
             if (await db.MonthlyPerformances.AnyAsync(x => x.BrandId == request.BrandId && x.Year == request.Year && x.Month == request.Month))
                 return Results.Conflict(new { error = "Bu marka ve dönem için daha önce kayıt oluşturulmuş." });
-            var p = ToPerformance(request); MonthlyPerformanceCalculator.Calculate(p, deal); TouchPeriod(p);
+            var p = ToPerformance(request);
+            Dictionary<Guid, string>? names = null;
+            if (request.Channels is { Count: > 0 })
+            {
+                var prepared = await BuildChannelLines(db, request.BrandId, request.Channels);
+                if (prepared.Error is not null) return prepared.Error;
+                p.Channels.AddRange(prepared.Lines);
+                db.MonthlyPerformanceChannels.AddRange(prepared.Lines);
+                names = prepared.Names;
+            }
+            Recalculate(p, deal, names); TouchPeriod(p);
             db.Add(p); Audit(db, user, "MonthlyPerformanceCreated", "MonthlyPerformance", p.Id, null, p);
             await db.SaveChangesAsync(); return Results.Created($"/api/performance/{p.Id}", p);
         }).AddEndpointFilter<ValidationFilter<PerformanceRequest>>().RequireAuthorization("OperationsWrite");
@@ -80,11 +101,13 @@ public static partial class WorkflowEndpoints
 
     private static async Task<IResult> SavePerformance(Guid id, PerformanceRequest request, HttpRequest http, AppDbContext db, ClaimsPrincipal user)
     {
-        var p = await db.MonthlyPerformances.Include(x => x.Deal).Include(x => x.Adjustments).SingleOrDefaultAsync(x => x.Id == id);
+        var p = await db.MonthlyPerformances.Include(x => x.Deal).Include(x => x.Adjustments).Include(x => x.Channels).SingleOrDefaultAsync(x => x.Id == id);
         if (p is null) return Results.NotFound();
         if (EditablePeriodError(p, request, http) is { } error) return error;
         var old = JsonSerializer.Serialize(p, Json);
-        Copy(p, request); MonthlyCloseWorkflow.ClearReview(p); MonthlyPerformanceCalculator.Calculate(p, p.Deal!); TouchPeriod(p);
+        Copy(p, request);
+        if (await SyncChannelLines(db, p, request) is { } syncError) return syncError;
+        MonthlyCloseWorkflow.ClearReview(p); TouchPeriod(p);
         Audit(db, user, "MonthlyPerformanceChanged", "MonthlyPerformance", id, old, p);
         await db.SaveChangesAsync(); return Results.Ok(p);
     }
@@ -94,7 +117,84 @@ public static partial class WorkflowEndpoints
         var p = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal).Include(x => x.Adjustments).SingleOrDefaultAsync(x => x.Id == id);
         if (p is null) return Results.NotFound();
         if (EditablePeriodError(p, request, http) is { } error) return error;
-        Copy(p, request); MonthlyPerformanceCalculator.Calculate(p, p.Deal!); return Results.Ok(p);
+        Copy(p, request);
+        var deal = await db.Deals.AsNoTracking().Include(x => x.ChannelRates).SingleOrDefaultAsync(x => x.Id == p.DealId);
+        if (request.Channels is { Count: > 0 })
+        {
+            var prepared = await BuildChannelLines(db, request.BrandId, request.Channels);
+            if (prepared.Error is not null) return prepared.Error;
+            p.Channels.AddRange(prepared.Lines);
+            MonthlyPerformanceCalculator.CalculateWithChannels(p, deal ?? p.Deal!, p.Channels,
+                deal?.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names);
+        }
+        else MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
+        return Results.Ok(p);
+    }
+
+    private sealed record PreparedChannels(List<MonthlyPerformanceChannel> Lines, Dictionary<Guid, string> Names, IResult? Error);
+
+    /// <summary>Kanal satırlarını markaya ve aktifliğe göre doğrular; isimleri önbelleğe alır.</summary>
+    private static async Task<PreparedChannels> BuildChannelLines(AppDbContext db, Guid brandId, List<PerformanceChannelRequest> requested)
+    {
+        var ids = requested.Select(x => x.SalesChannelId).Distinct().ToList();
+        var channels = await db.SalesChannels.AsNoTracking().Where(x => x.BrandId == brandId && ids.Contains(x.Id)).ToListAsync();
+        if (channels.Count != ids.Count)
+            return new([], new(), Results.Conflict(new { error = "Seçilen satış kanallarından biri bu markaya ait değildir." }));
+        var inactive = channels.Where(x => !x.IsActive).Select(x => x.Name).ToList();
+        if (inactive.Count > 0)
+            return new([], new(), Results.Conflict(new { error = $"Pasif kanala ciro girilemez: {string.Join(", ", inactive)}. Kanalı önce etkinleştirin." }));
+        var names = channels.ToDictionary(x => x.Id, x => x.Name);
+        var lines = requested.Select(x => new MonthlyPerformanceChannel { SalesChannelId = x.SalesChannelId,
+            GrossSales = x.GrossSales, Vat = x.Vat, Refunds = x.Refunds, Cancellations = x.Cancellations,
+            Chargebacks = x.Chargebacks, CustomerPaidShipping = x.CustomerPaidShipping, GiftCardTopups = x.GiftCardTopups }).ToList();
+        return new(lines, names, null);
+    }
+
+    /// <summary>Başlıktaki satış toplamlarını kanal satırlarından türetir; kanal yoksa tek toplam hesabı yapar.</summary>
+    private static void Recalculate(MonthlyPerformance p, Deal deal, Dictionary<Guid, string>? names)
+    {
+        if (p.Channels.Count == 0) MonthlyPerformanceCalculator.Calculate(p, deal);
+        else MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels.ToList(),
+            deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names);
+    }
+
+    /// <summary>İstek kanal içeriyorsa satırları eşitler ve yeniden hesaplar; içermiyorsa satırları kaldırır.</summary>
+    private static async Task<IResult?> SyncChannelLines(AppDbContext db, MonthlyPerformance p, PerformanceRequest request)
+    {
+        if (request.Channels is null || request.Channels.Count == 0)
+        {
+            foreach (var removed in p.Channels.ToList()) db.MonthlyPerformanceChannels.Remove(removed);
+            p.Channels.Clear();
+            MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
+            return null;
+        }
+        var prepared = await BuildChannelLines(db, request.BrandId, request.Channels);
+        if (prepared.Error is not null) return prepared.Error;
+        var wanted = prepared.Lines.ToDictionary(x => x.SalesChannelId);
+        foreach (var removed in p.Channels.Where(c => !wanted.ContainsKey(c.SalesChannelId)).ToList())
+        {
+            p.Channels.Remove(removed);
+            db.MonthlyPerformanceChannels.Remove(removed);
+        }
+        foreach (var line in prepared.Lines)
+        {
+            var existing = p.Channels.SingleOrDefault(c => c.SalesChannelId == line.SalesChannelId);
+            if (existing is null)
+            {
+                p.Channels.Add(line);
+                db.MonthlyPerformanceChannels.Add(line);
+            }
+            else
+            {
+                existing.GrossSales = line.GrossSales; existing.Vat = line.Vat; existing.Refunds = line.Refunds;
+                existing.Cancellations = line.Cancellations; existing.Chargebacks = line.Chargebacks;
+                existing.CustomerPaidShipping = line.CustomerPaidShipping; existing.GiftCardTopups = line.GiftCardTopups;
+            }
+        }
+        var rates = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId)
+            .ToDictionaryAsync(r => r.SalesChannelId, r => r.RevenueShareRate);
+        MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(), rates, prepared.Names);
+        return null;
     }
 
     private static IResult? EditablePeriodError(MonthlyPerformance p, PerformanceRequest request, HttpRequest http)
@@ -174,13 +274,23 @@ public static partial class WorkflowEndpoints
 
     private static async Task<IResult> AddPerformanceAdjustment(Guid id, AdjustmentRequest request, HttpRequest http, AppDbContext db, ClaimsPrincipal user)
     {
-        var p = await db.MonthlyPerformances.Include(x => x.Deal).Include(x => x.Adjustments).SingleOrDefaultAsync(x => x.Id == id);
+        var p = await db.MonthlyPerformances.Include(x => x.Deal).Include(x => x.Adjustments).Include(x => x.Channels).SingleOrDefaultAsync(x => x.Id == id);
         if (p is null) return Results.NotFound();
         if (!MonthlyCloseWorkflow.CanAdjust(p.Status)) return Results.Conflict(new { error = "Hakediş düzeltmesi yalnız taslak döneme eklenebilir. Önce yetkili kişi kaydı gerekçeyle taslağa göndermelidir." });
         if (PeriodVersionError(p, http) is { } error) return error;
         var a = new CommissionAdjustment { MonthlyPerformanceId = id, Amount = request.Amount, Reason = request.Reason.Trim(), CreatedBy = User(user) };
         p.Adjustments.Add(a); db.CommissionAdjustments.Add(a); MonthlyCloseWorkflow.ClearReview(p);
-        MonthlyPerformanceCalculator.Calculate(p, p.Deal!); TouchPeriod(p);
+        if (p.Channels.Count == 0) MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
+        else
+        {
+            var rates = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId)
+                .ToDictionaryAsync(r => r.SalesChannelId, r => r.RevenueShareRate);
+            var ids = p.Channels.Select(c => c.SalesChannelId).ToList();
+            var names = await db.SalesChannels.AsNoTracking().Where(x => ids.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+            MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(), rates, names);
+        }
+        TouchPeriod(p);
         Audit(db, user, "CommissionAdjusted", "MonthlyPerformance", id, null, a, request.Reason);
         await db.SaveChangesAsync(); return Results.Ok(new { adjustment = a, p.OvoFee, p.CommissionBreakdownJson });
     }

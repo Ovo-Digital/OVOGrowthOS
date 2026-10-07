@@ -327,7 +327,7 @@ Marka adına tıklandığında markanın özet sayfası açılır. Sayfa, uzun b
 - **Genel bakış:** değerlendirme cirosu, brüt kâr marjı, reklam harcaması, iş ortaklığı puanı, son değerlendirme, mevcut anlaşma ve markanın güncel durumu.
 - **Görüşme ve ekip:** görüşme brief'i, müşteri memnuniyet puanı, sorumlu ve görüşme takibi, hazır iş şablonları, markanın görevleri, belgeler ve görüşme notları.
 - **Performans:** aylık hedef ve bütçe, marka sağlık skoru, reklam verimliliği (MER) ve gerçekleşen aylık sonuçlar.
-- **Veri bağlantıları:** reklam platformu ayarları, mağaza API ayarları ve mağaza siparişleri.
+- **Veri bağlantıları:** satış kanalları, reklam platformu ayarları, mağaza API ayarları ve mağaza siparişleri.
 
 Bu ekran, marka hakkında hızlı bir yönetim özeti almak için kullanılır. Sekme değiştirdiğinizde diğer bölümlerdeki bilgiler silinmez; yalnız görünüm değiştirir. **Marka bilgileri düzenle** düğmesi sekmelerin üzerinde durur ve her sekmeden açılıp kapatılabilir.
 
@@ -340,6 +340,8 @@ Performans sekmesindeki **Marka sağlık skoru** kartı markayı 100 puan üzeri
 - GrandNode'da API kullanıcısının şifresi; Shopify'da sipariş okuma yetkili bir **Admin API jetonu** (yönetimden Ayarlar → Uygulamalar ve satış kanalları bölümünden alınır).
 
 Şifre veya jeton sunucuda şifreli saklanır, kayıttan sonra ekranda bir daha görünmez; alanı boş bırakmak kayıtlı bilgiyi korur. **API ayarlarını kaydet** yalnız bilgileri saklar, bağlantıyı doğrulamaz. **Bağlantıyı doğrula** ise mağazadan geçici bir erişim jetonu isteyip sonucu bildirir; bir dakika içinde tekrar denenemez. Doğrulama yalnız bağlantıyı sınamaktan ibarettir, sipariş getirmez. Yanlış platform seçerseniz doğrulama hata verir; ayarları platforma göre düzeltip tekrar deneyin. Siparişlerin kendisi aşağıdaki **Mağaza siparişleri** bölümünden ayrıca getirilir; bu ayarlar bölümü hakediş veya dönem kapanışını etkilemez.
+
+**Veri bağlantıları** sekmesindeki **Satış kanalları** bölümünde markanın ciro girilen kanalları tanımlanır (ör. Web sitesi, Trendyol, Hepsiburada). Kanal adı en az 2 karakter olur ve aynı markada iki kez kullanılamaz. Kullanılmayan kanal silinebilir; anlaşma veya dönem kaydında kullanılmış bir kanal silinemez, bunun yerine **Pasif yap** ile kapatılır. Pasif kanal yeni dönemlere yazılamaz ama geçmiş kayıtlar korunur. Anlaşmadaki kanal oranları anlaşma sayfasındaki **Kanal bazında gelir payı** bölümünden girilir.
 
 ### Görüşme brief’i
 
@@ -430,6 +432,8 @@ Bu adımda markanın satış hacmi girilir:
 - Sepet tutarının güven düzeyi
 - Aylık sipariş sayısı
 - Aylık site ziyareti
+
+Markada etkin satış kanalı varsa **Kanal kırılımlı** seçeneği görünür; her kanalın tahmini aylık cirosu ayrı yazılır ve aylık ciro satırların toplamı olur. Kanal kırılımı puanı veya öneriyi değiştirmez, yalnız cironun nereden beklendiğini gösterir. Tek toplama dönüldüğünde kanal satırları silinir ve elle yazılan toplam korunur.
 
 Mümkünse bu bilgileri markanın e-ticaret paneli, muhasebe raporu veya analiz aracından doğrulayın.
 
@@ -591,6 +595,8 @@ Senaryo simülatörü “şu değer değişirse ne olur?” sorusuna cevap verir
 
 Değerler değiştirildikçe anlık sonuçlar yeniden hesaplanır.
 
+Markada etkin satış kanalı varsa **Kanallı gir** ile aylık ciro kanal satırlarına bölünebilir; aylık ciro satırların toplamı olur. Senaryoda kanal oranları yoktur, hakediş senaryonun tek oranıyla toplam üzerinden hesaplanır; kanal dağılımı yalnız ciro karşılaştırması içindir. Kaydedilen senaryoların ciro satırında kanal dağılımı da görünür. Senaryo sonradan düzenlenemez; farklı bir dağılım için yeni senaryo açılır veya mevcut senaryo kopyalanır (kopyaya kanal satırları da taşınır).
+
 ### Sonuçlarda nelere bakılmalı?
 
 - OVO hakedişi
@@ -674,6 +680,10 @@ Pay, ciro yerine markanın gerçek katkı kârı üzerinden hesaplanır.
 
 Performans payı olmadan yalnızca sabit aylık ücret uygulanır.
 
+### Kanal bazında gelir payı
+
+Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satış kanalına farklı bir gelir payı verilebilir. Örneğin web sitesi %5, Trendyol %3 ile çalışabilir. Oranı yazılmayan kanal, anlaşmanın genel oranıyla hesaplanır. Kademeli, büyüme farkı ve katkı kârı modellerinde kanal oranları kullanılmaz; ciro yine de kanal kırılımlı girilebilir ama hakediş toplam üzerinden hesaplanır. Kanal oranları yalnız ileride hesaplanacak dönemleri etkiler; kapanmış dönemlerin hakedişi değişmez.
+
 ---
 
 ## 12. Aylık sonuç girişi
@@ -701,6 +711,10 @@ Aynı marka için aynı yıl ve aya ikinci bir kayıt açılmamalıdır. Sistem 
 - Ters ibrazlar
 - Müşterinin ödediği kargo
 - Hediye kartı yüklemeleri
+
+Ciro iki şekilde girilir: **Tek toplam** veya **Kanal kırılımlı**. Markada en az bir etkin satış kanalı varsa formda bu iki seçenek görünür; kanal tanımlı markalarda yeni kayıtlarda kanal kırılımlı giriş öntanımlıdır.
+
+Kanal kırılımlı girişte her kanal için yukarıdaki yedi alan ayrı ayrı yazılır; üst toplamlar satırların toplamı olur ve ayrıca yazılmaz. Her kanal bir dönemde yalnız bir kez yer alabilir ve en fazla 20 satır girilebilir. Hakediş, oranı tanımlı kanalda o oranla, oranı yazılmayan kanalda anlaşmanın genel oranıyla hesaplanır; ön izlemede her kanalın payı ayrı satırda görünür. Dönem detayında **Satış kanalı kırılımı** bölümünden her kanalın brüt satışı, kesintileri, net cirosu ve hakediş payı izlenir. Mağaza önerisi ve müşteri bildirimi düğmeleri tek toplam içindir ve kanallı girişte kapalıdır.
 
 ### Sipariş ve müşteri bilgileri
 

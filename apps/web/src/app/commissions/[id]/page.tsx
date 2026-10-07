@@ -11,7 +11,7 @@ import { CollectionPromisePanel } from '@/components/collection-promise-panel';
 import { downloadPortal } from '@/components/portal-report';
 
 type Performance = { brand: { name: string }; deal: { currency: string }; year: number; month: number; status: string; commissionableRevenue: number; ovoFee: number; commissionBreakdownJson: string };
-type Breakdown = { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number; tiers: { revenueAmount: number; rate: number; fee: number }[] };
+type Breakdown = { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number; tiers: { revenueAmount: number; rate: number; fee: number }[]; channels?: { salesChannelId: string; channelName: string; commissionableRevenue: number; rate: number; fee: number }[] };
 
 export default function Page() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +27,7 @@ export default function Page() {
     <Card className="max-w-3xl p-6">
       <Row label="Hesaplamaya esas ciro" value={amount(data.commissionableRevenue)} />
       {(breakdown.tiers ?? []).map((tier, index) => <div className="my-3 rounded-lg bg-[#f7f7f8] p-3 text-sm" key={index}><strong>Kademe {index + 1}</strong><p className="mt-1">{amount(tier.revenueAmount)} × {percent(tier.rate)} → {amount(tier.fee)}</p></div>)}
+      {(breakdown.channels ?? []).map(channel => <div className="my-3 rounded-lg bg-[#f7f7f8] p-3 text-sm" key={channel.salesChannelId}><strong>{channel.channelName}</strong><p className="mt-1">{amount(channel.commissionableRevenue)} × {percent(channel.rate)} → {amount(channel.fee)}</p></div>)}
       <Row label="Sabit aylık ücret" value={amount(breakdown.baseRetainer)} />
       <Row label="Hesaplanan pay" value={amount(breakdown.calculatedShare)} />
       <Row label="Asgari ücret" value={amount(breakdown.minimumFee)} />

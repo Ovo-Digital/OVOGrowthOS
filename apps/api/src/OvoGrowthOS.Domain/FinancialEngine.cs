@@ -31,8 +31,109 @@ public sealed record CommissionTierResult(decimal LowerBound, decimal? UpperBoun
 public sealed record CommissionResult(decimal BaseRetainer, decimal CalculatedShare, decimal MinimumFee, decimal Adjustments,
     decimal FinalFee, decimal EffectiveRate, IReadOnlyList<CommissionTierResult> Tiers);
 
+public sealed record ChannelRevenue(Guid SalesChannelId, string ChannelName, decimal CommissionableRevenue);
+public sealed record ChannelCommissionResult(CommissionResult Result, IReadOnlyList<CommissionChannelShare> Shares);
+
 public static class DealCommissionCalculator
 {
+    /// <summary>Kanal başına farklı gelir payı yalnız bu modellerde uygulanır; diğerlerinde toplam üzerinden hesaplanır.</summary>
+    public static bool SupportsChannelRates(DealType type) => type is DealType.FlatRevenueShare
+        or DealType.RetainerPlusRevenueShare or DealType.MinimumFeePlusRevenueShare;
+
+    /// <summary>
+    /// Kanal kırılımlı hakediş. Desteklenen modellerde her kanal kendi oranıyla çarpılır;
+    /// asgari ücret ve sabit ücret toplam seviyede uygulanıp kanallara ciro ağırlığıyla dağıtılır.
+    /// Desteklenmeyen modellerde toplam üzerinden hesaplanıp yalnızca gösterim için dağıtılır.
+    /// Düzeltmeler (adjustments) başlık seviyesindedir ve kanallara dağıtılmaz.
+    /// </summary>
+    public static ChannelCommissionResult CalculateWithChannels(Deal deal, IReadOnlyList<ChannelRevenue> channels,
+        decimal contributionBeforeOvo, IReadOnlyDictionary<Guid, decimal>? rateOverrides = null, decimal adjustments = 0)
+    {
+        var list = channels.ToList();
+        var total = list.Sum(x => x.CommissionableRevenue);
+        if (list.Count == 0)
+            return new(Calculate(deal, total, contributionBeforeOvo, adjustments), []);
+        var tiers = DeserializeTiers(deal.CommissionTiersJson);
+        // Kademeli oran tanımlıysa toplam üzerinden kademeli hesap korunur; kanal oranları uygulanmaz.
+        if (!SupportsChannelRates(deal.DealType)
+            || (deal.DealType == DealType.MinimumFeePlusRevenueShare && tiers.Count > 0))
+        {
+            var fallback = Calculate(deal, total, contributionBeforeOvo, adjustments);
+            return new(fallback, DistributeProportionally(list, fallback.FinalFee - adjustments));
+        }
+        var channelFees = list.Select(x =>
+        {
+            var rate = rateOverrides is not null && rateOverrides.TryGetValue(x.SalesChannelId, out var r) ? r : deal.RevenueShareRate;
+            return (Channel: x, Rate: rate, Fee: Money(x.CommissionableRevenue * rate));
+        }).ToList();
+        var share = channelFees.Sum(x => x.Fee);
+        var baseRetainer = deal.DealType is DealType.RetainerPlusRevenueShare ? deal.MonthlyRetainer : 0;
+        var calculated = baseRetainer + share;
+        var finalBeforeAdjustments = deal.DealType == DealType.MinimumFeePlusRevenueShare
+            ? Math.Max(calculated, deal.MinimumMonthlyFee)
+            : calculated;
+        var final = finalBeforeAdjustments + adjustments;
+        var minimumHit = deal.DealType == DealType.MinimumFeePlusRevenueShare && finalBeforeAdjustments == deal.MinimumMonthlyFee && deal.MinimumMonthlyFee > calculated;
+        var shares = new List<CommissionChannelShare>(list.Count);
+        if (finalBeforeAdjustments == 0)
+        {
+            shares.AddRange(channelFees.Select(x => new CommissionChannelShare(x.Channel.SalesChannelId, x.Channel.ChannelName, x.Channel.CommissionableRevenue, x.Rate, 0)));
+        }
+        else if (minimumHit)
+        {
+            // Asgari ücret devredeyse toplam kanallara ciro ağırlığıyla dağıtılır.
+            var distributed = DistributeAmount(list, finalBeforeAdjustments);
+            shares.AddRange(channelFees.Select((x, i) => new CommissionChannelShare(x.Channel.SalesChannelId, x.Channel.ChannelName, x.Channel.CommissionableRevenue, x.Rate, distributed[i])));
+        }
+        else
+        {
+            // Sabit ücret ciro ağırlığıyla kanallara eklenir; kalan her kanalın kendi payıdır.
+            var retainerParts = DistributeAmount(list, baseRetainer);
+            var unrounded = channelFees.Select((x, i) => x.Fee + retainerParts[i]).ToList();
+            var rounded = unrounded.Select(Money).ToList();
+            var diff = finalBeforeAdjustments - rounded.Sum();
+            if (diff != 0 && rounded.Count > 0) rounded[IndexOfLargest(list)] += diff;
+            shares.AddRange(channelFees.Select((x, i) => new CommissionChannelShare(x.Channel.SalesChannelId, x.Channel.ChannelName, x.Channel.CommissionableRevenue, x.Rate, rounded[i])));
+        }
+        var result = new CommissionResult(baseRetainer, share, deal.MinimumMonthlyFee, adjustments, final,
+            CommissionCalculator.EffectiveRate(final, total), CommissionCalculator.TieredBreakdown(total, tiers));
+        return new(result, shares);
+    }
+
+    private static List<decimal> DistributeAmount(IReadOnlyList<ChannelRevenue> channels, decimal amount)
+    {
+        var total = channels.Sum(x => x.CommissionableRevenue);
+        List<decimal> parts;
+        if (total == 0)
+        {
+            var equal = Money(amount / channels.Count);
+            parts = Enumerable.Repeat(equal, channels.Count).ToList();
+        }
+        else
+        {
+            parts = channels.Select(x => Money(amount * x.CommissionableRevenue / total)).ToList();
+        }
+        var diff = amount - parts.Sum();
+        if (diff != 0 && parts.Count > 0) parts[IndexOfLargest(channels)] += diff;
+        return parts;
+    }
+
+    private static List<CommissionChannelShare> DistributeProportionally(IReadOnlyList<ChannelRevenue> channels, decimal amount)
+    {
+        var parts = DistributeAmount(channels, amount);
+        return channels.Select((x, i) => new CommissionChannelShare(x.SalesChannelId, x.ChannelName, x.CommissionableRevenue, 0, parts[i])).ToList();
+    }
+
+    private static int IndexOfLargest(IReadOnlyList<ChannelRevenue> channels)
+    {
+        var index = 0;
+        for (var i = 1; i < channels.Count; i++)
+            if (channels[i].CommissionableRevenue > channels[index].CommissionableRevenue) index = i;
+        return index;
+    }
+
+    private static decimal Money(decimal value) => decimal.Round(value, 4, MidpointRounding.AwayFromZero);
+
     public static CommissionResult Calculate(Deal deal, decimal commissionableRevenue, decimal contributionBeforeOvo, decimal adjustments = 0)
     {
         var tiers = DeserializeTiers(deal.CommissionTiersJson);

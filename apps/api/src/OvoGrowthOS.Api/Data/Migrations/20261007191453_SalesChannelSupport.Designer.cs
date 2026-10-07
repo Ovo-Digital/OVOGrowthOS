@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OvoGrowthOS.Api.Data;
@@ -11,9 +12,11 @@ using OvoGrowthOS.Api.Data;
 namespace OvoGrowthOS.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007191453_SalesChannelSupport")]
+    partial class SalesChannelSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -760,38 +763,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                             t.HasCheckConstraint("CK_BrandMailPolicies_Revision", "\"Revision\" > 0");
 
                             t.HasCheckConstraint("CK_BrandMailPolicies_Schedule", "\"ScheduledSendDay\" BETWEEN 1 AND 31 AND \"ScheduledSendHour\" BETWEEN 0 AND 23");
-                        });
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.BrandRevenueChannel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BrandId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("MonthlyRevenue")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<Guid>("SalesChannelId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SalesChannelId");
-
-                    b.HasIndex("BrandId", "SalesChannelId")
-                        .IsUnique();
-
-                    b.ToTable("BrandRevenueChannels", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_BrandRevenueChannels_Money", "\"MonthlyRevenue\" >= 0");
                         });
                 });
 
@@ -2795,35 +2766,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.ToTable("Scenarios", "growth");
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.ScenarioRevenueChannel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("MonthlyRevenue")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<Guid>("SalesChannelId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ScenarioId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SalesChannelId");
-
-                    b.HasIndex("ScenarioId", "SalesChannelId")
-                        .IsUnique();
-
-                    b.ToTable("ScenarioRevenueChannels", "growth", t =>
-                        {
-                            t.HasCheckConstraint("CK_ScenarioRevenueChannels_Money", "\"MonthlyRevenue\" >= 0");
-                        });
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>
                 {
                     b.Property<Guid>("MonthlyPerformanceId")
@@ -3544,25 +3486,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.BrandRevenueChannel", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.Brand", "Brand")
-                        .WithMany("RevenueChannels")
-                        .HasForeignKey("BrandId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OvoGrowthOS.Domain.SalesChannel", "SalesChannel")
-                        .WithMany()
-                        .HasForeignKey("SalesChannelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Brand");
-
-                    b.Navigation("SalesChannel");
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.BrandStageHistory", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.Brand", null)
@@ -3963,25 +3886,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("OvoGrowthOS.Domain.ScenarioRevenueChannel", b =>
-                {
-                    b.HasOne("OvoGrowthOS.Domain.SalesChannel", "SalesChannel")
-                        .WithMany()
-                        .HasForeignKey("SalesChannelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("OvoGrowthOS.Domain.Scenario", "Scenario")
-                        .WithMany("RevenueChannels")
-                        .HasForeignKey("ScenarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SalesChannel");
-
-                    b.Navigation("Scenario");
-                });
-
             modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>
                 {
                     b.HasOne("OvoGrowthOS.Domain.MonthlyPerformance", null)
@@ -4146,8 +4050,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
 
                     b.Navigation("MonthlyPerformances");
 
-                    b.Navigation("RevenueChannels");
-
                     b.Navigation("SalesChannels");
                 });
 
@@ -4194,11 +4096,6 @@ namespace OvoGrowthOS.Api.Data.Migrations
             modelBuilder.Entity("OvoGrowthOS.Domain.RuleSet", b =>
                 {
                     b.Navigation("Rules");
-                });
-
-            modelBuilder.Entity("OvoGrowthOS.Domain.Scenario", b =>
-                {
-                    b.Navigation("RevenueChannels");
                 });
 
             modelBuilder.Entity("OvoGrowthOS.Domain.ServiceCostAccount", b =>

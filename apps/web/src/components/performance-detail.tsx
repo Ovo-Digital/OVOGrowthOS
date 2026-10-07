@@ -10,10 +10,11 @@ import { ServiceCosts } from '@/components/operating-costs';
 import { PerformanceForm } from '@/components/performance-form';
 import { useUnsavedChanges } from '@/components/use-unsaved-changes';
 
-type Period = PeriodSnapshot & { status: string; preparedBy: string; reviewedBy: string; submittedAt: string | null; approvedAt: string | null;
+type Period = Omit<PeriodSnapshot, 'channels'> & { status: string; preparedBy: string; reviewedBy: string; submittedAt: string | null; approvedAt: string | null;
   netRevenue: number; contributionBeforeMarketing: number; totalAdSpend: number; contributionBeforeOvo: number; ovoFee: number;
   brandContributionProfit: number; ovoGrossProfit: number; ovoMargin: number; mer: number; commissionBreakdownJson: string;
-  adjustments: { id: string; amount: number; reason: string }[] };
+  adjustments: { id: string; amount: number; reason: string }[];
+  channels: { id: string; salesChannelId: string; salesChannel: { name: string } | null; grossSales: number; vat: number; refunds: number; cancellations: number; chargebacks: number; customerPaidShipping: number; giftCardTopups: number; netRevenue: number; commissionableRevenue: number; ovoFeeShare: number }[] };
 type Action = 'submit' | 'approve' | 'lock' | 'return' | 'unlock' | 'adjustments';
 const labels: Record<Action, string> = { submit: 'İncelemeye gönder', approve: 'Onayla', lock: 'Dönemi kilitle', return: 'Gerekçeyle taslağa gönder', unlock: 'Dönem kilidini aç', adjustments: 'Hakediş düzeltmesi ekle' };
 const button = 'rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50';
@@ -55,7 +56,9 @@ export function PerformanceDetail({ id }: { id: string }) {
         ['− Ürün maliyeti', -p.cogs], ['− Ödeme sistemi giderleri', -p.paymentFees], ['− Sipariş hazırlama', -p.fulfillmentCosts], ['− Kargo desteği', -p.shippingSubsidy],
         ['− Diğer değişken giderler', -p.otherVariableCosts], ['= Reklam öncesi katkı', p.contributionBeforeMarketing], ['− Reklam harcaması', -p.totalAdSpend],
         ['= OVO öncesi katkı', p.contributionBeforeOvo], ['− OVO hakedişi', -p.ovoFee], ['= Markanın katkı kârı', p.brandContributionProfit],
-      ].map(([label, value]) => <div className={`flex flex-wrap justify-between gap-2 py-2 text-sm ${String(label).startsWith('=') ? 'border-t font-bold' : 'text-[#6d7175]'}`} key={label}><dt>{label}</dt><dd>{money(Number(value))}</dd></div>)}</dl></Card>
+      ].map(([label, value]) => <div className={`flex flex-wrap justify-between gap-2 py-2 text-sm ${String(label).startsWith('=') ? 'border-t font-bold' : 'text-[#6d7175]'}`} key={label}><dt>{label}</dt><dd>{money(Number(value))}</dd></div>)}</dl>
+        {(p.channels ?? []).length > 0 && <div className="mt-4"><h3 className="font-semibold">Satış kanalı kırılımı</h3><dl className="mt-2">{p.channels.map(c => <div className="border-t py-2 text-sm" key={c.id}><div className="flex flex-wrap justify-between gap-2"><dt className="font-semibold">{c.salesChannel?.name ?? 'Kanal'}</dt><dd>{money(c.grossSales)}</dd></div><div className="mt-1 space-y-1 text-[#6d7175]">{[[`Net ciro · ${money(c.netRevenue)}`, `Hakedişe esas · ${money(c.commissionableRevenue)}`], [`Kanal hakediş payı · ${money(c.ovoFeeShare)}`, `Kesintiler · ${money(c.vat + c.refunds + c.cancellations + c.chargebacks + c.customerPaidShipping + c.giftCardTopups)}`]].map(([a, b], i) => <div className="flex flex-wrap justify-between gap-2" key={i}><span>{a}</span><span>{b}</span></div>)}</div></div>)}</dl></div>}
+      </Card>
       <div className="space-y-4"><Card className="p-5"><h2 className="font-semibold">Hakediş özeti</h2><CommissionSummary json={p.commissionBreakdownJson} currency={p.deal.currency}/></Card>
         <Card className="p-5"><h2 className="font-semibold">Elle yapılan düzeltmeler</h2>{p.adjustments.length ? p.adjustments.map(a => <div key={a.id} className="mt-3 flex flex-wrap justify-between gap-2 text-sm"><span className="break-words">{a.reason}</span><strong>{money(a.amount)}</strong></div>) : <p className="mt-3 text-sm">Henüz hakediş düzeltmesi yok.</p>}</Card></div></div>
       <ServiceCosts id={id}/></>}
@@ -87,7 +90,8 @@ function PeriodAction({ period: p, action, onSaved, onCancel }: { period: Period
 }
 
 function CommissionSummary({ json, currency }: { json: string; currency: string }) {
-  const b = JSON.parse(json) as { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number };
+  const b = JSON.parse(json) as { baseRetainer: number; calculatedShare: number; minimumFee: number; adjustments: number; finalFee: number; effectiveRate: number; channels?: { salesChannelId: string; channelName: string; commissionableRevenue: number; rate: number; fee: number }[] };
   const money = (n: number) => moneyPrecise(n, currency);
-  return <dl className="mt-3 space-y-2 text-sm">{[['Sabit aylık ücret', money(b.baseRetainer)], ['Hesaplanan ciro payı', money(b.calculatedShare)], ['Asgari ücret', money(b.minimumFee)], ['Düzeltmeler', money(b.adjustments)], ['Son OVO hakedişi', money(b.finalFee)], ['Gerçekleşen oran', percent(b.effectiveRate)]].map(([label, value]) => <div className="flex flex-wrap justify-between gap-2 border-b py-2" key={label}><dt>{label}</dt><dd className="font-semibold">{value}</dd></div>)}</dl>;
+  return <dl className="mt-3 space-y-2 text-sm">{[['Sabit aylık ücret', money(b.baseRetainer)], ['Hesaplanan ciro payı', money(b.calculatedShare)], ['Asgari ücret', money(b.minimumFee)], ['Düzeltmeler', money(b.adjustments)], ['Son OVO hakedişi', money(b.finalFee)], ['Gerçekleşen oran', percent(b.effectiveRate)]].map(([label, value]) => <div className="flex flex-wrap justify-between gap-2 border-b py-2" key={label}><dt>{label}</dt><dd className="font-semibold">{value}</dd></div>)}
+    {(b.channels ?? []).map(c => <div className="flex flex-wrap justify-between gap-2 border-b py-2" key={c.salesChannelId}><dt>{c.channelName} · {money(c.commissionableRevenue)} × {percent(c.rate)}</dt><dd className="font-semibold">{money(c.fee)}</dd></div>)}</dl>;
 }

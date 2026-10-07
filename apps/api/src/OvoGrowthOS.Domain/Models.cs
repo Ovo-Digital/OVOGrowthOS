@@ -56,6 +56,8 @@ public sealed class Brand
     public List<BrandEvaluation> Evaluations { get; set; } = [];
     public List<Deal> Deals { get; set; } = [];
     public List<MonthlyPerformance> MonthlyPerformances { get; set; } = [];
+    public List<SalesChannel> SalesChannels { get; set; } = [];
+    public List<BrandRevenueChannel> RevenueChannels { get; set; } = [];
 }
 
 public sealed class BrandEconomics
@@ -205,6 +207,7 @@ public sealed class Scenario
     public string ResultJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public List<ScenarioRevenueChannel> RevenueChannels { get; set; } = [];
 }
 
 public sealed class Deal
@@ -242,6 +245,96 @@ public sealed class Deal
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public List<PartnershipCondition> Conditions { get; set; } = [];
+    public List<DealChannelRate> ChannelRates { get; set; } = [];
+}
+
+/// <summary>
+/// Markanın kendi tanımladığı satış kanalı (ör. Web sitesi, Trendyol, Hepsiburada).
+/// Ciro satırları ve anlaşmadaki kanal oranları bu kayda bağlanır.
+/// </summary>
+public sealed class SalesChannel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid BrandId { get; set; }
+    public Brand? Brand { get; set; }
+    public required string Name { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Anlaşmanın bir satış kanalına özel gelir payı oranı (0-1).
+/// Kaydı olmayan kanal için anlaşmanın genel gelir payı oranı geçerlidir.
+/// </summary>
+public sealed class DealChannelRate
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid DealId { get; set; }
+    public Deal? Deal { get; set; }
+    public Guid SalesChannelId { get; set; }
+    public SalesChannel? SalesChannel { get; set; }
+    public decimal RevenueShareRate { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Aylık sonucun kanal kırılımı. Başlıktaki toplamlar kanal satırlarının toplamıdır.
+/// </summary>
+public sealed class MonthlyPerformanceChannel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid MonthlyPerformanceId { get; set; }
+    public MonthlyPerformance? MonthlyPerformance { get; set; }
+    public Guid SalesChannelId { get; set; }
+    public SalesChannel? SalesChannel { get; set; }
+    public decimal GrossSales { get; set; }
+    public decimal Vat { get; set; }
+    public decimal Refunds { get; set; }
+    public decimal Cancellations { get; set; }
+    public decimal Chargebacks { get; set; }
+    public decimal CustomerPaidShipping { get; set; }
+    public decimal GiftCardTopups { get; set; }
+    public decimal NetRevenue { get; set; }
+    public decimal CommissionableRevenue { get; set; }
+    public decimal OvoFeeShare { get; set; }
+}
+
+public static class SalesChannelRules
+{
+    public const int MaxNameLength = 80;
+    public const int MaxChannelsPerBrand = 30;
+    public const int MaxChannelsPerPeriod = 20;
+    public const int MaxChannelsPerForecast = 20;
+}
+
+/// <summary>
+/// Markanın tahmini aylık cirosunun kanal kırılımı (değerlendirme girişi).
+/// Ortalama aylık ciro, satırların toplamıdır.
+/// </summary>
+public sealed class BrandRevenueChannel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid BrandId { get; set; }
+    public Brand? Brand { get; set; }
+    public Guid SalesChannelId { get; set; }
+    public SalesChannel? SalesChannel { get; set; }
+    public decimal MonthlyRevenue { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// Senaryodaki tahmini aylık cironun kanal kırılımı. Senaryo cirosu satırların toplamıdır.
+/// Hakediş hesabı senaryonun tek oranıyla toplam üzerinden yapılır.
+/// </summary>
+public sealed class ScenarioRevenueChannel
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ScenarioId { get; set; }
+    public Scenario? Scenario { get; set; }
+    public Guid SalesChannelId { get; set; }
+    public SalesChannel? SalesChannel { get; set; }
+    public decimal MonthlyRevenue { get; set; }
 }
 
 public sealed class MonthlyPerformance
@@ -301,6 +394,7 @@ public sealed class MonthlyPerformance
     public DateTimeOffset? ApprovedAt { get; set; }
     public DateTimeOffset? LockedAt { get; set; }
     public List<CommissionAdjustment> Adjustments { get; set; } = [];
+    public List<MonthlyPerformanceChannel> Channels { get; set; } = [];
     public CollectionAccount? Collection { get; set; }
 }
 
@@ -380,6 +474,8 @@ public sealed class AuditRecord
 }
 
 public sealed record CommissionTier(decimal LowerBound, decimal? UpperBound, decimal Rate);
+/// <summary>Hakediş dökümünde kanal başına düşen pay (açıklanabilirlik için saklanır).</summary>
+public sealed record CommissionChannelShare(Guid SalesChannelId, string ChannelName, decimal CommissionableRevenue, decimal Rate, decimal Fee);
 public sealed record FinancialInputs(decimal GrossSales, decimal Refunds, decimal Cancellations, decimal Chargebacks,
     decimal Cogs, decimal VariableCosts, decimal AdSpend, decimal OvoFee, int Orders = 0, int Sessions = 0, int NewCustomers = 0);
 public sealed record FinancialResult(decimal NetRevenue, decimal GrossProfit, decimal ContributionBeforeMarketing,

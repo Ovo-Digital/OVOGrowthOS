@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { periodNumber, periodGroups, periodLabels } from '../src/lib/period-input.ts';
+import { periodNumber, periodGroups, periodLabels, channelSalesFields } from '../src/lib/period-input.ts';
 
 test('Türkçe tutarlar, dört ondalık basamak ve gerçek sıfır kabul edilir', () => {
   for (const [raw, expected] of [['0', 0], ['1234,56', 1234.56], ['1.234,5678', 1234.5678], [' 12,5 ', 12.5]])
@@ -19,4 +19,9 @@ test('Düzenlenebilir tüm alanların kullanıcı etiketi var', () => {
   assert.equal(fields.length, 21);
   assert.equal(new Set(fields).size, fields.length);
   for (const field of fields) assert.ok(periodLabels[field]);
+});
+test('Kanal satırları satış grubuyla aynı yedi alanı kullanır', () => {
+  const sales = periodGroups.find(group => group.title === 'Satış ve kesintiler').fields;
+  assert.deepEqual([...channelSalesFields], [...sales]);
+  for (const field of channelSalesFields) assert.ok(periodLabels[field]);
 });

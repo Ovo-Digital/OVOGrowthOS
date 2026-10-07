@@ -10,7 +10,8 @@ public sealed record EvaluationDraftRequest(Guid BrandId, int CurrentStep, Evalu
     int StockCoverageDays, DataConfidence StockCoverageConfidence, int MonthlyOrders, int MonthlySessions,
     int NewCustomers, int ReturningCustomers, decimal VariableCostRate, int ProductMarketFit, int GrowthPotential,
     int OperationalReadiness, int CreativeCapability, int FounderCooperation, int DataMaturity,
-    decimal InternalMonthlyCost, decimal SetupInvestment);
+    decimal InternalMonthlyCost, decimal SetupInvestment, List<RevenueChannelRequest>? RevenueChannels = null);
+public sealed record RevenueChannelRequest(Guid SalesChannelId, decimal MonthlyRevenue);
 
 public sealed record RuleSetRequest(string Name, string Description);
 public sealed record BrandUpdateRequest(string Name, string LegalName, string Website, string Country, string Currency,
@@ -23,16 +24,23 @@ public sealed record ScenarioRequest(string Name, decimal MonthlyRevenue, decima
     decimal ReturnRate, decimal AverageOrderValue, int NewCustomers, decimal VariableCostRate,
     decimal OvoInternalMonthlyCost, decimal MinimumMonthlyFee, DealType CommissionModel, decimal RevenueShareRate,
     decimal MonthlyRetainer, decimal BaselineRevenue, decimal IncrementalRate, decimal ProfitShareRate,
-    List<CommissionTier> CommissionTiers, decimal TargetBrandContributionMargin, decimal SetupInvestment, int ContractMonths);
+    List<CommissionTier> CommissionTiers, decimal TargetBrandContributionMargin, decimal SetupInvestment, int ContractMonths,
+    List<RevenueChannelRequest>? RevenueChannels = null);
 public sealed record DealRequest(string Name, DealType DealType, int ContractMonths, decimal BaselineRevenue,
     DateOnly? BaselinePeriodStart, DateOnly? BaselinePeriodEnd, BaselineCalculationMethod BaselineCalculationMethod,
     decimal MonthlyRetainer, decimal MinimumMonthlyFee, decimal RevenueShareRate, decimal IncrementalRate,
     decimal ProfitShareRate, List<CommissionTier> CommissionTiers, decimal SetupInvestment, decimal EstimatedMonthlyInternalCost);
+public sealed record DealChannelRateRequest(Guid SalesChannelId, decimal RevenueShareRate);
+public sealed record DealChannelRatesRequest(List<DealChannelRateRequest> Rates);
+public sealed record SalesChannelRequest(string Name, bool IsActive = true);
+public sealed record PerformanceChannelRequest(Guid SalesChannelId, decimal GrossSales, decimal Vat,
+    decimal Refunds, decimal Cancellations, decimal Chargebacks, decimal CustomerPaidShipping, decimal GiftCardTopups);
 public sealed record PerformanceRequest(Guid BrandId, Guid DealId, int Year, int Month, decimal GrossSales, decimal Vat,
     decimal Refunds, decimal Cancellations, decimal Chargebacks, decimal CustomerPaidShipping, decimal GiftCardTopups,
     int Orders, int Sessions, int NewCustomers, int ReturningCustomers, decimal Cogs, decimal PaymentFees,
     decimal FulfillmentCosts, decimal ShippingSubsidy, decimal OtherVariableCosts, decimal MetaSpend,
-    decimal GoogleSpend, decimal TikTokSpend, decimal InfluencerSpend, decimal OtherAdSpend);
+    decimal GoogleSpend, decimal TikTokSpend, decimal InfluencerSpend, decimal OtherAdSpend,
+    List<PerformanceChannelRequest>? Channels = null);
 public sealed record TransitionRequest(string? Reason = null);
 public sealed record ConditionUpdateRequest(ConditionStatus Status, string Reason, string EvidenceUrl);
 public sealed record DealLifecycleRequest(string Reason, DateOnly? EffectiveDate = null);

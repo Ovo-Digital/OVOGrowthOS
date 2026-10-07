@@ -41,6 +41,7 @@ public static partial class WorkflowEndpoints
         MapAdEfficiency(app);
         MapSatisfaction(app);
         MapHourDeviation(app);
+        MapSalesChannels(app);
         return app;
     }
 
@@ -125,8 +126,8 @@ public static partial class WorkflowEndpoints
         var group = app.MapGroup("/api/evaluations").RequireAuthorization("EvaluationWrite");
         group.MapGet("/", async (AppDbContext db,int page=1,int pageSize=20,string? search=null,EvaluationStatus? status=null,string sort="recent") => {var q=db.Evaluations.AsNoTracking().AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Brand!.Name),"nameDesc"=>q.OrderByDescending(x=>x.Brand!.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};var items=ordered.Select(x=>new{x.Id,x.BrandId,Brand=new{x.Brand!.Id,x.Brand!.Name},x.Status,x.CurrentStep,x.PartnershipScore,x.DataConfidenceScore,x.Decision,x.CreatedAt,x.UpdatedAt});return Results.Ok(await Page(items,page,pageSize));}).RequireAuthorization("ReadAccess");
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) =>
-            await db.Evaluations.AsNoTracking().Include(x => x.Brand)!.ThenInclude(x => x!.Economics).Include(x => x.Conditions)
-                .Include(x => x.Scenarios).FirstOrDefaultAsync(x => x.Id == id) is { } value ? Results.Ok(value) : Results.NotFound()).RequireAuthorization("ReadAccess");
+            await db.Evaluations.AsNoTracking().Include(x => x.Brand)!.ThenInclude(x => x!.Economics).Include(x => x.Brand)!.ThenInclude(x => x!.RevenueChannels)!.ThenInclude(r => r.SalesChannel).Include(x => x.Conditions)
+                .Include(x => x.Scenarios).ThenInclude(s => s.RevenueChannels).ThenInclude(r => r.SalesChannel).FirstOrDefaultAsync(x => x.Id == id) is { } value ? Results.Ok(value) : Results.NotFound()).RequireAuthorization("ReadAccess");
         group.MapPost("/", async (EvaluationDraftRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
             var brand = await db.Brands.Include(x => x.Economics).SingleOrDefaultAsync(x => x.Id == request.BrandId);
@@ -135,7 +136,9 @@ public static partial class WorkflowEndpoints
                 (x.Status == EvaluationStatus.Draft || x.Status == EvaluationStatus.InProgress || x.Status == EvaluationStatus.ReadyForAnalysis)))
                 return Results.Conflict(new { error = "Bu marka için devam eden bir değerlendirme var. Önce mevcut değerlendirmeyi tamamlayın." });
             var evaluation = new BrandEvaluation { BrandId = request.BrandId, Brand = brand, CreatedBy = User(user), Status = EvaluationStatus.Draft };
-            Apply(evaluation, request); db.Evaluations.Add(evaluation); Audit(db, user, "EvaluationCreated", "Evaluation", evaluation.Id, null, evaluation);
+            Apply(evaluation, request);
+            if (await SyncBrandRevenueChannels(db, brand, request.RevenueChannels) is { } channelError) return channelError;
+            db.Evaluations.Add(evaluation); Audit(db, user, "EvaluationCreated", "Evaluation", evaluation.Id, null, evaluation);
             await db.SaveChangesAsync(); return Results.Created($"/api/evaluations/{evaluation.Id}", evaluation);
         }).AddEndpointFilter<ValidationFilter<EvaluationDraftRequest>>();
         group.MapPut("/{id:guid}", async (Guid id, EvaluationDraftRequest request, AppDbContext db, ClaimsPrincipal user) =>
@@ -144,7 +147,9 @@ public static partial class WorkflowEndpoints
             if (evaluation is null) return Results.NotFound();
             if (evaluation.BrandId != request.BrandId) return Results.Conflict(new { error = "Değerlendirmenin markası sonradan değiştirilemez." });
             if (evaluation.Status is EvaluationStatus.Analyzed or EvaluationStatus.Approved or EvaluationStatus.Rejected or EvaluationStatus.Archived) return Results.Conflict(new { error = "Analiz edilmiş değerlendirmeler değiştirilemez." });
-            var old = JsonSerializer.Serialize(evaluation, Json); Apply(evaluation, request); Audit(db, user, "EvaluationSaved", "Evaluation", id, old, evaluation);
+            var old = JsonSerializer.Serialize(evaluation, Json); Apply(evaluation, request);
+            if (await SyncBrandRevenueChannels(db, evaluation.Brand!, request.RevenueChannels) is { } channelError) return channelError;
+            Audit(db, user, "EvaluationSaved", "Evaluation", id, old, evaluation);
             await db.SaveChangesAsync(); return Results.Ok(evaluation);
         }).AddEndpointFilter<ValidationFilter<EvaluationDraftRequest>>();
         group.MapPost("/{id:guid}/analyze", Analyze);
@@ -209,6 +214,44 @@ public static partial class WorkflowEndpoints
         return Results.Ok(result);
     }
 
+    private sealed record ForecastTotal(decimal Total, IResult? Error);
+
+    /// <summary>Tahmin kanallarını markaya göre doğrular ve toplamı satırlardan türetir.</summary>
+    private static async Task<ForecastTotal> ResolveForecastTotal(AppDbContext db, Guid brandId, List<RevenueChannelRequest> requested)
+    {
+        var ids = requested.Select(x => x.SalesChannelId).Distinct().ToList();
+        var channels = await db.SalesChannels.AsNoTracking().Where(x => x.BrandId == brandId && ids.Contains(x.Id)).ToListAsync();
+        if (channels.Count != ids.Count)
+            return new(0, Results.Conflict(new { error = "Seçilen satış kanallarından biri bu markaya ait değildir." }));
+        if (channels.Any(x => !x.IsActive))
+            return new(0, Results.Conflict(new { error = $"Pasif kanala tahmin girilemez: {string.Join(", ", channels.Where(x => !x.IsActive).Select(x => x.Name))}. Kanalı önce etkinleştirin." }));
+        return new(requested.Sum(x => x.MonthlyRevenue), null);
+    }
+
+    /// <summary>
+    /// Tahmin kanalları gönderildiyse markanın satırlarını eşitler ve ortalama ciroyu toplamdan türetir.
+    /// Gönderilmediyse eski satırlar ve elle yazılan toplam korunur (geriye uyum).
+    /// </summary>
+    private static async Task<IResult?> SyncBrandRevenueChannels(AppDbContext db, Brand brand, List<RevenueChannelRequest>? requested)
+    {
+        if (requested is null) return null;
+        var resolved = await ResolveForecastTotal(db, brand.Id, requested);
+        if (resolved.Error is not null) return resolved.Error;
+        var ids = requested.Select(x => x.SalesChannelId).Distinct().ToList();
+        var existing = await db.BrandRevenueChannels.Where(x => x.BrandId == brand.Id).ToListAsync();
+        foreach (var removed in existing.Where(x => !ids.Contains(x.SalesChannelId)).ToList())
+            db.BrandRevenueChannels.Remove(removed);
+        foreach (var item in requested)
+        {
+            var row = existing.SingleOrDefault(x => x.SalesChannelId == item.SalesChannelId);
+            if (row is null) db.BrandRevenueChannels.Add(new BrandRevenueChannel { BrandId = brand.Id, SalesChannelId = item.SalesChannelId, MonthlyRevenue = item.MonthlyRevenue });
+            else row.MonthlyRevenue = item.MonthlyRevenue;
+        }
+        // Apply() toplamı istekten yazmıştı; kanal varsa toplam satırların toplamıdır.
+        if (brand.Economics is not null) brand.Economics.AverageMonthlyRevenue = resolved.Total;
+        return null;
+    }
+
     private static void Apply(BrandEvaluation e, EvaluationDraftRequest r)
     {
         e.CurrentStep = Math.Clamp(r.CurrentStep, 1, 10); e.Status = r.Status is EvaluationStatus.Draft ? (e.CurrentStep > 1 ? EvaluationStatus.InProgress : EvaluationStatus.Draft) : r.Status;
@@ -245,10 +288,20 @@ public static partial class WorkflowEndpoints
     private static void MapScenarios(WebApplication app)
     {
         var group = app.MapGroup("/api/evaluations/{evaluationId:guid}/scenarios").RequireAuthorization("EvaluationWrite");
-        group.MapGet("/", async (Guid evaluationId, AppDbContext db) => Results.Ok(await db.Scenarios.AsNoTracking().Where(x => x.EvaluationId == evaluationId).OrderBy(x => x.Name).ToListAsync())).RequireAuthorization("ReadAccess");
-        group.MapPost("/calculate", (Guid evaluationId, ScenarioRequest request) => Results.Ok(ScenarioCalculator.Calculate(ToScenario(evaluationId, request)))).AddEndpointFilter<ValidationFilter<ScenarioRequest>>();
-        group.MapPost("/", async (Guid evaluationId, ScenarioRequest request, AppDbContext db) => { if (!await db.Evaluations.AnyAsync(x => x.Id == evaluationId && x.Status != EvaluationStatus.Archived)) return Results.NotFound(); var x = ToScenario(evaluationId, request); var result = ScenarioCalculator.Calculate(x); x.ResultJson = JsonSerializer.Serialize(result, Json); db.Add(x); await db.SaveChangesAsync(); return Results.Created($"/api/evaluations/{evaluationId}/scenarios/{x.Id}", new { scenario = x, result }); }).AddEndpointFilter<ValidationFilter<ScenarioRequest>>();
-        group.MapPost("/{id:guid}/duplicate", async (Guid evaluationId, Guid id, AppDbContext db) => { var source = await db.Scenarios.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.EvaluationId == evaluationId); if (source is null) return Results.NotFound(); source.Id = Guid.NewGuid(); source.Name += " Copy"; source.IsPreferred = false; source.CreatedAt = source.UpdatedAt = DateTimeOffset.UtcNow; db.Add(source); await db.SaveChangesAsync(); return Results.Ok(source); });
+        group.MapGet("/", async (Guid evaluationId, AppDbContext db) => Results.Ok(await db.Scenarios.AsNoTracking().Include(x => x.RevenueChannels).ThenInclude(r => r.SalesChannel).Where(x => x.EvaluationId == evaluationId).OrderBy(x => x.Name).ToListAsync())).RequireAuthorization("ReadAccess");
+        group.MapPost("/calculate", async (Guid evaluationId, ScenarioRequest request, AppDbContext db) =>
+        {
+            if (request.RevenueChannels is { Count: > 0 })
+            {
+                var brandId = await db.Evaluations.AsNoTracking().Where(x => x.Id == evaluationId).Select(x => x.BrandId).SingleOrDefaultAsync();
+                var resolved = await ResolveForecastTotal(db, brandId, request.RevenueChannels);
+                if (resolved.Error is not null) return resolved.Error;
+                return Results.Ok(ScenarioCalculator.Calculate(ToScenario(evaluationId, request with { MonthlyRevenue = resolved.Total })));
+            }
+            return Results.Ok(ScenarioCalculator.Calculate(ToScenario(evaluationId, request)));
+        }).AddEndpointFilter<ValidationFilter<ScenarioRequest>>();
+        group.MapPost("/", async (Guid evaluationId, ScenarioRequest request, AppDbContext db) => { var brandId = await db.Evaluations.Where(x => x.Id == evaluationId && x.Status != EvaluationStatus.Archived).Select(x => (Guid?)x.BrandId).SingleOrDefaultAsync(); if (brandId is null) return Results.NotFound(); var revenue = request.MonthlyRevenue; if (request.RevenueChannels is { Count: > 0 }) { var resolved = await ResolveForecastTotal(db, brandId.Value, request.RevenueChannels); if (resolved.Error is not null) return resolved.Error; revenue = resolved.Total; } var x = ToScenario(evaluationId, request with { MonthlyRevenue = revenue }); var result = ScenarioCalculator.Calculate(x); x.ResultJson = JsonSerializer.Serialize(result, Json); db.Add(x); if (request.RevenueChannels is { Count: > 0 }) foreach (var item in request.RevenueChannels) { var row = new ScenarioRevenueChannel { ScenarioId = x.Id, SalesChannelId = item.SalesChannelId, MonthlyRevenue = item.MonthlyRevenue }; x.RevenueChannels.Add(row); db.ScenarioRevenueChannels.Add(row); } await db.SaveChangesAsync(); return Results.Created($"/api/evaluations/{evaluationId}/scenarios/{x.Id}", new { scenario = x, result }); }).AddEndpointFilter<ValidationFilter<ScenarioRequest>>();
+        group.MapPost("/{id:guid}/duplicate", async (Guid evaluationId, Guid id, AppDbContext db) => { var source = await db.Scenarios.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id && x.EvaluationId == evaluationId); if (source is null) return Results.NotFound(); var rows = await db.ScenarioRevenueChannels.AsNoTracking().Where(x => x.ScenarioId == id).ToListAsync(); source.Id = Guid.NewGuid(); source.Name += " Copy"; source.IsPreferred = false; source.CreatedAt = source.UpdatedAt = DateTimeOffset.UtcNow; db.Add(source); foreach (var row in rows) db.ScenarioRevenueChannels.Add(new ScenarioRevenueChannel { ScenarioId = source.Id, SalesChannelId = row.SalesChannelId, MonthlyRevenue = row.MonthlyRevenue }); await db.SaveChangesAsync(); return Results.Ok(source); });
         group.MapPatch("/{id:guid}/rename", async (Guid evaluationId, Guid id, RenameRequest request, AppDbContext db) => { var value = await db.Scenarios.SingleOrDefaultAsync(x => x.Id == id && x.EvaluationId == evaluationId); if (value is null) return Results.NotFound(); if (string.IsNullOrWhiteSpace(request.Name)) return Results.ValidationProblem(new Dictionary<string,string[]>{{"name",["Ad alanı zorunludur."]}}); value.Name = request.Name.Trim(); value.UpdatedAt = DateTimeOffset.UtcNow; await db.SaveChangesAsync(); return Results.Ok(value); });
         group.MapPut("/{id:guid}/preferred", async (Guid evaluationId, Guid id, AppDbContext db) => { var items = await db.Scenarios.Where(x => x.EvaluationId == evaluationId).ToListAsync(); var selected = items.SingleOrDefault(x => x.Id == id); if (selected is null) return Results.NotFound(); items.ForEach(x => x.IsPreferred = x.Id == id); await db.SaveChangesAsync(); return Results.Ok(selected); });
         group.MapDelete("/{id:guid}", async (Guid evaluationId, Guid id, AppDbContext db) => { var value = await db.Scenarios.SingleOrDefaultAsync(x => x.Id == id && x.EvaluationId == evaluationId); if (value is null) return Results.NotFound(); db.Remove(value); await db.SaveChangesAsync(); return Results.NoContent(); });
@@ -265,7 +318,7 @@ public static partial class WorkflowEndpoints
     {
         var group = app.MapGroup("/api/deals").RequireAuthorization("ReadAccess");
         group.MapGet("/", async (HttpRequest request,AppDbContext db,int page=1,int pageSize=20,string? search=null,DealStatus? status=null,string sort="recent") => {var q=db.Deals.AsNoTracking().AsQueryable();if(!string.IsNullOrWhiteSpace(search))q=q.Where(x=>EF.Functions.ILike(x.Name,$"%{search}%")||EF.Functions.ILike(x.Brand!.Name,$"%{search}%"));if(status.HasValue)q=q.Where(x=>x.Status==status);var ordered=sort switch{"oldest"=>q.OrderBy(x=>x.UpdatedAt),"name"=>q.OrderBy(x=>x.Name),"nameDesc"=>q.OrderByDescending(x=>x.Name),_=>q.OrderByDescending(x=>x.UpdatedAt)};var items=ordered.Select(x=>new{x.Id,x.BrandId,x.EvaluationId,x.Name,x.Status,x.DealType,x.Currency,x.ContractMonths,x.StartDate,x.EndDate,x.StatusReason,x.MonthlyRetainer,x.MinimumMonthlyFee,x.RevenueShareRate,x.CreatedAt,x.UpdatedAt,Brand=new{x.Brand!.Id,x.Brand!.Name,x.Brand!.Currency}});if(!request.Query.ContainsKey("page"))return Results.Ok(await items.Take(100).ToListAsync());return Results.Ok(await Page(items,page,pageSize));}).RequireAuthorization("ReadAccess");
-        group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) => await db.Deals.AsNoTracking().Include(x => x.Brand).Include(x => x.Conditions).FirstOrDefaultAsync(x => x.Id == id) is { } x ? Results.Ok(x) : Results.NotFound()).RequireAuthorization("ReadAccess");
+        group.MapGet("/{id:guid}", async (Guid id, AppDbContext db) => await db.Deals.AsNoTracking().Include(x => x.Brand).Include(x => x.Conditions).Include(x => x.ChannelRates).ThenInclude(r => r.SalesChannel).FirstOrDefaultAsync(x => x.Id == id) is { } x ? Results.Ok(x) : Results.NotFound()).RequireAuthorization("ReadAccess");
         group.MapGet("/{id:guid}/pdf", async (Guid id, AppDbContext db) =>
         {
             var deal = await db.Deals.AsNoTracking().Include(x => x.Brand).Include(x => x.Conditions).SingleOrDefaultAsync(x => x.Id == id);
@@ -282,7 +335,7 @@ public static partial class WorkflowEndpoints
         group.MapPost("/{id:guid}/negotiate",async(Guid id,AppDbContext db,ClaimsPrincipal user)=>await MoveDeal(id,[DealStatus.Proposed],DealStatus.Negotiation,"DealNegotiationStarted",db,user)).RequireAuthorization("OperationsWrite");
         group.MapPost("/{id:guid}/terminate",async(Guid id,DealLifecycleRequest request,AppDbContext db,ClaimsPrincipal user)=>await CloseDeal(id,DealStatus.Terminated,request,db,user)).AddEndpointFilter<ValidationFilter<DealLifecycleRequest>>().RequireAuthorization("OperationsWrite");
         group.MapPost("/{id:guid}/expire",async(Guid id,DealLifecycleRequest request,AppDbContext db,ClaimsPrincipal user)=>await CloseDeal(id,DealStatus.Expired,request,db,user)).AddEndpointFilter<ValidationFilter<DealLifecycleRequest>>().RequireAuthorization("OperationsWrite");
-        group.MapPost("/{id:guid}/renew",async(Guid id,DealLifecycleRequest request,AppDbContext db,ClaimsPrincipal user)=>{var source=await db.Deals.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==id);if(source is null)return Results.NotFound();if(source.Status is not(DealStatus.Active or DealStatus.Expired))return Results.Conflict(new{error="Yalnızca etkin veya süresi dolmuş anlaşmalar yenilenebilir."});var renewal=CloneDeal(source);renewal.Name=$"{source.Name} · Yenileme";renewal.RenewalOfDealId=source.Id;renewal.StatusReason=request.Reason.Trim();db.Add(renewal);Audit(db,user,"DealRenewalCreated","Deal",renewal.Id,source,renewal,request.Reason);await db.SaveChangesAsync();return Results.Created($"/api/deals/{renewal.Id}",renewal);}).AddEndpointFilter<ValidationFilter<DealLifecycleRequest>>().RequireAuthorization("OperationsWrite");
+        group.MapPost("/{id:guid}/renew",async(Guid id,DealLifecycleRequest request,AppDbContext db,ClaimsPrincipal user)=>{var source=await db.Deals.AsNoTracking().Include(x=>x.ChannelRates).SingleOrDefaultAsync(x=>x.Id==id);if(source is null)return Results.NotFound();if(source.Status is not(DealStatus.Active or DealStatus.Expired))return Results.Conflict(new{error="Yalnızca etkin veya süresi dolmuş anlaşmalar yenilenebilir."});var renewal=CloneDeal(source);renewal.Name=$"{source.Name} · Yenileme";renewal.RenewalOfDealId=source.Id;renewal.StatusReason=request.Reason.Trim();db.Add(renewal);Audit(db,user,"DealRenewalCreated","Deal",renewal.Id,source,renewal,request.Reason);await db.SaveChangesAsync();return Results.Created($"/api/deals/{renewal.Id}",renewal);}).AddEndpointFilter<ValidationFilter<DealLifecycleRequest>>().RequireAuthorization("OperationsWrite");
     }
     public sealed record DealComparisonRequest(List<Guid> DealIds, Scenario Basis);
     private static Deal ToDeal(BrandEvaluation e, DealRequest r) => new() { BrandId = e.BrandId, EvaluationId = e.Id, Name = r.Name,
@@ -295,7 +348,7 @@ public static partial class WorkflowEndpoints
         FinancialSnapshotJson = e.CalculationSnapshotJson, CommissionSnapshotJson = JsonSerializer.Serialize(r, Json),
         ConditionsSnapshotJson = JsonSerializer.Serialize(e.Conditions, Json), Conditions = e.Conditions.Select(x => new PartnershipCondition { Code = x.Code, Title = x.Title, Description = x.Description, Required = x.Required, Status = x.Status }).ToList() };
     private static void CopyDeal(Deal d,DealRequest r){d.Name=r.Name.Trim();d.DealType=r.DealType;d.ContractMonths=r.ContractMonths;d.BaselineRevenue=r.BaselineRevenue;d.BaselinePeriodStart=r.BaselinePeriodStart;d.BaselinePeriodEnd=r.BaselinePeriodEnd;d.BaselineCalculationMethod=r.BaselineCalculationMethod;d.MonthlyRetainer=r.MonthlyRetainer;d.MinimumMonthlyFee=r.MinimumMonthlyFee;d.RevenueShareRate=r.RevenueShareRate;d.IncrementalRate=r.IncrementalRate;d.ProfitShareRate=r.ProfitShareRate;d.CommissionTiersJson=JsonSerializer.Serialize(r.CommissionTiers,Json);d.SetupInvestment=r.SetupInvestment;d.EstimatedMonthlyInternalCost=r.EstimatedMonthlyInternalCost;d.CommissionSnapshotJson=JsonSerializer.Serialize(r,Json);}
-    private static Deal CloneDeal(Deal s)=>new(){BrandId=s.BrandId,EvaluationId=s.EvaluationId,Name=s.Name,DealType=s.DealType,ContractMonths=s.ContractMonths,BaselineRevenue=s.BaselineRevenue,BaselinePeriodStart=s.BaselinePeriodStart,BaselinePeriodEnd=s.BaselinePeriodEnd,BaselineCalculationMethod=s.BaselineCalculationMethod,MonthlyRetainer=s.MonthlyRetainer,MinimumMonthlyFee=s.MinimumMonthlyFee,RevenueShareRate=s.RevenueShareRate,IncrementalRate=s.IncrementalRate,ProfitShareRate=s.ProfitShareRate,CommissionTiersJson=s.CommissionTiersJson,SetupInvestment=s.SetupInvestment,EstimatedMonthlyInternalCost=s.EstimatedMonthlyInternalCost,Currency=s.Currency,EvaluationSnapshotJson=s.EvaluationSnapshotJson,RuleSnapshotJson=s.RuleSnapshotJson,FinancialSnapshotJson=s.FinancialSnapshotJson,CommissionSnapshotJson=s.CommissionSnapshotJson,ConditionsSnapshotJson=s.ConditionsSnapshotJson};
+    private static Deal CloneDeal(Deal s)=>new(){BrandId=s.BrandId,EvaluationId=s.EvaluationId,Name=s.Name,DealType=s.DealType,ContractMonths=s.ContractMonths,BaselineRevenue=s.BaselineRevenue,BaselinePeriodStart=s.BaselinePeriodStart,BaselinePeriodEnd=s.BaselinePeriodEnd,BaselineCalculationMethod=s.BaselineCalculationMethod,MonthlyRetainer=s.MonthlyRetainer,MinimumMonthlyFee=s.MinimumMonthlyFee,RevenueShareRate=s.RevenueShareRate,IncrementalRate=s.IncrementalRate,ProfitShareRate=s.ProfitShareRate,CommissionTiersJson=s.CommissionTiersJson,SetupInvestment=s.SetupInvestment,EstimatedMonthlyInternalCost=s.EstimatedMonthlyInternalCost,Currency=s.Currency,EvaluationSnapshotJson=s.EvaluationSnapshotJson,RuleSnapshotJson=s.RuleSnapshotJson,FinancialSnapshotJson=s.FinancialSnapshotJson,CommissionSnapshotJson=s.CommissionSnapshotJson,ConditionsSnapshotJson=s.ConditionsSnapshotJson,ChannelRates=s.ChannelRates.Select(r=>new DealChannelRate{SalesChannelId=r.SalesChannelId,RevenueShareRate=r.RevenueShareRate}).ToList()};
     private static async Task<IResult> MoveDeal(Guid id,DealStatus[] from,DealStatus target,string action,AppDbContext db,ClaimsPrincipal user){var d=await db.Deals.FindAsync(id);if(d is null)return Results.NotFound();if(!from.Contains(d.Status))return Results.Conflict(new{error=$"Anlaşma {d.Status} durumundan {target} durumuna geçirilemez."});var old=d.Status;d.Status=target;d.UpdatedAt=DateTimeOffset.UtcNow;Audit(db,user,action,"Deal",id,old,target);await db.SaveChangesAsync();return Results.Ok(d);}
     private static async Task<IResult> CloseDeal(Guid id,DealStatus target,DealLifecycleRequest request,AppDbContext db,ClaimsPrincipal user){var d=await db.Deals.Include(x=>x.Brand).SingleOrDefaultAsync(x=>x.Id==id);if(d is null)return Results.NotFound();if(d.Status!=DealStatus.Active)return Results.Conflict(new{error="Yalnızca etkin anlaşmalar kapatılabilir."});var old=d.Status;d.Status=target;d.EndDate=request.EffectiveDate??DateOnly.FromDateTime(DateTime.UtcNow);d.StatusReason=request.Reason.Trim();d.UpdatedAt=DateTimeOffset.UtcNow;if(d.Brand is not null&&!await db.Deals.AnyAsync(x=>x.BrandId==d.BrandId&&x.Id!=id&&x.Status==DealStatus.Active))d.Brand.Status=BrandStatus.Closed;Audit(db,user,target==DealStatus.Terminated?"DealTerminated":"DealExpired","Deal",id,old,d,request.Reason);await db.SaveChangesAsync();return Results.Ok(d);}
     private static async Task<IResult> ChangeDealStatus(Guid id, DealStatus status, AppDbContext db, ClaimsPrincipal user) { var deal = await db.Deals.FindAsync(id); if (deal is null) return Results.NotFound(); if(status==DealStatus.Accepted&&!await db.Evaluations.AnyAsync(x=>x.Id==deal.EvaluationId&&x.Status==EvaluationStatus.Approved))return Results.Conflict(new{error="Anlaşmayı kabul etmeden önce değerlendirmeyi onaylayın."}); if(status==DealStatus.Accepted&&deal.Status is not (DealStatus.Draft or DealStatus.InternalReview or DealStatus.Proposed or DealStatus.Negotiation))return Results.Conflict(new{error=$"{deal.Status} durumundaki bir anlaşma kabul edilemez."}); deal.Status = status; deal.UpdatedAt = DateTimeOffset.UtcNow; Audit(db, user, "DealChanged", "Deal", id, null, deal); await db.SaveChangesAsync(); return Results.Ok(deal); }

@@ -13,8 +13,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Rule> Rules => Set<Rule>();
     public DbSet<Scenario> Scenarios => Set<Scenario>();
     public DbSet<Deal> Deals => Set<Deal>();
+    public DbSet<SalesChannel> SalesChannels => Set<SalesChannel>();
+    public DbSet<DealChannelRate> DealChannelRates => Set<DealChannelRate>();
+    public DbSet<BrandRevenueChannel> BrandRevenueChannels => Set<BrandRevenueChannel>();
+    public DbSet<ScenarioRevenueChannel> ScenarioRevenueChannels => Set<ScenarioRevenueChannel>();
     public DbSet<PartnershipCondition> PartnershipConditions => Set<PartnershipCondition>();
     public DbSet<MonthlyPerformance> MonthlyPerformances => Set<MonthlyPerformance>();
+    public DbSet<MonthlyPerformanceChannel> MonthlyPerformanceChannels => Set<MonthlyPerformanceChannel>();
     public DbSet<CommissionAdjustment> CommissionAdjustments => Set<CommissionAdjustment>();
     public DbSet<GeneralSettings> GeneralSettings => Set<GeneralSettings>();
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
@@ -542,6 +547,47 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             });
             p.HasIndex(x => new { x.BrandId, x.Year, x.Month }).IsUnique();
             p.HasMany(x => x.Adjustments).WithOne().HasForeignKey(x => x.MonthlyPerformanceId).OnDelete(DeleteBehavior.Cascade);
+            p.HasMany(x => x.Channels).WithOne(x => x.MonthlyPerformance).HasForeignKey(x => x.MonthlyPerformanceId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<SalesChannel>(s =>
+        {
+            s.HasOne(x => x.Brand).WithMany(x => x.SalesChannels).HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            s.Property(x => x.Name).HasMaxLength(SalesChannelRules.MaxNameLength);
+            s.HasIndex(x => new { x.BrandId, x.Name }).IsUnique();
+            s.HasIndex(x => new { x.BrandId, x.IsActive });
+            s.ToTable(t => t.HasCheckConstraint("CK_SalesChannels_Name", $"length(btrim(\"Name\")) BETWEEN 2 AND {SalesChannelRules.MaxNameLength}"));
+        });
+        modelBuilder.Entity<DealChannelRate>(r =>
+        {
+            r.HasOne(x => x.Deal).WithMany(x => x.ChannelRates).HasForeignKey(x => x.DealId).OnDelete(DeleteBehavior.Cascade);
+            r.HasOne(x => x.SalesChannel).WithMany().HasForeignKey(x => x.SalesChannelId).OnDelete(DeleteBehavior.Restrict);
+            r.HasIndex(x => new { x.DealId, x.SalesChannelId }).IsUnique();
+            r.ToTable(t => t.HasCheckConstraint("CK_DealChannelRates_Rate", "\"RevenueShareRate\" >= 0 AND \"RevenueShareRate\" <= 1"));
+        });
+        modelBuilder.Entity<MonthlyPerformanceChannel>(c =>
+        {
+            c.HasOne(x => x.MonthlyPerformance).WithMany(x => x.Channels).HasForeignKey(x => x.MonthlyPerformanceId).OnDelete(DeleteBehavior.Cascade);
+            c.HasOne(x => x.SalesChannel).WithMany().HasForeignKey(x => x.SalesChannelId).OnDelete(DeleteBehavior.Restrict);
+            c.HasIndex(x => new { x.MonthlyPerformanceId, x.SalesChannelId }).IsUnique();
+            c.ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_MonthlyPerformanceChannels_Money", "\"GrossSales\" >= 0 AND \"Vat\" >= 0 AND \"Refunds\" >= 0 AND \"Cancellations\" >= 0 AND \"Chargebacks\" >= 0 AND \"CustomerPaidShipping\" >= 0 AND \"GiftCardTopups\" >= 0");
+                t.HasCheckConstraint("CK_MonthlyPerformanceChannels_Totals", "\"Vat\" + \"Refunds\" + \"Cancellations\" + \"Chargebacks\" + \"CustomerPaidShipping\" + \"GiftCardTopups\" <= \"GrossSales\"");
+            });
+        });
+        modelBuilder.Entity<BrandRevenueChannel>(c =>
+        {
+            c.HasOne(x => x.Brand).WithMany(x => x.RevenueChannels).HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Cascade);
+            c.HasOne(x => x.SalesChannel).WithMany().HasForeignKey(x => x.SalesChannelId).OnDelete(DeleteBehavior.Restrict);
+            c.HasIndex(x => new { x.BrandId, x.SalesChannelId }).IsUnique();
+            c.ToTable(t => t.HasCheckConstraint("CK_BrandRevenueChannels_Money", "\"MonthlyRevenue\" >= 0"));
+        });
+        modelBuilder.Entity<ScenarioRevenueChannel>(c =>
+        {
+            c.HasOne(x => x.Scenario).WithMany(x => x.RevenueChannels).HasForeignKey(x => x.ScenarioId).OnDelete(DeleteBehavior.Cascade);
+            c.HasOne(x => x.SalesChannel).WithMany().HasForeignKey(x => x.SalesChannelId).OnDelete(DeleteBehavior.Restrict);
+            c.HasIndex(x => new { x.ScenarioId, x.SalesChannelId }).IsUnique();
+            c.ToTable(t => t.HasCheckConstraint("CK_ScenarioRevenueChannels_Money", "\"MonthlyRevenue\" >= 0"));
         });
         modelBuilder.Entity<AuditRecord>(a =>
         {

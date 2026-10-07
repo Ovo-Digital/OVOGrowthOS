@@ -81,6 +81,68 @@ public static class MonthlyPerformanceCalculator
         p.OvoGrossProfit = decimal.Round(p.OvoGrossProfit, 4, MidpointRounding.AwayFromZero);
     }
 
+    public static void CalculateChannelLine(MonthlyPerformanceChannel c)
+    {
+        c.NetRevenue = c.GrossSales - c.Vat - c.Refunds - c.Cancellations - c.Chargebacks;
+        c.CommissionableRevenue = c.NetRevenue - c.CustomerPaidShipping - c.GiftCardTopups;
+    }
+
+    /// <summary>
+    /// Kanal kırılımlı aylık hesap. Başlıktaki satış toplamları kanal satırlarının toplamı olur;
+    /// sipariş, gider ve reklam alanları başlık seviyesinde kalır. Kanal satırı yoksa <see cref="Calculate"/> ile aynıdır.
+    /// </summary>
+    public static CommissionResult CalculateWithChannels(MonthlyPerformance p, Deal deal,
+        IReadOnlyList<MonthlyPerformanceChannel> channels,
+        IReadOnlyDictionary<Guid, decimal>? rateOverrides = null,
+        IReadOnlyDictionary<Guid, string>? channelNames = null)
+    {
+        var list = channels.ToList();
+        if (list.Count == 0) return Calculate(p, deal);
+        foreach (var c in list) CalculateChannelLine(c);
+        p.GrossSales = list.Sum(x => x.GrossSales);
+        p.Vat = list.Sum(x => x.Vat);
+        p.Refunds = list.Sum(x => x.Refunds);
+        p.Cancellations = list.Sum(x => x.Cancellations);
+        p.Chargebacks = list.Sum(x => x.Chargebacks);
+        p.CustomerPaidShipping = list.Sum(x => x.CustomerPaidShipping);
+        p.GiftCardTopups = list.Sum(x => x.GiftCardTopups);
+        p.NetRevenue = p.GrossSales - p.Vat - p.Refunds - p.Cancellations - p.Chargebacks;
+        p.CommissionableRevenue = p.NetRevenue - p.CustomerPaidShipping - p.GiftCardTopups;
+        p.TotalAdSpend = p.MetaSpend + p.GoogleSpend + p.TikTokSpend + p.InfluencerSpend + p.OtherAdSpend;
+        var variable = p.PaymentFees + p.FulfillmentCosts + p.ShippingSubsidy + p.OtherVariableCosts;
+        p.GrossProfit = p.NetRevenue - p.Cogs;
+        p.ContributionBeforeMarketing = p.GrossProfit - variable;
+        p.ContributionBeforeOvo = p.ContributionBeforeMarketing - p.TotalAdSpend;
+        var adjustment = p.Adjustments.Sum(x => x.Amount);
+        var revenues = list.Select(x => new ChannelRevenue(x.SalesChannelId,
+            channelNames is not null && channelNames.TryGetValue(x.SalesChannelId, out var n) ? n
+                : x.SalesChannel?.Name ?? "",
+            x.CommissionableRevenue)).ToList();
+        var withChannels = DealCommissionCalculator.CalculateWithChannels(deal, revenues, p.ContributionBeforeOvo, rateOverrides, adjustment);
+        var commission = withChannels.Result;
+        var shares = withChannels.Shares.ToDictionary(x => x.SalesChannelId);
+        foreach (var c in list)
+            c.OvoFeeShare = shares.TryGetValue(c.SalesChannelId, out var s) ? s.Fee : 0;
+        p.OvoFee = commission.FinalFee;
+        p.BrandContributionProfit = p.ContributionBeforeOvo - p.OvoFee;
+        p.Aov = FinancialCalculator.Ratio(p.NetRevenue, p.Orders);
+        p.ConversionRate = FinancialCalculator.Ratio(p.Orders, p.Sessions);
+        p.Mer = FinancialCalculator.Ratio(p.NetRevenue, p.TotalAdSpend);
+        p.Cac = FinancialCalculator.Ratio(p.TotalAdSpend, p.NewCustomers);
+        p.ReturnRate = FinancialCalculator.Ratio(p.Refunds, p.GrossSales);
+        p.OvoInternalCost = deal.EstimatedMonthlyInternalCost;
+        p.OvoGrossProfit = p.OvoFee - p.OvoInternalCost;
+        p.OvoMargin = FinancialCalculator.OvoMargin(p.OvoFee, p.OvoInternalCost);
+        p.CommissionBreakdownJson = JsonSerializer.Serialize(new
+        {
+            commission.BaseRetainer, commission.CalculatedShare, commission.MinimumFee,
+            commission.Adjustments, commission.FinalFee, commission.EffectiveRate,
+            Tiers = commission.Tiers, Channels = withChannels.Shares,
+        }, DealCommissionCalculator.JsonOptions);
+        p.UpdatedAt = DateTimeOffset.UtcNow;
+        return commission;
+    }
+
     public static CommissionResult Calculate(MonthlyPerformance p, Deal deal)
     {
         p.NetRevenue = p.GrossSales - p.Vat - p.Refunds - p.Cancellations - p.Chargebacks;
