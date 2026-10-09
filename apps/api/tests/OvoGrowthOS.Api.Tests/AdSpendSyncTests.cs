@@ -39,6 +39,14 @@ public sealed class AdSpendSyncTests
         return await scope.ServiceProvider.GetRequiredService<AdSpendSyncQueue>().RunDue(now);
     }
 
+    // Bildirim listesi gerçek zamana göre son 30 günü gösterir; sabit geçmiş tarihler
+    // zamanla filtrenin dışında kalır. Bu yüzden tüm tarihler gerçek güne göre türetilir.
+    private static (DateTime Target, string PeriodKey) PreviousPeriod(DateTimeOffset now)
+    {
+        var target = now.ToOffset(TimeSpan.FromHours(3)).Date.AddMonths(-1);
+        return (target, $"{target.Year:0000}-{target.Month:00}");
+    }
+
     private static async Task<HttpClient> Client(WebApplicationFactory<Program> f)
     {
         var c = f.CreateClient();
@@ -64,25 +72,26 @@ public sealed class AdSpendSyncTests
     {
         await using var p = new WorkflowApiFactory(); await using var f = Setup(p, new FakeAds());
         var brand = await SeedBrandWithAdSettings(f);
+        var t0 = DateTimeOffset.UtcNow; var (target, periodKey) = PreviousPeriod(t0);
 
-        Assert.True(await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3))) >= 1);
+        Assert.True(await RunDue(f, t0) >= 1);
         await Db(f, async db =>
         {
             var summary = await db.AuditRecords.SingleAsync(x => x.Action == "AdSpendAutoSyncSummary");
-            Assert.Equal("2026-08", summary.EntityId);
+            Assert.Equal(periodKey, summary.EntityId);
             Assert.Contains("Reklomark", summary.Reason);
             Assert.Contains("1234,56 USD", summary.Reason);
             var campaign = await db.AdCampaignSpends.SingleAsync();
             Assert.Equal("Yaz kampanyası", campaign.CampaignName);
             Assert.Equal(500m, campaign.Spend);
-            Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.AdSpendSync && x.EventKey == "ad-sync:2026-08"));
+            Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.AdSpendSync && x.EventKey == "ad-sync:" + periodKey));
         });
         using var c = await Client(f);
         var body = await c.GetStringAsync("/api/notifications");
         Assert.Contains("Otomatik reklam harcaması okundu", body);
         Assert.Contains("1234,56 USD", body);
 
-        Assert.Equal(0, await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 5, 0, TimeSpan.FromHours(3))));
+        Assert.Equal(0, await RunDue(f, t0.AddMinutes(5)));
         await Db(f, async db => Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "AdSpendAutoSyncSummary")));
 
         await Db(f, async db =>
@@ -90,10 +99,10 @@ public sealed class AdSpendSyncTests
             db.Add(new Deal { BrandId = brand, Name = "Anlaşma", Status = DealStatus.Active, Currency = "TRY" });
             await db.SaveChangesAsync();
             var deal = await db.Deals.SingleAsync(x => x.BrandId == brand);
-            db.Add(new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = 2026, Month = 8, Status = MonthlyPerformanceStatus.Draft, OvoFee = 0, NetRevenue = 0 });
+            db.Add(new MonthlyPerformance { BrandId = brand, DealId = deal.Id, Year = target.Year, Month = target.Month, Status = MonthlyPerformanceStatus.Draft, OvoFee = 0, NetRevenue = 0 });
             await db.SaveChangesAsync();
         });
-        var report = await c.GetFromJsonAsync<JsonElement>("/api/data-quality?year=2026&month=8");
+        var report = await c.GetFromJsonAsync<JsonElement>($"/api/data-quality?year={target.Year}&month={target.Month}");
         var item = report.GetProperty("brands").EnumerateArray().Single(x => x.GetProperty("brandId").GetGuid() == brand);
         var alertCodes = item.GetProperty("alerts").EnumerateArray().Select(x => x.GetProperty("code").GetString()).ToList();
         Assert.Contains("ads_auto_read", alertCodes);
@@ -104,7 +113,7 @@ public sealed class AdSpendSyncTests
     {
         await using var p = new WorkflowApiFactory(); var ads = new FakeAds { Fail = true }; await using var f = Setup(p, ads);
         var brand = await SeedBrandWithAdSettings(f);
-        var t0 = new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3));
+        var t0 = DateTimeOffset.UtcNow; var (_, periodKey) = PreviousPeriod(t0);
 
         await RunDue(f, t0);
         await Db(f, async db =>
@@ -123,7 +132,7 @@ public sealed class AdSpendSyncTests
         Assert.True(await RunDue(f, t0.AddHours(7)) >= 1);
         await Db(f, async db =>
             Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.AdSpendSync
-                && x.EventKey == $"ad-sync-fixed:2026-08:{brand}:Meta")));
+                && x.EventKey == $"ad-sync-fixed:{periodKey}:{brand}:Meta")));
         using var c = await Client(f);
         var body = await c.GetStringAsync("/api/notifications");
         Assert.Contains("tekrar denemesinde okundu", body);

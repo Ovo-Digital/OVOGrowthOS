@@ -45,8 +45,16 @@ public sealed class StoreOrderAutoSyncTests
             s.RemoveAll<IStoreOrderClient>(); s.AddSingleton<IStoreOrderClient>(orders);
         }));
 
-    private static StoreOrderDraft Draft(int number) =>
-        new($"source-{number}", "store-1", number, new DateTimeOffset(2026, 8, 19, 21, 0, 0, TimeSpan.Zero),
+    // Bildirim listesi gerçek zamana göre son 30 günü gösterir; sabit geçmiş tarihler
+    // zamanla filtrenin dışında kalır. Bu yüzden tüm tarihler gerçek güne göre türetilir.
+    private static (DateTime Target, string PeriodKey) PreviousPeriod(DateTimeOffset now)
+    {
+        var target = now.ToOffset(TimeSpan.FromHours(3)).Date.AddMonths(-1);
+        return (target, $"{target.Year:0000}-{target.Month:00}");
+    }
+
+    private static StoreOrderDraft Draft(int number, DateTime target) =>
+        new($"source-{number}", "store-1", number, new DateTimeOffset(target.Year, target.Month, 15, 21, 0, 0, TimeSpan.Zero),
             "TRY", 952.20m, 952.20m, 0m, StoreOrderStatus.Complete, 30);
 
     private static async Task<Guid> SeedBrandWithSettings(WebApplicationFactory<Program> f)
@@ -83,19 +91,20 @@ public sealed class StoreOrderAutoSyncTests
     {
         await using var p = new WorkflowApiFactory(); var orders = new FakeOrders(); await using var f = Setup(p, new FakeToken(), orders);
         var brand = await SeedBrandWithSettings(f);
-        orders.Drafts.AddRange([Draft(1), Draft(2)]);
+        var t0 = DateTimeOffset.UtcNow; var (target, periodKey) = PreviousPeriod(t0);
+        orders.Drafts.AddRange([Draft(1, target), Draft(2, target)]);
 
-        var notified = await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3)));
+        var notified = await RunDue(f, t0);
         Assert.True(notified >= 1);
-        Assert.Equal(2026, orders.LastPeriod!.Year);
-        Assert.Equal(8, orders.LastPeriod.Month);
+        Assert.Equal(target.Year, orders.LastPeriod!.Year);
+        Assert.Equal(target.Month, orders.LastPeriod.Month);
         await Db(f, async db =>
         {
             Assert.Equal(2, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
             var claim = await db.AuditRecords.SingleAsync(x => x.Action == "StoreOrdersAutoSync");
-            Assert.Equal("2026-08", claim.EntityId);
+            Assert.Equal(periodKey, claim.EntityId);
             Assert.Contains("tamamlandı", claim.Reason);
-            Assert.True(await db.UserNotifications.CountAsync(x => x.Kind == NotificationKind.StoreSync && x.EventKey == "store-sync:2026-08") >= 1);
+            Assert.True(await db.UserNotifications.CountAsync(x => x.Kind == NotificationKind.StoreSync && x.EventKey == "store-sync:" + periodKey) >= 1);
             Assert.False(await db.UserNotifications.AnyAsync(x => x.UserId == Partner && x.Kind == NotificationKind.StoreSync));
             Assert.False(await db.UserNotifications.AnyAsync(x => x.UserId == Admin && x.Kind == NotificationKind.StoreSync && x.EmailStatus != null));
         });
@@ -105,7 +114,7 @@ public sealed class StoreOrderAutoSyncTests
         Assert.Contains("Otomatik sipariş senkronu", body);
         Assert.Contains("/brands", body);
 
-        Assert.Equal(0, await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 5, 0, TimeSpan.FromHours(3))));
+        Assert.Equal(0, await RunDue(f, t0.AddMinutes(5)));
         await Db(f, async db =>
         {
             Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSync"));
@@ -119,7 +128,7 @@ public sealed class StoreOrderAutoSyncTests
         await using var p = new WorkflowApiFactory(); var orders = new FakeOrders { Fail = true }; await using var f = Setup(p, new FakeToken(), orders);
         await SeedBrandWithSettings(f);
 
-        await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3)));
+        await RunDue(f, DateTimeOffset.UtcNow);
 
         await Db(f, async db =>
         {
@@ -141,7 +150,8 @@ public sealed class StoreOrderAutoSyncTests
     {
         await using var p = new WorkflowApiFactory(); var orders = new FakeOrders(); await using var f = Setup(p, new FakeToken(), orders);
 
-        Assert.Equal(0, await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3))));
+        var t0 = DateTimeOffset.UtcNow; var (target, _) = PreviousPeriod(t0);
+        Assert.Equal(0, await RunDue(f, t0));
         await Db(f, async db =>
         {
             Assert.False(await db.AuditRecords.AnyAsync(x => x.Action == "StoreOrdersAutoSync"));
@@ -149,8 +159,8 @@ public sealed class StoreOrderAutoSyncTests
         });
 
         var brand = await SeedBrandWithSettings(f);
-        orders.Drafts.Add(Draft(1));
-        Assert.True(await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 1, 0, TimeSpan.FromHours(3))) >= 1);
+        orders.Drafts.Add(Draft(1, target));
+        Assert.True(await RunDue(f, t0.AddMinutes(1)) >= 1);
         await Db(f, async db =>
         {
             Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
@@ -163,8 +173,8 @@ public sealed class StoreOrderAutoSyncTests
     {
         await using var p = new WorkflowApiFactory(); var orders = new FakeOrders { Fail = true }; await using var f = Setup(p, new FakeToken(), orders);
         var brand = await SeedBrandWithSettings(f);
-        orders.Drafts.Add(Draft(1));
-        var t0 = new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3));
+        var t0 = DateTimeOffset.UtcNow; var (target, periodKey) = PreviousPeriod(t0);
+        orders.Drafts.Add(Draft(1, target));
 
         await RunDue(f, t0);
         await Db(f, async db =>
@@ -186,7 +196,7 @@ public sealed class StoreOrderAutoSyncTests
             Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
             Assert.Equal(1, await db.AuditRecords.CountAsync(x => x.Action == "StoreOrdersAutoSync"));
             Assert.True(await db.UserNotifications.AnyAsync(x => x.Kind == NotificationKind.StoreSync
-                && x.EventKey == $"store-sync-fixed:2026-08:{brand}"));
+                && x.EventKey == $"store-sync-fixed:{periodKey}:{brand}"));
         });
         using var c = await Client(f);
         var body = await c.GetStringAsync("/api/notifications");
@@ -200,12 +210,13 @@ public sealed class StoreOrderAutoSyncTests
     {
         await using var p = new WorkflowApiFactory(); var orders = new FakeOrders(); await using var f = Setup(p, new FakeToken(), orders);
         var brand = await SeedBrandWithSettings(f);
-        orders.Drafts.Add(Draft(1));
         using var c = await Client(f);
-        var response = await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/sync", new { period = "2026-08" });
+        var (manualTarget, periodKey) = PreviousPeriod(DateTimeOffset.UtcNow);
+        orders.Drafts.Add(Draft(1, manualTarget));
+        var response = await c.PostAsJsonAsync($"/api/brands/{brand}/store-orders/sync", new { period = periodKey });
         response.EnsureSuccessStatusCode();
 
-        Assert.Equal(0, await RunDue(f, new DateTimeOffset(2026, 9, 5, 10, 0, 0, TimeSpan.FromHours(3))));
+        Assert.Equal(0, await RunDue(f, DateTimeOffset.UtcNow));
         await Db(f, async db =>
         {
             Assert.Equal(1, await db.StoreOrderStagings.CountAsync(x => x.BrandId == brand));
