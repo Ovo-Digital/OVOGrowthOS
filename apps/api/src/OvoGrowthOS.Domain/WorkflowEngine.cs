@@ -5,7 +5,8 @@ namespace OvoGrowthOS.Domain;
 public sealed record ScenarioCalculation(decimal CommissionableRevenue, decimal OvoFee, decimal EffectiveCommissionRate,
     decimal OvoGrossProfit, decimal OvoMargin, decimal BrandContributionProfit, decimal BrandContributionMargin,
     decimal Mer, decimal BreakEvenMer, decimal Cac, decimal PaybackMonths, decimal AllowableAdSpend,
-    ScenarioRiskLevel RiskLevel, DecisionStatus ScenarioDecision);
+    ScenarioRiskLevel RiskLevel, DecisionStatus ScenarioDecision,
+    IReadOnlyList<CommissionChannelShare> ChannelShares);
 
 public static class ScenarioCalculator
 {
@@ -19,7 +20,27 @@ public static class ScenarioCalculator
         var cogs = s.MonthlyRevenue * (1 - s.GrossMarginRate);
         var variable = s.MonthlyRevenue * s.VariableCostRate;
         var contributionBeforeOvo = s.MonthlyRevenue - cogs - variable - s.AdSpend;
-        var commission = DealCommissionCalculator.Calculate(temporaryDeal, commissionable, contributionBeforeOvo);
+        // Kanal payı yazılmış satır varsa ve model destekliyorsa her kanal kendi oranıyla hesaplanır;
+        // oranı boş satır senaryonun genel oranını kullanır. Kademeli oran tanımlı asgari ücret
+        // modelinde toplam üzerinden kademeli hesap korunur.
+        var rows = s.RevenueChannels?.ToList() ?? [];
+        CommissionResult commission;
+        IReadOnlyList<CommissionChannelShare> shares = [];
+        if (rows.Count > 0 && rows.Any(r => r.RevenueShareRate.HasValue)
+            && DealCommissionCalculator.SupportsChannelRates(s.CommissionModel))
+        {
+            var revenues = rows.Select(r => new ChannelRevenue(r.SalesChannelId, r.SalesChannel?.Name ?? "",
+                r.MonthlyRevenue * (1 - s.ReturnRate))).ToList();
+            var overrides = rows.Where(r => r.RevenueShareRate.HasValue)
+                .ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate!.Value);
+            var channeled = DealCommissionCalculator.CalculateWithChannels(temporaryDeal, revenues, contributionBeforeOvo, overrides);
+            commission = channeled.Result;
+            shares = channeled.Shares;
+        }
+        else
+        {
+            commission = DealCommissionCalculator.Calculate(temporaryDeal, commissionable, contributionBeforeOvo);
+        }
         var finance = FinancialCalculator.Calculate(new(s.MonthlyRevenue, 0, 0, 0, cogs, variable, s.AdSpend, commission.FinalFee,
             s.AverageOrderValue == 0 ? 0 : (int)(s.MonthlyRevenue / s.AverageOrderValue), 0, s.NewCustomers));
         var breakEven = FinancialCalculator.BreakEvenMer(s.GrossMarginRate, s.VariableCostRate, commission.EffectiveRate, s.TargetBrandContributionMargin);
@@ -32,7 +53,7 @@ public static class ScenarioCalculator
         return new(commissionable, commission.FinalFee, commission.EffectiveRate, ovoProfit,
             FinancialCalculator.OvoMargin(commission.FinalFee, s.OvoInternalMonthlyCost), finance.BrandContributionProfit,
             finance.BrandContributionMargin, finance.Mer, breakEven, finance.Cac,
-            FinancialCalculator.PaybackMonths(s.SetupInvestment, ovoProfit), allowable, risk, decision);
+            FinancialCalculator.PaybackMonths(s.SetupInvestment, ovoProfit), allowable, risk, decision, shares);
     }
 }
 

@@ -2805,6 +2805,10 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
 
+                    b.Property<decimal?>("RevenueShareRate")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<Guid>("SalesChannelId")
                         .HasColumnType("uuid");
 

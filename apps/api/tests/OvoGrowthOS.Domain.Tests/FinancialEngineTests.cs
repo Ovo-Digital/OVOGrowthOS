@@ -27,6 +27,59 @@ public sealed class FinancialEngineTests
     [Fact] public void Ruleset_clone_increments_version_and_copies_rules(){var source=Rules();var clone=RuleSetVersioning.Clone(source);Assert.Equal(2,clone.Version);Assert.Equal(RuleSetStatus.Draft,clone.Status);Assert.Equal(source.Rules.Count,clone.Rules.Count);Assert.NotEqual(source.Rules[0].Id,clone.Rules[0].Id);}
     [Fact] public void Between_rule_matches_lower_and_excludes_upper(){var rule=new Rule{Name="Range",Field=RuleField.GrossMargin,Operator=RuleOperator.Between,Value=.3m,SecondaryValue=.4m};Assert.Single(RuleEvaluator.Evaluate([rule],new(.35m,0,60,4,4,4,1,1,70)));Assert.Empty(RuleEvaluator.Evaluate([rule],new(.4m,0,60,4,4,4,1,1,70)));}
     [Fact] public void Scenario_calculation_is_authoritative(){var x=ScenarioCalculator.Calculate(Scenario());Assert.True(x.OvoFee>0);Assert.True(x.BrandContributionProfit>0);Assert.Equal(DecisionStatus.Accept,x.ScenarioDecision);}
+    [Fact] public void Scenario_channel_rates_blend_fee()
+    {
+        var s = Scenario(); s.CommissionModel = DealType.FlatRevenueShare; s.ReturnRate = 0;
+        s.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 600_000, RevenueShareRate = .05m },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000, RevenueShareRate = .03m }];
+        var x = ScenarioCalculator.Calculate(s);
+        Assert.Equal(42_000, x.OvoFee);
+        Assert.Equal(.042m, x.EffectiveCommissionRate);
+        Assert.Equal(2, x.ChannelShares.Count);
+        Assert.Equal(30_000, x.ChannelShares[0].Fee);
+        Assert.Equal(12_000, x.ChannelShares[1].Fee);
+    }
+    [Fact] public void Scenario_channel_rate_falls_back_to_general_rate()
+    {
+        var s = Scenario(); s.CommissionModel = DealType.FlatRevenueShare; s.ReturnRate = 0; s.RevenueShareRate = .05m;
+        s.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 600_000, RevenueShareRate = .04m },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000 }];
+        var x = ScenarioCalculator.Calculate(s);
+        Assert.Equal(44_000, x.OvoFee);
+    }
+    [Fact] public void Scenario_channel_retainer_applies_at_total_level()
+    {
+        var s = Scenario(); s.CommissionModel = DealType.RetainerPlusRevenueShare; s.ReturnRate = 0; s.MonthlyRetainer = 10_000;
+        s.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 600_000, RevenueShareRate = .05m },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000, RevenueShareRate = .03m }];
+        Assert.Equal(52_000, ScenarioCalculator.Calculate(s).OvoFee);
+    }
+    [Fact] public void Scenario_channel_rates_ignored_for_unsupported_model()
+    {
+        var plain = Scenario(); plain.CommissionModel = DealType.TieredRevenueShare;
+        var channeled = Scenario(); channeled.CommissionModel = DealType.TieredRevenueShare;
+        channeled.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 600_000, RevenueShareRate = .10m },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000, RevenueShareRate = .10m }];
+        var x = ScenarioCalculator.Calculate(channeled);
+        Assert.Equal(ScenarioCalculator.Calculate(plain).OvoFee, x.OvoFee);
+        Assert.Empty(x.ChannelShares);
+    }
+    [Fact] public void Scenario_without_channel_rates_has_no_shares()
+    {
+        var s = Scenario();
+        s.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 600_000 },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000 }];
+        var x = ScenarioCalculator.Calculate(s);
+        Assert.Empty(x.ChannelShares);
+        Assert.True(x.OvoFee > 0);
+    }
+    [Fact] public void Scenario_channel_zero_revenue_row_is_safe()
+    {
+        var s = Scenario(); s.CommissionModel = DealType.FlatRevenueShare; s.ReturnRate = 0;
+        s.RevenueChannels = [new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 0, RevenueShareRate = .05m },
+            new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000, RevenueShareRate = .03m }];
+        Assert.Equal(12_000, ScenarioCalculator.Calculate(s).OvoFee);
+    }
     [Fact] public void Deal_comparison_recommends_highest_deterministic_score(){var deals=new[]{Deal(DealType.FlatRevenueShare,rate:.10m),Deal(DealType.MinimumFeePlusRevenueShare,rate:.04m,minimum:45_000)};deals[0].Name="High flat";deals[1].Name="Protected";var x=DealComparisonEngine.Compare(deals,Scenario(),Settings());Assert.True(x[0].Score>=x[1].Score);Assert.NotEmpty(x[0].Reasons);}
     [Fact] public void Monthly_performance_calculates_derived_values(){var p=Performance();var result=MonthlyPerformanceCalculator.Calculate(p,Deal(DealType.FlatRevenueShare,rate:.05m));Assert.Equal(800_000,p.NetRevenue);Assert.Equal(200_000,p.TotalAdSpend);Assert.Equal(result.FinalFee,p.OvoFee);}
     [Fact] public void Locked_period_cannot_be_edited()=>Assert.False(MonthlyCloseWorkflow.CanEdit(MonthlyPerformanceStatus.Locked));

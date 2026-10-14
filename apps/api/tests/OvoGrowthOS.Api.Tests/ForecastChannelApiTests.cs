@@ -30,6 +30,70 @@ public sealed class ForecastChannelApiTests
         revenueChannels,
     };
 
+    private static object ScenarioRatePayload(object? revenueChannels) => new
+    {
+        name = "Kanallı pay", monthlyRevenue = 0m, grossMarginRate = .6m, adSpend = 150_000m, returnRate = .05m,
+        averageOrderValue = 2_000m, newCustomers = 400, variableCostRate = .08m, ovoInternalMonthlyCost = 25_000m,
+        minimumMonthlyFee = 0m, commissionModel = "FlatRevenueShare", revenueShareRate = .05m, monthlyRetainer = 0m,
+        baselineRevenue = 0m, incrementalRate = .1m, profitShareRate = .1m, commissionTiers = Array.Empty<object>(),
+        targetBrandContributionMargin = .15m, setupInvestment = 250_000m, contractMonths = 24,
+        revenueChannels,
+    };
+
+    [Fact]
+    public async Task Scenario_channel_rates_calculate_persist_and_copy()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var channels = new[]
+        {
+            new { salesChannelId = web, monthlyRevenue = 600_000m, revenueShareRate = (decimal?).05m },
+            new { salesChannelId = trendyol, monthlyRevenue = 400_000m, revenueShareRate = (decimal?).03m },
+        };
+        var evaluationId = (await (await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand, null))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // %5 iade sonrası web 570.000 x %5 + Trendyol 380.000 x %3 = 39.900.
+        var calculated = await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios/calculate", ScenarioRatePayload(channels));
+        calculated.EnsureSuccessStatusCode();
+        var calcBody = await calculated.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(39900, calcBody.GetProperty("ovoFee").GetDecimal());
+        Assert.Equal(2, calcBody.GetProperty("channelShares").GetArrayLength());
+
+        var saved = await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios", ScenarioRatePayload(channels));
+        Assert.Equal(HttpStatusCode.Created, saved.StatusCode);
+        var scenarioId = (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("scenario").GetProperty("id").GetGuid();
+
+        var list = await admin.GetFromJsonAsync<JsonElement>($"/api/evaluations/{evaluationId}/scenarios");
+        var rates = list[0].GetProperty("revenueChannels").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("salesChannel").GetProperty("name").GetString()!, r => r.GetProperty("revenueShareRate").GetDecimal());
+        Assert.Equal(.05m, rates["Web sitesi"]);
+        Assert.Equal(.03m, rates["Trendyol"]);
+
+        (await admin.PostAsync($"/api/evaluations/{evaluationId}/scenarios/{scenarioId}/duplicate", null)).EnsureSuccessStatusCode();
+        var after = await admin.GetFromJsonAsync<JsonElement>($"/api/evaluations/{evaluationId}/scenarios");
+        Assert.All(after.EnumerateArray(), s => Assert.Equal(2, s.GetProperty("revenueChannels").EnumerateArray()
+            .Count(r => r.TryGetProperty("revenueShareRate", out var rate) && rate.ValueKind == JsonValueKind.Number)));
+    }
+
+    [Fact]
+    public async Task Scenario_channel_rates_rejected_for_unsupported_model_and_bad_rate()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var evaluationId = (await (await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand, null))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var tiered = ScenarioRatePayload(new[] { new { salesChannelId = web, monthlyRevenue = 600_000m, revenueShareRate = (decimal?).05m } });
+        var tieredBody = new Dictionary<string, object?>(tiered.GetType().GetProperties().ToDictionary(p => p.Name, p => p.GetValue(tiered))) { ["commissionModel"] = "TieredRevenueShare" };
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios/calculate", tieredBody)).StatusCode);
+
+        var badRate = ScenarioRatePayload(new[] { new { salesChannelId = trendyol, monthlyRevenue = 400_000m, revenueShareRate = (decimal?)1.5m } });
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios", badRate)).StatusCode);
+    }
+
     private static async Task<(Guid Web, Guid Trendyol)> SeedChannels(HttpClient admin, Guid brand)
     {
         async Task<Guid> Add(string name)

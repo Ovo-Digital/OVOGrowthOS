@@ -96,6 +96,10 @@ public sealed class ScenarioRequestValidator : AbstractValidator<ScenarioRequest
                 .WithMessage("Her satış kanalı bir tahminde yalnız bir kez yer alabilir.");
             RuleForEach(x => x.RevenueChannels!).SetValidator(new RevenueChannelRequestValidator());
         });
+        RuleFor(x => x.CommissionModel).Must((x, m) => x.RevenueChannels is null
+                || !x.RevenueChannels.Any(r => r.RevenueShareRate.HasValue)
+                || DealCommissionCalculator.SupportsChannelRates(m))
+            .WithMessage("Kanal başına farklı pay yalnız sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde kullanılır.");
     }
 }
 
@@ -107,6 +111,8 @@ public sealed class RevenueChannelRequestValidator : AbstractValidator<RevenueCh
         RuleFor(x => x.MonthlyRevenue).GreaterThanOrEqualTo(0).WithMessage("Kanal cirosu negatif olamaz.")
             .LessThan(100000000000000m).WithMessage("Tutar izin verilen sınırı aşıyor.")
             .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
+        When(x => x.RevenueShareRate.HasValue, () => RuleFor(x => x.RevenueShareRate!.Value)
+            .InclusiveBetween(0, 1).WithMessage("Kanal payı 0 ile 1 arasında olmalıdır."));
     }
 }
 

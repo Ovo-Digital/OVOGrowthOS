@@ -325,7 +325,8 @@ public sealed class BrandRevenueChannel
 
 /// <summary>
 /// Senaryodaki tahmini aylık cironun kanal kırılımı. Senaryo cirosu satırların toplamıdır.
-/// Hakediş hesabı senaryonun tek oranıyla toplam üzerinden yapılır.
+/// Kanal payı (RevenueShareRate) yazılan satır o oranla hesaplanır; boş bırakılan satırda
+/// senaryonun genel oranı kullanılır. Desteklenmeyen modelde kanal payları dikkate alınmaz.
 /// </summary>
 public sealed class ScenarioRevenueChannel
 {
@@ -335,6 +336,7 @@ public sealed class ScenarioRevenueChannel
     public Guid SalesChannelId { get; set; }
     public SalesChannel? SalesChannel { get; set; }
     public decimal MonthlyRevenue { get; set; }
+    public decimal? RevenueShareRate { get; set; }
 }
 
 public sealed class MonthlyPerformance

@@ -11,7 +11,7 @@ public sealed record EvaluationDraftRequest(Guid BrandId, int CurrentStep, Evalu
     int NewCustomers, int ReturningCustomers, decimal VariableCostRate, int ProductMarketFit, int GrowthPotential,
     int OperationalReadiness, int CreativeCapability, int FounderCooperation, int DataMaturity,
     decimal InternalMonthlyCost, decimal SetupInvestment, List<RevenueChannelRequest>? RevenueChannels = null);
-public sealed record RevenueChannelRequest(Guid SalesChannelId, decimal MonthlyRevenue);
+public sealed record RevenueChannelRequest(Guid SalesChannelId, decimal MonthlyRevenue, decimal? RevenueShareRate = null);
 
 public sealed record RuleSetRequest(string Name, string Description);
 public sealed record BrandUpdateRequest(string Name, string LegalName, string Website, string Country, string Currency,
