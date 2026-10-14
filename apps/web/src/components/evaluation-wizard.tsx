@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, money } from '@/lib/api';
 import { turkce } from '@/lib/turkish';
 import { Badge, Card, PageHeader } from '@/components/ui/core';
@@ -100,7 +100,7 @@ type Draft = {
     dataMaturity: number;
     internalMonthlyCost: number;
     setupInvestment: number;
-    revenueChannels: { salesChannelId: string; monthlyRevenue: number }[];
+    revenueChannels: { salesChannelId: string; channelName?: string; monthlyRevenue: number }[];
 };
 type Eval = Draft & {
     id: string;
@@ -225,6 +225,7 @@ function Wizard({
     existing?: Eval;
 }) {
     const router = useRouter();
+    const qc = useQueryClient();
     const [id, setId] = useState(initialId);
     const [step, setStep] = useState(Math.max(0, initial.currentStep - 1));
     const [d, setD] = useState(initial);
@@ -240,18 +241,25 @@ function Wizard({
     function set<K extends keyof Draft>(k: K, v: Draft[K]) {
         setD((x) => ({ ...x, [k]: v }));
     }
+    function channelKey(r: Draft['revenueChannels'][number]) {
+        return r.salesChannelId || (r.channelName ?? '').trim().toLocaleLowerCase('tr-TR');
+    }
     function nextStep() {
         const message =
             step === 0 && !d.brandId
                 ? 'Devam etmek için bir marka seçin.'
                 : step === 1 &&
                     d.revenueChannels.length > 0 &&
-                    d.revenueChannels.some((r) => !r.salesChannelId)
-                  ? 'Her kanal satırında satış kanalını seçin.'
+                    d.revenueChannels.some(
+                        (r) =>
+                            !r.salesChannelId &&
+                            (r.channelName ?? '').trim().length < 2,
+                    )
+                  ? 'Her kanal satırına en az 2 karakterlik bir kanal adı yazın veya listeden seçin.'
                 : step === 1 &&
                     d.revenueChannels.length > 0 &&
-                    new Set(d.revenueChannels.map((r) => r.salesChannelId))
-                        .size !== d.revenueChannels.length
+                    new Set(d.revenueChannels.map(channelKey)).size !==
+                        d.revenueChannels.length
                   ? 'Her satış kanalı bir tahminde yalnız bir kez yer alabilir.'
                 : step === 1 &&
                     (d.averageMonthlyRevenue <= 0 ||
@@ -279,9 +287,68 @@ function Wizard({
         setError('');
         setStep((x) => x + 1);
     }
+    async function ensureChannels(rows: Draft['revenueChannels']) {
+        const fresh = rows.filter(
+            (r) => !r.salesChannelId && (r.channelName ?? '').trim(),
+        );
+        if (!d.brandId || fresh.length === 0) return rows;
+        const names = [
+            ...new Set(fresh.map((r) => r.channelName!.trim())),
+        ];
+        const ids: Record<string, string> = {};
+        let listed: SalesChannel[] | null = null;
+        for (const name of names) {
+            try {
+                const created = await api<{ id: string }>(
+                    `/api/brands/${d.brandId}/sales-channels`,
+                    { method: 'POST', body: JSON.stringify({ name }) },
+                );
+                ids[name.toLocaleLowerCase('tr-TR')] = created.id;
+            } catch {
+                listed ??= await api<SalesChannel[]>(
+                    `/api/brands/${d.brandId}/sales-channels`,
+                );
+                const found = listed.find(
+                    (x) =>
+                        x.name.toLocaleLowerCase('tr-TR') ===
+                        name.toLocaleLowerCase('tr-TR'),
+                );
+                if (!found)
+                    throw new Error(
+                        `"${name}" kanalı açılamadı. Kanalı marka sayfasından ekleyip tekrar deneyin.`,
+                    );
+                ids[name.toLocaleLowerCase('tr-TR')] = found.id;
+            }
+        }
+        const resolved = rows.map((r) =>
+            r.salesChannelId
+                ? r
+                : {
+                      ...r,
+                      salesChannelId:
+                          ids[
+                              (r.channelName ?? '')
+                                  .trim()
+                                  .toLocaleLowerCase('tr-TR')
+                          ],
+                  },
+        );
+        set('revenueChannels', resolved);
+        await qc.invalidateQueries({
+            queryKey: ['sales-channels', d.brandId],
+        });
+        return resolved;
+    }
     async function persist() {
+        const channels = await ensureChannels(d.revenueChannels);
         const payload = {
             ...d,
+            revenueChannels: channels.map(
+                ({ salesChannelId, monthlyRevenue }) => ({
+                    salesChannelId,
+                    monthlyRevenue,
+                }),
+            ),
             currentStep: step + 1,
             status: step === 0 ? 'Draft' : 'InProgress',
         };
@@ -548,8 +615,7 @@ function Fields({
     if (step === 1)
         return (
             <>
-                {active.length > 0 && (
-                    <fieldset className="mb-5 flex flex-wrap gap-4 text-sm">
+                <fieldset className="mb-5 flex flex-wrap gap-4 text-sm">
                         <legend className="label">CİRO GİRİŞİ</legend>
                         <label>
                             <input
@@ -565,18 +631,43 @@ function Fields({
                                 checked={channeled}
                                 onChange={() => {
                                     if (!channeled)
-                                        syncRows([
-                                            {
-                                                salesChannelId: '',
-                                                monthlyRevenue: 0,
-                                            },
-                                        ]);
+                                        syncRows(
+                                            active.length > 0
+                                                ? [
+                                                      {
+                                                          salesChannelId: '',
+                                                          monthlyRevenue: 0,
+                                                      },
+                                                  ]
+                                                : [
+                                                      {
+                                                          salesChannelId: '',
+                                                          channelName:
+                                                              'Web sitesi',
+                                                          monthlyRevenue: 0,
+                                                      },
+                                                      {
+                                                          salesChannelId: '',
+                                                          channelName:
+                                                              'Pazaryeri',
+                                                          monthlyRevenue: 0,
+                                                      },
+                                                  ],
+                                        );
                                 }}
                             />{' '}
-                            Kanal kırılımlı ({active.length} kanal)
+                            {active.length > 0
+                                ? `Kanal kırılımlı (${active.length} kanal)`
+                                : 'Kanal kırılımlı (kanal adlarını yazın)'}
                         </label>
                     </fieldset>
-                )}
+                    {channeled && active.length === 0 && (
+                        <p className="mb-4 text-sm text-[#6d7175]">
+                            Bu markanın henüz tanımlı kanalı yok;
+                            adlarını buraya yazın, kaydettiğinizde
+                            kanallar otomatik açılır.
+                        </p>
+                    )}
                 <Grid>
                     {channeled ? (
                         <div>
@@ -638,32 +729,64 @@ function Fields({
                                 <label>
                                     <span className="label">
                                         SATIŞ KANALI
-                                        <FieldHint text="Cironun hangi satış kanalından beklendiğini seçin." />
+                                        <FieldHint text="Cironun hangi satış kanalından beklendiğini seçin veya yeni kanal adını yazın." />
                                     </span>
-                                    <select
-                                        className="input mt-1.5"
-                                        value={row.salesChannelId}
-                                        onChange={(e) =>
-                                            syncRows(
-                                                d.revenueChannels.map((r, j) =>
-                                                    j === i
-                                                        ? {
-                                                              ...r,
-                                                              salesChannelId:
-                                                                  e.target.value,
-                                                          }
-                                                        : r,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        <option value="">Kanal seçin</option>
-                                        {active.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name}
+                                    {active.length > 0 ? (
+                                        <select
+                                            className="input mt-1.5"
+                                            value={row.salesChannelId}
+                                            onChange={(e) =>
+                                                syncRows(
+                                                    d.revenueChannels.map(
+                                                        (r, j) =>
+                                                            j === i
+                                                                ? {
+                                                                      ...r,
+                                                                      salesChannelId:
+                                                                          e.target
+                                                                              .value,
+                                                                  }
+                                                                : r,
+                                                    ),
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                Kanal seçin
                                             </option>
-                                        ))}
-                                    </select>
+                                            {active.map((c) => (
+                                                <option
+                                                    key={c.id}
+                                                    value={c.id}
+                                                >
+                                                    {c.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            className="input mt-1.5"
+                                            value={row.channelName ?? ''}
+                                            maxLength={80}
+                                            placeholder="Örn. Web sitesi"
+                                            onChange={(e) =>
+                                                syncRows(
+                                                    d.revenueChannels.map(
+                                                        (r, j) =>
+                                                            j === i
+                                                                ? {
+                                                                      ...r,
+                                                                      channelName:
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                  }
+                                                                : r,
+                                                    ),
+                                                )
+                                            }
+                                        />
+                                    )}
                                 </label>
                                 <label>
                                     <span className="label">

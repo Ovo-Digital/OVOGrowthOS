@@ -317,8 +317,9 @@ Girilen temel bilgiler şunlardır:
 - Yetkili adı
 - Yetkili e-posta adresi
 - Kullanılan e-ticaret altyapısı
+- Satış kanalları (isteğe bağlı; öntanımlı olarak Web sitesi ve Pazaryeri gelir, değiştirilebilir)
 
-Bilgileri kaydettikten sonra değerlendirme sürecine geçebilirsiniz.
+Satış kanalları markayla birlikte kaydedilir. Bilgileri kaydettikten sonra değerlendirme sürecine geçebilirsiniz; değerlendirmede aylık ciro bu kanallara ayrı ayrı yazılır.
 
 ### Marka detay ekranı
 
@@ -433,7 +434,7 @@ Bu adımda markanın satış hacmi girilir:
 - Aylık sipariş sayısı
 - Aylık site ziyareti
 
-Markada etkin satış kanalı varsa **Kanal kırılımlı** seçeneği görünür; her kanalın tahmini aylık cirosu ayrı yazılır ve aylık ciro satırların toplamı olur. Kanal kırılımı puanı veya öneriyi değiştirmez, yalnız cironun nereden beklendiğini gösterir. Tek toplama dönüldüğünde kanal satırları silinir ve elle yazılan toplam korunur.
+**Kanal kırılımlı** seçeneği her zaman görünür; her kanalın tahmini aylık cirosu ayrı yazılır ve aylık ciro satırların toplamı olur. Markada tanımlı kanal varsa listeden seçilir; yoksa kanal adları (ör. Web sitesi, Pazaryeri) buraya yazılır ve kaydetmede kanallar otomatik açılır. Kanal kırılımı puanı veya öneriyi değiştirmez, yalnız cironun nereden beklendiğini gösterir. Tek toplama dönüldüğünde kanal satırları silinir ve elle yazılan toplam korunur.
 
 Mümkünse bu bilgileri markanın e-ticaret paneli, muhasebe raporu veya analiz aracından doğrulayın.
 
@@ -595,7 +596,7 @@ Senaryo simülatörü “şu değer değişirse ne olur?” sorusuna cevap verir
 
 Değerler değiştirildikçe anlık sonuçlar yeniden hesaplanır.
 
-Markada etkin satış kanalı varsa **Kanallı gir** ile aylık ciro kanal satırlarına bölünebilir; aylık ciro satırların toplamı olur. Senaryoda kanal oranları yoktur, hakediş senaryonun tek oranıyla toplam üzerinden hesaplanır; kanal dağılımı yalnız ciro karşılaştırması içindir. Kaydedilen senaryoların ciro satırında kanal dağılımı da görünür. Senaryo sonradan düzenlenemez; farklı bir dağılım için yeni senaryo açılır veya mevcut senaryo kopyalanır (kopyaya kanal satırları da taşınır).
+Markada etkin satış kanalı varsa **Kanallı gir** ile aylık ciro kanal satırlarına bölünebilir; aylık ciro satırların toplamı olur. Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satıra ayrı pay (%) yazılabilir (ör. Web sitesi %5, Pazaryeri %3); boş bırakılan satır senaryonun genel oranıyla hesaplanır ve sonuçta kanal bazında hakediş de görünür. Diğer modellerde kanal dağılımı yalnız ciro karşılaştırması içindir, hakediş toplam üzerinden hesaplanır. Kaydedilen senaryoların ciro satırında kanal dağılımı ve payları da görünür. Senaryo sonradan düzenlenemez; farklı bir dağılım için yeni senaryo açılır veya mevcut senaryo kopyalanır (kopyaya kanal satırları ve payları da taşınır). Anlaşma sayfasındaki kanal oranları ayrıca düzenlenebilir; kapanmış dönemlerin hakedişi değişmez.
 
 ### Sonuçlarda nelere bakılmalı?
 
