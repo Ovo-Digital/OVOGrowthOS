@@ -434,7 +434,7 @@ Bu adımda markanın satış hacmi girilir:
 - Aylık sipariş sayısı
 - Aylık site ziyareti
 
-**Kanal kırılımlı** seçeneği her zaman görünür; her kanalın tahmini aylık cirosu ayrı yazılır ve aylık ciro satırların toplamı olur. Markada tanımlı kanal varsa listeden seçilir; yoksa kanal adları (ör. Web sitesi, Pazaryeri) buraya yazılır ve kaydetmede kanallar otomatik açılır. Kanal kırılımı puanı veya öneriyi değiştirmez, yalnız cironun nereden beklendiğini gösterir. Tek toplama dönüldüğünde kanal satırları silinir ve elle yazılan toplam korunur.
+**Kanal kırılımlı** seçeneği her zaman görünür; markanın tanımlı kanalı varsa öntanımlı olarak bu görünüm açılır ve her kanalın tahmini aylık cirosu ayrı yazılır, aylık ciro satırların toplamı olur. Markada tanımlı kanal varsa listeden seçilir; yoksa kanal adları (ör. Web sitesi, Pazaryeri) buraya yazılır ve kaydetmede kanallar otomatik açılır. Kanal kırılımı puanı veya öneriyi değiştirmez, yalnız cironun nereden beklendiğini gösterir. Tek toplama dönüldüğünde kanal satırları silinir ve elle yazılan toplam korunur.
 
 Mümkünse bu bilgileri markanın e-ticaret paneli, muhasebe raporu veya analiz aracından doğrulayın.
 
@@ -516,6 +516,7 @@ Sistem bu aşamada:
 - eksik bilgileri belirler,
 - önerilen anlaşma modelini hesaplar,
 - asgari aylık ücreti belirler,
+- kanal başına önerilen payı hesaplar (asgari ücretten ciro ağırlığıyla dağıtılır),
 - başa baş reklam verimliliğini hesaplar.
 
 Analiz sunucuda hesaplanır ve kaydedilir. Tarayıcı ekranı tek başına nihai karar üretmez.
@@ -533,7 +534,7 @@ Olası kararlar:
 - **Ek bilgi gerekli:** Kritik bilgiler eksik veya yeterince güvenilir değildir. Karar vermeden önce veri tamamlanmalıdır.
 - **Ret:** Finansal veya operasyonel riskler kabul edilebilir seviyenin üzerindedir.
 
-Ekranda ayrıca olumlu göstergeler, risk göstergeleri, eksik bilgiler ve gerekli koşullar yer alır.
+Ekranda ayrıca olumlu göstergeler, risk göstergeleri, eksik bilgiler ve gerekli koşullar yer alır. **Önerilen kanal payları** bölümünde her kanal için ayrı pay ve tahmini hakediş görünür (ör. Web sitesi %5, Pazaryeri %3); bu oranlar asgari ücret hedefinden türetilir ve senaryoda değiştirilebilir. Bir senaryo tercih edilmiş ve o senaryoda kanal payı yazılmışsa **Tercih edilen senaryodaki paylar** bölümü de görünür; iki değer farklıysa senaryodaki karar esas alınır.
 
 ### Veri güven düzeyleri
 

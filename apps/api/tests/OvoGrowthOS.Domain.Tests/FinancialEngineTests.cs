@@ -87,12 +87,45 @@ public sealed class FinancialEngineTests
     [Theory] [InlineData(MonthlyPerformanceStatus.Locked,true)] [InlineData(MonthlyPerformanceStatus.Invoiced,false)] [InlineData(MonthlyPerformanceStatus.Paid,false)] public void Only_uninvoiced_locked_period_can_be_unlocked(MonthlyPerformanceStatus status,bool expected)=>Assert.Equal(expected,MonthlyCloseWorkflow.CanUnlock(status));
     [Theory] [InlineData(MonthlyPerformanceStatus.Draft,MonthlyPerformanceStatus.UnderReview,true)] [InlineData(MonthlyPerformanceStatus.Draft,MonthlyPerformanceStatus.Locked,false)] [InlineData(MonthlyPerformanceStatus.Locked,MonthlyPerformanceStatus.Invoiced,true)] public void Monthly_close_transitions_are_guarded(MonthlyPerformanceStatus from,MonthlyPerformanceStatus to,bool expected)=>Assert.Equal(expected,MonthlyCloseWorkflow.CanTransition(from,to));
     [Fact] public void Portfolio_concentration_is_calculated(){Assert.Equal(.50m,PortfolioRiskCalculator.LargestShare([50,30,20]));Assert.Equal(.90m,PortfolioRiskCalculator.TopThreeShare([50,20,20,10]));}
+    [Fact] public void Channel_rate_recommendation_distributes_minimum_fee()
+    {
+        // 25.000 iç maliyet x 1,8 = 45.000 asgari ücret; 1.000.000 ciroya oranla %4,5.
+        var x = DealRecommendationEngine.Recommend(Economics(), Evaluation(), HybridRules(), Settings(), Channels());
+        Assert.Equal(DealType.MinimumFeePlusRevenueShare, x.RecommendedDealType);
+        Assert.Equal(2, x.RecommendedChannelShares.Count);
+        Assert.Equal(.045m, x.RecommendedChannelShares[0].RecommendedRate);
+        Assert.Equal(27_000, x.RecommendedChannelShares[0].EstimatedFee);
+        Assert.Equal(18_000, x.RecommendedChannelShares[1].EstimatedFee);
+        Assert.Equal(45_000, x.RecommendedChannelShares.Sum(c => c.EstimatedFee));
+    }
+    [Fact] public void Channel_rate_recommendation_empty_without_channels_support_or_total()
+    {
+        var tiered = Rules();
+        Assert.Empty(DealRecommendationEngine.Recommend(Economics(), Evaluation(), tiered, Settings(), Channels()).RecommendedChannelShares);
+        Assert.Empty(DealRecommendationEngine.Recommend(Economics(), Evaluation(), HybridRules(), Settings()).RecommendedChannelShares);
+        Assert.Empty(DealRecommendationEngine.Recommend(Economics(), Evaluation(), HybridRules(), Settings(),
+            [new ChannelRevenueInput(Guid.NewGuid(), "Boş", 0)]).RecommendedChannelShares);
+    }
+    [Fact] public void Channel_rate_recommendation_empty_for_missing_inputs()
+    {
+        var e = Economics(); e.GrossMarginConfidence = DataConfidence.Unknown;
+        Assert.Empty(DealRecommendationEngine.Recommend(e, Evaluation(), HybridRules(), Settings(), Channels()).RecommendedChannelShares);
+    }
+    [Fact] public void Channel_rate_zero_revenue_channel_has_no_fee()
+    {
+        var x = DealRecommendationEngine.Recommend(Economics(), Evaluation(), HybridRules(), Settings(),
+            [new ChannelRevenueInput(Guid.NewGuid(), "Web sitesi", 1_000_000), new ChannelRevenueInput(Guid.NewGuid(), "Boş", 0)]);
+        Assert.Equal(.045m, x.RecommendedChannelShares[0].RecommendedRate);
+        Assert.Equal(0, x.RecommendedChannelShares[1].EstimatedFee);
+    }
 
     private static Deal Deal(DealType type,decimal rate=0,decimal minimum=0,decimal retainer=0,decimal incremental=0,decimal baseline=0)=>new(){BrandId=Guid.NewGuid(),EvaluationId=Guid.NewGuid(),Name="Option",DealType=type,RevenueShareRate=rate,MinimumMonthlyFee=minimum,MonthlyRetainer=retainer,IncrementalRate=incremental,BaselineRevenue=baseline,EstimatedMonthlyInternalCost=25_000,SetupInvestment=250_000,CommissionTiersJson=JsonSerializer.Serialize(Tiers)};
     private static BrandEconomics Economics()=>new(){AverageMonthlyRevenue=1_000_000,RevenueConfidence=DataConfidence.Verified,GrossMarginRate=.6m,GrossMarginConfidence=DataConfidence.Verified,CogsRate=.4m,CogsConfidence=DataConfidence.Verified,AverageOrderValue=1_000,AovConfidence=DataConfidence.Verified,ReturnRate=.05m,ReturnRateConfidence=DataConfidence.Verified,CurrentAdSpend=200_000,AdSpendConfidence=DataConfidence.Verified,CurrentCac=500,CacConfidence=DataConfidence.Estimated,AverageCustomerLtv=2_000,LtvConfidence=DataConfidence.Estimated,StockCoverageDays=90,StockCoverageConfidence=DataConfidence.Verified,VariableCostRate=.08m};
     private static BrandEvaluation Evaluation()=>new(){BrandId=Guid.NewGuid(),ProductMarketFit=4,GrowthPotential=4,OperationalReadiness=4,CreativeCapability=4,FounderCooperation=4,DataMaturity=4,InternalMonthlyCost=25_000,SetupInvestment=250_000};
     private static GeneralSettings Settings()=>new();
     private static RuleSet Rules()=>new(){Name="OVO Default Rules",Version=1,Status=RuleSetStatus.Published,Rules=[new Rule{Name="Healthy margin",Field=RuleField.GrossMargin,Operator=RuleOperator.GreaterThanOrEqual,Value=.5m,Severity=RuleSeverity.Info,RecommendationEffect=RecommendationEffect.AllowFourToSixPercent}]};
+    private static RuleSet HybridRules()=>new(){Name="OVO Hybrid Rules",Version=1,Status=RuleSetStatus.Published,Rules=[new Rule{Name="Kademeli karma",Field=RuleField.GrossMargin,Operator=RuleOperator.GreaterThanOrEqual,Value=.1m,Severity=RuleSeverity.Info,RecommendationEffect=RecommendationEffect.AllowTieredHybrid}]};
+    private static List<ChannelRevenueInput> Channels()=> [new ChannelRevenueInput(Guid.NewGuid(), "Web sitesi", 600_000), new ChannelRevenueInput(Guid.NewGuid(), "Pazaryeri", 400_000)];
     private static Scenario Scenario()=>new(){EvaluationId=Guid.NewGuid(),MonthlyRevenue=1_000_000,GrossMarginRate=.65m,AdSpend=200_000,ReturnRate=.05m,AverageOrderValue=1_600,NewCustomers=350,VariableCostRate=.08m,OvoInternalMonthlyCost=25_000,MinimumMonthlyFee=45_000,CommissionModel=DealType.MinimumFeePlusRevenueShare,RevenueShareRate=.05m,TargetBrandContributionMargin=.15m,SetupInvestment=250_000,ContractMonths=24};
     private static MonthlyPerformance Performance()=>new(){BrandId=Guid.NewGuid(),DealId=Guid.NewGuid(),Year=2026,Month=8,GrossSales=1_000_000,Vat=150_000,Refunds=50_000,Orders=600,Sessions=30_000,NewCustomers=300,Cogs=300_000,PaymentFees=20_000,FulfillmentCosts=30_000,MetaSpend=120_000,GoogleSpend=80_000};
 }

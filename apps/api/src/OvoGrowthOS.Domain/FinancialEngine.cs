@@ -232,14 +232,15 @@ public static class RuleEvaluator
 
 public static class DealRecommendationEngine
 {
-    public static RecommendationResult Recommend(BrandEconomics e, BrandEvaluation evaluation, RuleSet ruleSet, GeneralSettings settings)
+    public static RecommendationResult Recommend(BrandEconomics e, BrandEvaluation evaluation, RuleSet ruleSet, GeneralSettings settings,
+        IReadOnlyList<ChannelRevenueInput>? channels = null)
     {
         var missing = Missing(e);
         var confidence = DataConfidenceCalculator.Calculate(e);
         if (missing.Count > 0)
             return new(DecisionStatus.NeedMoreData, 0, confidence, DealType.FixedRetainer, settings.DefaultContractMonths, 0,
                 evaluation.SetupInvestment, 0, 0, settings.TargetBrandContributionMargin, "Kritik bilgiler bekleniyor", [], [], [],
-                ["Karar için gerekli finansal bilgiler eksik."], [], missing);
+                ["Karar için gerekli finansal bilgiler eksik."], [], [], missing);
 
         var score = PartnershipScoreCalculator.Calculate(e.GrossMarginRate, evaluation.GrowthPotential, evaluation.OperationalReadiness,
             evaluation.ProductMarketFit, evaluation.CreativeCapability, evaluation.FounderCooperation, evaluation.DataMaturity);
@@ -263,13 +264,32 @@ public static class DealRecommendationEngine
         };
         var minimumFee = decimal.Round(evaluation.InternalMonthlyCost * settings.MinimumFeeMultiplier, 2);
         var effectiveRate = e.AverageMonthlyRevenue == 0 ? 0 : minimumFee / e.AverageMonthlyRevenue;
+        var channelShares = ChannelShareRecommendations(deal, minimumFee, channels);
         var targetMer = FinancialCalculator.BreakEvenMer(e.GrossMarginRate, e.VariableCostRate, effectiveRate, settings.TargetBrandContributionMargin);
         var conditions = Conditions(e, evaluation);
         return new(decision, score, confidence, deal, settings.DefaultContractMonths, minimumFee,
             evaluation.SetupInvestment == 0 ? settings.DefaultSetupInvestment : evaluation.SetupInvestment,
             Math.Max(e.CurrentAdSpend, settings.MinimumRecommendedAdSpend), targetMer, settings.TargetBrandContributionMargin,
             Describe(deal), conditions, positives, risks, matches.Select(x => x.Description).Where(x => x.Length > 0).ToList(),
-            [$"Asgari ücret çarpanı: {settings.MinimumFeeMultiplier}", $"Kural seti: {ruleSet.Name} v{ruleSet.Version}"], missing);
+            [$"Asgari ücret çarpanı: {settings.MinimumFeeMultiplier}", $"Kural seti: {ruleSet.Name} v{ruleSet.Version}",
+                channelShares.Count == 0 ? "Kanal payı önerisi yok." : "Kanal payları asgari ücretten ciro ağırlığıyla dağıtıldı; senaryoda değiştirebilirsiniz."],
+            channelShares, missing);
+    }
+
+    /// <summary>
+    /// Kanal başına önerilen pay: asgari ücret ciro ağırlığıyla kanallara dağıtılır, oran her
+    /// kanalda aynı çıkar. Kanal geliri olmayan, desteklenmeyen modelde veya eksik veride öneri üretilmez.
+    /// </summary>
+    public static IReadOnlyList<ChannelShareRecommendation> ChannelShareRecommendations(DealType deal, decimal minimumFee,
+        IReadOnlyList<ChannelRevenueInput>? channels)
+    {
+        if (channels is null || channels.Count == 0) return [];
+        if (!DealCommissionCalculator.SupportsChannelRates(deal)) return [];
+        var total = channels.Sum(x => x.MonthlyRevenue);
+        if (total <= 0) return [];
+        var rate = decimal.Round(minimumFee / total, 4, MidpointRounding.AwayFromZero);
+        return channels.Select(x => new ChannelShareRecommendation(x.SalesChannelId, x.ChannelName, x.MonthlyRevenue, rate,
+            decimal.Round(x.MonthlyRevenue * rate, 4, MidpointRounding.AwayFromZero))).ToList();
     }
     private static List<string> Missing(BrandEconomics e)
     {

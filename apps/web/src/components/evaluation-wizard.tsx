@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, money } from '@/lib/api';
@@ -121,6 +121,17 @@ type Eval = Draft & {
     };
     conditions?: Condition[];
 };
+type ScenarioRow = {
+    id: string;
+    name: string;
+    isPreferred: boolean;
+    revenueChannels?: {
+        salesChannelId: string;
+        monthlyRevenue: number;
+        revenueShareRate?: number | null;
+        salesChannel?: { name: string } | null;
+    }[];
+};
 type Result = {
     decision: string;
     partnershipScore: number;
@@ -128,6 +139,13 @@ type Result = {
     recommendedDealType: string;
     recommendedMinimumMonthlyFee: number;
     recommendedTargetMer: number;
+    recommendedChannelShares?: {
+        salesChannelId: string;
+        channelName: string;
+        monthlyRevenue: number;
+        recommendedRate: number;
+        estimatedFee: number;
+    }[];
     requiredConditions: { code: string; title: string }[];
     positiveSignals: string[];
     riskSignals: string[];
@@ -233,6 +251,14 @@ function Wizard({
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const running = useRef(false);
+    const scenarioOptions = useQuery({
+        queryKey: ['scenarios', id],
+        queryFn: () =>
+            api<ScenarioRow[]>(`/api/evaluations/${id}/scenarios`),
+        enabled: !!id && step >= 8,
+    });
+    const preferredScenario =
+        scenarioOptions.data?.find((s) => s.isPreferred) ?? null;
     const locked =
         !!existing?.status &&
         ['Analyzed', 'Approved', 'Rejected', 'Archived'].includes(
@@ -460,6 +486,9 @@ function Wizard({
                             set={set}
                             brands={brands}
                             result={shown}
+                            isNew={!id && !existing}
+                            evaluationId={id}
+                            preferredScenario={preferredScenario}
                         />
                     </div>
                     {error && (
@@ -567,12 +596,18 @@ function Fields({
     set,
     brands,
     result,
+    isNew,
+    evaluationId,
+    preferredScenario,
 }: {
     step: number;
     d: Draft;
     set: <K extends keyof Draft>(k: K, v: Draft[K]) => void;
     brands: Brand[];
     result: Result | null;
+    isNew: boolean;
+    evaluationId?: string;
+    preferredScenario?: ScenarioRow | null;
 }) {
     const brandChannels = useQuery({
         queryKey: ['sales-channels', d.brandId],
@@ -581,6 +616,24 @@ function Fields({
         enabled: d.brandId !== '',
     });
     const active = (brandChannels.data ?? []).filter((c) => c.isActive);
+    const autoChanneled = useRef(false);
+    useEffect(() => {
+        if (
+            !autoChanneled.current &&
+            isNew &&
+            active.length > 0 &&
+            d.revenueChannels.length === 0 &&
+            d.averageMonthlyRevenue === 0
+        ) {
+            autoChanneled.current = true;
+            const rows = active.map((c) => ({
+                salesChannelId: c.id,
+                monthlyRevenue: 0,
+            }));
+            set('revenueChannels', rows);
+            set('averageMonthlyRevenue', 0);
+        }
+    }, [active, d.revenueChannels.length, d.averageMonthlyRevenue, isNew, set]);
     const channeled = d.revenueChannels.length > 0;
     const channelTotal = d.revenueChannels.reduce(
         (sum, r) => sum + (Number(r.monthlyRevenue) || 0),
@@ -1052,6 +1105,64 @@ function Fields({
                     v={`${result.recommendedTargetMer.toFixed(2)}x`}
                 />
             </div>
+            {(result.recommendedChannelShares ?? []).length > 0 && (
+                <div className="mt-6">
+                    <h4 className="text-sm font-bold">
+                        Önerilen kanal payları
+                    </h4>
+                    <p className="mt-1 text-xs text-[#6d7175]">
+                        Asgari ücret hedefinden ciro ağırlığıyla
+                        dağıtıldı; senaryoda değiştirebilirsiniz.
+                    </p>
+                    <div className="mt-2 grid gap-4 md:grid-cols-3">
+                        {(result.recommendedChannelShares ?? []).map(
+                            (c) => (
+                                <Info
+                                    key={c.salesChannelId}
+                                    l={`${c.channelName} · %${(
+                                        c.recommendedRate * 100
+                                    ).toLocaleString('tr-TR', {
+                                        maximumFractionDigits: 2,
+                                    })}`}
+                                    v={money(c.estimatedFee)}
+                                />
+                            ),
+                        )}
+                    </div>
+                </div>
+            )}
+            {preferredScenario &&
+                (preferredScenario.revenueChannels ?? []).some(
+                    (r) => r.revenueShareRate != null,
+                ) && (
+                    <div className="mt-6">
+                        <h4 className="text-sm font-bold">
+                            Tercih edilen senaryodaki paylar (
+                            {preferredScenario.name})
+                        </h4>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#6d7175]">
+                            {(
+                                preferredScenario.revenueChannels ?? []
+                            )
+                                .filter(
+                                    (r) => r.revenueShareRate != null,
+                                )
+                                .map((r) => (
+                                    <li
+                                        key={r.salesChannelId}
+                                    >{`${r.salesChannel?.name ?? 'Kanal'} · %${(r.revenueShareRate! * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`}</li>
+                                ))}
+                        </ul>
+                        {evaluationId && (
+                            <a
+                                className="mt-2 inline-block text-sm underline"
+                                href={`/evaluations/${evaluationId}/scenarios`}
+                            >
+                                Senaryolarda düzenle
+                            </a>
+                        )}
+                    </div>
+                )}
             {result.missingInputs.length > 0 && (
                 <List title="Eksik bilgiler" items={result.missingInputs} />
             )}

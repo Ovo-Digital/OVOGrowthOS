@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using OvoGrowthOS.Api.Data;
+using OvoGrowthOS.Domain;
 
 namespace OvoGrowthOS.Api.Tests;
 
@@ -92,6 +96,38 @@ public sealed class ForecastChannelApiTests
 
         var badRate = ScenarioRatePayload(new[] { new { salesChannelId = trendyol, monthlyRevenue = 400_000m, revenueShareRate = (decimal?)1.5m } });
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios", badRate)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Analysis_recommends_channel_shares_from_minimum_fee()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var channels = new[] { new { salesChannelId = web, monthlyRevenue = 600_000m }, new { salesChannelId = trendyol, monthlyRevenue = 400_000m } };
+        var evaluationId = (await (await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand, channels))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await db.RuleSets.SelectMany(x => x.Rules).FirstAsync()).RecommendationEffect = RecommendationEffect.AllowTieredHybrid;
+            await db.SaveChangesAsync();
+        }
+        (await admin.PostAsync($"/api/evaluations/{evaluationId}/analyze", null)).EnsureSuccessStatusCode();
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/evaluations/{evaluationId}");
+        var snapshotProp = detail.GetProperty("recommendationSnapshotJson");
+        var snapshot = snapshotProp.ValueKind == JsonValueKind.String
+            ? JsonSerializer.Deserialize<JsonElement>(snapshotProp.GetString()!)
+            : snapshotProp;
+        // Öneri anlık görüntüsünde enum'lar sayı olarak saklanır (mevcut davranış).
+        Assert.Equal(3, snapshot.GetProperty("recommendedDealType").GetInt32());
+        var shares = snapshot.GetProperty("recommendedChannelShares");
+        Assert.Equal(2, shares.GetArrayLength());
+        var byName = shares.EnumerateArray().ToDictionary(s => s.GetProperty("channelName").GetString()!);
+        // 30.000 iç maliyet x 1,8 = 54.000 asgari ücret; 1.000.000 ciroya oranla %5,4.
+        Assert.Equal(.054m, byName["Web sitesi"].GetProperty("recommendedRate").GetDecimal());
+        Assert.Equal(32_400, byName["Web sitesi"].GetProperty("estimatedFee").GetDecimal());
+        Assert.Equal(21_600, byName["Trendyol"].GetProperty("estimatedFee").GetDecimal());
     }
 
     private static async Task<(Guid Web, Guid Trendyol)> SeedChannels(HttpClient admin, Guid brand)

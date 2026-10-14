@@ -484,10 +484,13 @@ public sealed record FinancialResult(decimal NetRevenue, decimal GrossProfit, de
     decimal ContributionBeforeOvo, decimal BrandContributionProfit, decimal BrandContributionMargin,
     decimal Mer, decimal Cac, decimal Aov, decimal ConversionRate);
 public sealed record StructuredCondition(string Code, string Title, string Description, bool Required = true);
+public sealed record ChannelRevenueInput(Guid SalesChannelId, string ChannelName, decimal MonthlyRevenue);
+public sealed record ChannelShareRecommendation(Guid SalesChannelId, string ChannelName, decimal MonthlyRevenue, decimal RecommendedRate, decimal EstimatedFee);
 public sealed record RecommendationResult(DecisionStatus Decision, decimal PartnershipScore, decimal DataConfidenceScore,
     DealType RecommendedDealType, int RecommendedContractMonths, decimal RecommendedMinimumMonthlyFee,
     decimal RecommendedSetupInvestment, decimal RecommendedAdSpend, decimal RecommendedTargetMer,
     decimal RecommendedTargetBrandContributionMargin, string RecommendedCommissionStructure,
     IReadOnlyList<StructuredCondition> RequiredConditions, IReadOnlyList<string> PositiveSignals,
     IReadOnlyList<string> RiskSignals, IReadOnlyList<string> Reasons, IReadOnlyList<string> Assumptions,
+    IReadOnlyList<ChannelShareRecommendation> RecommendedChannelShares,
     IReadOnlyList<string> MissingInputs);

@@ -169,7 +169,10 @@ public static partial class WorkflowEndpoints
         if (evaluation.Status is EvaluationStatus.Approved or EvaluationStatus.Rejected or EvaluationStatus.Archived) return Results.Conflict(new { error = "Geçmiş değerlendirmeler değiştirilemez." });
         var settings = await db.GeneralSettings.AsNoTracking().SingleAsync();
         var ruleSet = await db.RuleSets.AsNoTracking().Include(x => x.Rules).SingleAsync(x => x.Id == settings.DefaultRuleSetId && x.Status == RuleSetStatus.Published);
-        var result = DealRecommendationEngine.Recommend(evaluation.Brand.Economics, evaluation, ruleSet, settings);
+        var channels = await db.BrandRevenueChannels.AsNoTracking().Include(x => x.SalesChannel)
+            .Where(x => x.BrandId == evaluation.BrandId && x.SalesChannel!.IsActive).OrderBy(x => x.SalesChannel!.Name)
+            .Select(x => new ChannelRevenueInput(x.SalesChannelId, x.SalesChannel!.Name, x.MonthlyRevenue)).ToListAsync();
+        var result = DealRecommendationEngine.Recommend(evaluation.Brand.Economics, evaluation, ruleSet, settings, channels);
         evaluation.PartnershipScore = result.PartnershipScore; evaluation.DataConfidenceScore = result.DataConfidenceScore;
         evaluation.Decision = result.Decision; evaluation.RecommendedDealType = result.RecommendedDealType;
         evaluation.RecommendedContractMonths = result.RecommendedContractMonths; evaluation.RecommendedMinimumFee = result.RecommendedMinimumMonthlyFee;
