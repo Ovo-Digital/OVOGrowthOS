@@ -130,6 +130,30 @@ public sealed class ForecastChannelApiTests
         Assert.Equal(21_600, byName["Trendyol"].GetProperty("estimatedFee").GetDecimal());
     }
 
+    [Fact]
+    public async Task Evaluation_create_without_economics_row_persists_total()
+    {
+        await using var f = new WorkflowApiFactory();
+        using var admin = CustomerPortalTests.Staff(f);
+        Guid brand;
+        await using (var scope = f.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var bare = new Brand { Name = "Ekonomisiz Marka" };
+            db.Brands.Add(bare);
+            await db.SaveChangesAsync();
+            brand = bare.Id;
+        }
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var created = await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand,
+            new[] { new { salesChannelId = web, monthlyRevenue = 600_000m }, new { salesChannelId = trendyol, monthlyRevenue = 400_000m } }));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/evaluations/{id}");
+        Assert.Equal(1000000, detail.GetProperty("brand").GetProperty("economics").GetProperty("averageMonthlyRevenue").GetDecimal());
+        Assert.Equal(2, detail.GetProperty("brand").GetProperty("revenueChannels").GetArrayLength());
+    }
+
     private static async Task<(Guid Web, Guid Trendyol)> SeedChannels(HttpClient admin, Guid brand)
     {
         async Task<Guid> Add(string name)

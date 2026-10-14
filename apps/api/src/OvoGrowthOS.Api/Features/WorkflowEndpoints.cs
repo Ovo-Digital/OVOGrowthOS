@@ -136,7 +136,11 @@ public static partial class WorkflowEndpoints
                 (x.Status == EvaluationStatus.Draft || x.Status == EvaluationStatus.InProgress || x.Status == EvaluationStatus.ReadyForAnalysis)))
                 return Results.Conflict(new { error = "Bu marka için devam eden bir değerlendirme var. Önce mevcut değerlendirmeyi tamamlayın." });
             var evaluation = new BrandEvaluation { BrandId = request.BrandId, Brand = brand, CreatedBy = User(user), Status = EvaluationStatus.Draft };
+            var economicsIsNew = brand.Economics is null;
             Apply(evaluation, request);
+            // Yeni ekonomi nesnesi anahtarı dolu geldiği için yalnız bağlanırsa EF güncelleme sanır;
+            // satır olmadığı için 0 satır etkilenir ve sahte çakışma hatası verir. Açıkça eklenir.
+            if (economicsIsNew && brand.Economics is not null) db.BrandEconomics.Add(brand.Economics);
             if (await SyncBrandRevenueChannels(db, brand, request.RevenueChannels) is { } channelError) return channelError;
             db.Evaluations.Add(evaluation); Audit(db, user, "EvaluationCreated", "Evaluation", evaluation.Id, null, evaluation);
             await db.SaveChangesAsync(); return Results.Created($"/api/evaluations/{evaluation.Id}", evaluation);
@@ -147,7 +151,9 @@ public static partial class WorkflowEndpoints
             if (evaluation is null) return Results.NotFound();
             if (evaluation.BrandId != request.BrandId) return Results.Conflict(new { error = "Değerlendirmenin markası sonradan değiştirilemez." });
             if (evaluation.Status is EvaluationStatus.Analyzed or EvaluationStatus.Approved or EvaluationStatus.Rejected or EvaluationStatus.Archived) return Results.Conflict(new { error = "Analiz edilmiş değerlendirmeler değiştirilemez." });
-            var old = JsonSerializer.Serialize(evaluation, Json); Apply(evaluation, request);
+            var old = JsonSerializer.Serialize(evaluation, Json); var economicsIsNew = evaluation.Brand?.Economics is null;
+            Apply(evaluation, request);
+            if (economicsIsNew && evaluation.Brand?.Economics is not null) db.BrandEconomics.Add(evaluation.Brand.Economics);
             if (await SyncBrandRevenueChannels(db, evaluation.Brand!, request.RevenueChannels) is { } channelError) return channelError;
             Audit(db, user, "EvaluationSaved", "Evaluation", id, old, evaluation);
             await db.SaveChangesAsync(); return Results.Ok(evaluation);
