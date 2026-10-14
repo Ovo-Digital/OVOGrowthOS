@@ -8,16 +8,24 @@ export function isSessionValid() {
   catch { return false; }
 }
 export function logout() { localStorage.removeItem("ovo_token"); localStorage.removeItem("ovo_user"); window.location.replace("/login"); }
+let inFlight = 0;
+function trackBusy(delta: number) {
+  inFlight = Math.max(0, inFlight + delta);
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("ovo:busy", { detail: { busy: inFlight > 0 } }));
+}
 export async function api<T>(path:string, init:RequestInit = {}):Promise<T> {
   const headers = new Headers(init.headers);
   if (!(typeof FormData !== "undefined" && init.body instanceof FormData)) headers.set("content-type", "application/json");
   const accessToken = token();
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
-  if (response.status === 401) { logout(); throw new Error("Oturumunuz sona erdi. Lütfen yeniden giriş yapın."); }
-  if (!response.ok) { const body = await response.json().catch(()=>({})); const validation=body.errors&&Object.values(body.errors).flat()[0];const message=body.error ?? validation ?? body.title ?? `İşlem tamamlanamadı (${response.status})`;if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent("ovo:notice",{detail:{message,tone:"error"}}));throw new Error(String(message)); }
-  if (response.status === 204) return undefined as T;
-  return response.json();
+  trackBusy(1);
+  try {
+    const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+    if (response.status === 401) { logout(); throw new Error("Oturumunuz sona erdi. Lütfen yeniden giriş yapın."); }
+    if (!response.ok) { const body = await response.json().catch(()=>({})); const validation=body.errors&&Object.values(body.errors).flat()[0];const message=body.error ?? validation ?? body.title ?? `İşlem tamamlanamadı (${response.status})`;if(typeof window!=="undefined")window.dispatchEvent(new CustomEvent("ovo:notice",{detail:{message,tone:"error"}}));throw new Error(String(message)); }
+    if (response.status === 204) return undefined as T;
+    return response.json();
+  } finally { trackBusy(-1); }
 }
 export const money = (v:number, currency = "TRY") => new Intl.NumberFormat("tr-TR",{style:"currency",currency,maximumFractionDigits:0}).format(v);
 export const moneyPrecise = (v:number, currency = "TRY") => new Intl.NumberFormat("tr-TR",{style:"currency",currency,minimumFractionDigits:2,maximumFractionDigits:4}).format(v);

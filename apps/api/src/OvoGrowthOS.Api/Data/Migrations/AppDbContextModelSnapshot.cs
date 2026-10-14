@@ -1175,6 +1175,10 @@ namespace OvoGrowthOS.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("BaselineRevenue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<Guid>("DealId")
                         .HasColumnType("uuid");
 
@@ -2800,6 +2804,10 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("BaselineRevenue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal>("MonthlyRevenue")
                         .HasPrecision(18, 4)

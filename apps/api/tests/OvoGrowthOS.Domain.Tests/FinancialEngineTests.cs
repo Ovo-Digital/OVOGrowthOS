@@ -80,6 +80,46 @@ public sealed class FinancialEngineTests
             new ScenarioRevenueChannel { SalesChannelId = Guid.NewGuid(), MonthlyRevenue = 400_000, RevenueShareRate = .03m }];
         Assert.Equal(12_000, ScenarioCalculator.Calculate(s).OvoFee);
     }
+    [Fact] public void Incremental_channel_fees_apply_above_baseline()
+    {
+        var deal = Deal(DealType.IncrementalRevenueShare, incremental: .02m, baseline: 7_300_000);
+        var web = Guid.NewGuid(); var market = Guid.NewGuid();
+        var channels = new[] { new ChannelRevenue(web, "Web", 500_000), new ChannelRevenue(market, "Pazaryeri", 8_000_000) };
+        var rates = new Dictionary<Guid, decimal> { [web] = .05m, [market] = .02m };
+        var baselines = new Dictionary<Guid, decimal> { [web] = 300_000, [market] = 7_000_000 };
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0, rates, baselines);
+        // (500.000-300.000) x %5 + (8.000.000-7.000.000) x %2 = 30.000.
+        Assert.Equal(30_000, x.Result.FinalFee);
+        Assert.Equal(2, x.Shares.Count);
+    }
+    [Fact] public void Incremental_channel_without_terms_falls_back_to_total()
+    {
+        var deal = Deal(DealType.IncrementalRevenueShare, incremental: .02m, baseline: 7_300_000);
+        var channels = new[] { new ChannelRevenue(Guid.NewGuid(), "Web", 500_000), new ChannelRevenue(Guid.NewGuid(), "Pazaryeri", 8_000_000) };
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0);
+        // (8.500.000-7.300.000) x %2 = 24.000.
+        Assert.Equal(DealCommissionCalculator.Calculate(deal, 8_500_000, 0).FinalFee, x.Result.FinalFee);
+        Assert.Equal(24_000, x.Result.FinalFee);
+    }
+    [Fact] public void Incremental_channel_retainer_applies_at_total_level()
+    {
+        var deal = Deal(DealType.RetainerPlusIncrementalRevenueShare, incremental: .02m, retainer: 10_000);
+        var web = Guid.NewGuid(); var market = Guid.NewGuid();
+        var channels = new[] { new ChannelRevenue(web, "Web", 500_000), new ChannelRevenue(market, "Pazaryeri", 8_000_000) };
+        var baselines = new Dictionary<Guid, decimal> { [web] = 300_000, [market] = 7_000_000 };
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0,
+            new Dictionary<Guid, decimal> { [web] = .05m, [market] = .02m }, baselines);
+        Assert.Equal(40_000, x.Result.FinalFee);
+    }
+    [Fact] public void Tiered_channel_rates_stay_total_based()
+    {
+        var deal = Deal(DealType.TieredRevenueShare);
+        var web = Guid.NewGuid();
+        var channels = new[] { new ChannelRevenue(web, "Web", 1_000_000) };
+        var single = DealCommissionCalculator.Calculate(deal, 1_000_000, 0).FinalFee;
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0, new Dictionary<Guid, decimal> { [web] = .10m });
+        Assert.Equal(single, x.Result.FinalFee);
+    }
     [Fact] public void Deal_comparison_recommends_highest_deterministic_score(){var deals=new[]{Deal(DealType.FlatRevenueShare,rate:.10m),Deal(DealType.MinimumFeePlusRevenueShare,rate:.04m,minimum:45_000)};deals[0].Name="High flat";deals[1].Name="Protected";var x=DealComparisonEngine.Compare(deals,Scenario(),Settings());Assert.True(x[0].Score>=x[1].Score);Assert.NotEmpty(x[0].Reasons);}
     [Fact] public void Monthly_performance_calculates_derived_values(){var p=Performance();var result=MonthlyPerformanceCalculator.Calculate(p,Deal(DealType.FlatRevenueShare,rate:.05m));Assert.Equal(800_000,p.NetRevenue);Assert.Equal(200_000,p.TotalAdSpend);Assert.Equal(result.FinalFee,p.OvoFee);}
     [Fact] public void Locked_period_cannot_be_edited()=>Assert.False(MonthlyCloseWorkflow.CanEdit(MonthlyPerformanceStatus.Locked));
@@ -117,6 +157,18 @@ public sealed class FinancialEngineTests
             [new ChannelRevenueInput(Guid.NewGuid(), "Web sitesi", 1_000_000), new ChannelRevenueInput(Guid.NewGuid(), "Boş", 0)]);
         Assert.Equal(.045m, x.RecommendedChannelShares[0].RecommendedRate);
         Assert.Equal(0, x.RecommendedChannelShares[1].EstimatedFee);
+    }
+    [Fact] public void Channel_incremental_recommendation_uses_current_revenue_as_baseline()
+    {
+        var rules = new RuleSet { Name = "OVO Growth Rules", Version = 1, Status = RuleSetStatus.Published,
+            Rules = [new Rule { Name = "Bilgi", Field = RuleField.GrossMargin, Operator = RuleOperator.GreaterThanOrEqual, Value = .1m, Severity = RuleSeverity.Info, RecommendationEffect = RecommendationEffect.None }] };
+        var e = Economics(); e.AverageMonthlyRevenue = 7_300_000;
+        var x = DealRecommendationEngine.Recommend(e, Evaluation(), rules, Settings(), Channels());
+        Assert.Equal(DealType.RetainerPlusIncrementalRevenueShare, x.RecommendedDealType);
+        Assert.Equal(2, x.RecommendedChannelShares.Count);
+        Assert.Equal(600_000, x.RecommendedChannelShares[0].BaselineRevenue);
+        Assert.Equal(400_000, x.RecommendedChannelShares[1].BaselineRevenue);
+        Assert.All(x.RecommendedChannelShares, c => Assert.Equal(0, c.EstimatedFee));
     }
 
     private static Deal Deal(DealType type,decimal rate=0,decimal minimum=0,decimal retainer=0,decimal incremental=0,decimal baseline=0)=>new(){BrandId=Guid.NewGuid(),EvaluationId=Guid.NewGuid(),Name="Option",DealType=type,RevenueShareRate=rate,MinimumMonthlyFee=minimum,MonthlyRetainer=retainer,IncrementalRate=incremental,BaselineRevenue=baseline,EstimatedMonthlyInternalCost=25_000,SetupInvestment=250_000,CommissionTiersJson=JsonSerializer.Serialize(Tiers)};

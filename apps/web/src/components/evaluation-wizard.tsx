@@ -129,6 +129,7 @@ type ScenarioRow = {
         salesChannelId: string;
         monthlyRevenue: number;
         revenueShareRate?: number | null;
+        baselineRevenue?: number | null;
         salesChannel?: { name: string } | null;
     }[];
 };
@@ -145,6 +146,7 @@ type Result = {
         monthlyRevenue: number;
         recommendedRate: number;
         estimatedFee: number;
+        baselineRevenue: number;
     }[];
     requiredConditions: { code: string; title: string }[];
     positiveSignals: string[];
@@ -1112,18 +1114,20 @@ function Fields({
                     </h4>
                     <p className="mt-1 text-xs text-[#6d7175]">
                         Asgari ücret hedefinden ciro ağırlığıyla
-                        dağıtıldı; senaryoda değiştirebilirsiniz.
+                        dağıtıldı; büyüme modelinde baz her kanalın
+                        güncel cirosudur. Senaryoda
+                        değiştirebilirsiniz.
                     </p>
                     <div className="mt-2 grid gap-4 md:grid-cols-3">
                         {(result.recommendedChannelShares ?? []).map(
                             (c) => (
                                 <Info
                                     key={c.salesChannelId}
-                                    l={`${c.channelName} · %${(
-                                        c.recommendedRate * 100
-                                    ).toLocaleString('tr-TR', {
-                                        maximumFractionDigits: 2,
-                                    })}`}
+                                    l={
+                                        c.baselineRevenue > 0
+                                            ? `${c.channelName} · ${money(c.baselineRevenue)} üstü %${(c.recommendedRate * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
+                                            : `${c.channelName} · %${(c.recommendedRate * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`
+                                    }
                                     v={money(c.estimatedFee)}
                                 />
                             ),
@@ -1145,12 +1149,14 @@ function Fields({
                                 preferredScenario.revenueChannels ?? []
                             )
                                 .filter(
-                                    (r) => r.revenueShareRate != null,
+                                    (r) =>
+                                        r.revenueShareRate != null ||
+                                        (r.baselineRevenue ?? 0) > 0,
                                 )
                                 .map((r) => (
                                     <li
                                         key={r.salesChannelId}
-                                    >{`${r.salesChannel?.name ?? 'Kanal'} · %${(r.revenueShareRate! * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`}</li>
+                                    >{`${r.salesChannel?.name ?? 'Kanal'}${(r.baselineRevenue ?? 0) > 0 ? ` · ${r.baselineRevenue!.toLocaleString('tr-TR')} üstü` : ''}${r.revenueShareRate != null ? ` · %${(r.revenueShareRate! * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : ''}`}</li>
                                 ))}
                         </ul>
                         {evaluationId && (

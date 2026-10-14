@@ -266,6 +266,8 @@ public sealed class SalesChannel
 /// <summary>
 /// Anlaşmanın bir satış kanalına özel gelir payı oranı (0-1).
 /// Kaydı olmayan kanal için anlaşmanın genel gelir payı oranı geçerlidir.
+/// Büyüme payı modellerinde her kanalın baz cirosu ve büyüme payı ayrı tutulur;
+/// baz yazılmayan kanal için baz 0, oran yazılmayan kanal için anlaşmanın büyüme payı kullanılır.
 /// </summary>
 public sealed class DealChannelRate
 {
@@ -275,6 +277,7 @@ public sealed class DealChannelRate
     public Guid SalesChannelId { get; set; }
     public SalesChannel? SalesChannel { get; set; }
     public decimal RevenueShareRate { get; set; }
+    public decimal BaselineRevenue { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -327,6 +330,8 @@ public sealed class BrandRevenueChannel
 /// Senaryodaki tahmini aylık cironun kanal kırılımı. Senaryo cirosu satırların toplamıdır.
 /// Kanal payı (RevenueShareRate) yazılan satır o oranla hesaplanır; boş bırakılan satırda
 /// senaryonun genel oranı kullanılır. Desteklenmeyen modelde kanal payları dikkate alınmaz.
+/// Büyüme payı modellerinde satırın baz cirosu (BaselineRevenue) aşan kısmı büyüme payıyla
+/// hesaplanır; baz yazılmayan satırda baz 0 alınır.
 /// </summary>
 public sealed class ScenarioRevenueChannel
 {
@@ -337,6 +342,7 @@ public sealed class ScenarioRevenueChannel
     public SalesChannel? SalesChannel { get; set; }
     public decimal MonthlyRevenue { get; set; }
     public decimal? RevenueShareRate { get; set; }
+    public decimal BaselineRevenue { get; set; }
 }
 
 public sealed class MonthlyPerformance
@@ -485,7 +491,7 @@ public sealed record FinancialResult(decimal NetRevenue, decimal GrossProfit, de
     decimal Mer, decimal Cac, decimal Aov, decimal ConversionRate);
 public sealed record StructuredCondition(string Code, string Title, string Description, bool Required = true);
 public sealed record ChannelRevenueInput(Guid SalesChannelId, string ChannelName, decimal MonthlyRevenue);
-public sealed record ChannelShareRecommendation(Guid SalesChannelId, string ChannelName, decimal MonthlyRevenue, decimal RecommendedRate, decimal EstimatedFee);
+public sealed record ChannelShareRecommendation(Guid SalesChannelId, string ChannelName, decimal MonthlyRevenue, decimal RecommendedRate, decimal EstimatedFee, decimal BaselineRevenue = 0);
 public sealed record RecommendationResult(DecisionStatus Decision, decimal PartnershipScore, decimal DataConfidenceScore,
     DealType RecommendedDealType, int RecommendedContractMonths, decimal RecommendedMinimumMonthlyFee,
     decimal RecommendedSetupInvestment, decimal RecommendedAdSpend, decimal RecommendedTargetMer,

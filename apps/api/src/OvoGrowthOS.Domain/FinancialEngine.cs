@@ -38,21 +38,37 @@ public static class DealCommissionCalculator
 {
     /// <summary>Kanal başına farklı gelir payı yalnız bu modellerde uygulanır; diğerlerinde toplam üzerinden hesaplanır.</summary>
     public static bool SupportsChannelRates(DealType type) => type is DealType.FlatRevenueShare
-        or DealType.RetainerPlusRevenueShare or DealType.MinimumFeePlusRevenueShare;
+        or DealType.RetainerPlusRevenueShare or DealType.MinimumFeePlusRevenueShare
+        or DealType.IncrementalRevenueShare or DealType.RetainerPlusIncrementalRevenueShare;
+
+    /// <summary>Baz ciro ve büyüme payı yalnız büyüme payı modellerinde kanal satırında tutulur.</summary>
+    public static bool SupportsChannelBaselines(DealType type) => type is DealType.IncrementalRevenueShare
+        or DealType.RetainerPlusIncrementalRevenueShare;
 
     /// <summary>
     /// Kanal kırılımlı hakediş. Desteklenen modellerde her kanal kendi oranıyla çarpılır;
     /// asgari ücret ve sabit ücret toplam seviyede uygulanıp kanallara ciro ağırlığıyla dağıtılır.
+    /// Büyüme payı modellerinde her kanalın bazı aşan kısmı kanalın büyüme payıyla hesaplanır.
     /// Desteklenmeyen modellerde toplam üzerinden hesaplanıp yalnızca gösterim için dağıtılır.
     /// Düzeltmeler (adjustments) başlık seviyesindedir ve kanallara dağıtılmaz.
     /// </summary>
     public static ChannelCommissionResult CalculateWithChannels(Deal deal, IReadOnlyList<ChannelRevenue> channels,
-        decimal contributionBeforeOvo, IReadOnlyDictionary<Guid, decimal>? rateOverrides = null, decimal adjustments = 0)
+        decimal contributionBeforeOvo, IReadOnlyDictionary<Guid, decimal>? rateOverrides = null,
+        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null, decimal adjustments = 0)
     {
         var list = channels.ToList();
         var total = list.Sum(x => x.CommissionableRevenue);
         if (list.Count == 0)
             return new(Calculate(deal, total, contributionBeforeOvo, adjustments), []);
+        if (SupportsChannelBaselines(deal.DealType)
+            && (rateOverrides?.Count > 0 || baselineOverrides?.Any(kv => kv.Value > 0) == true))
+            return CalculateIncrementalChannels(deal, list, baselineOverrides, rateOverrides, adjustments);
+        if (SupportsChannelBaselines(deal.DealType))
+        {
+            // Kanal koşulu yazılmamış büyüme modelinde toplam üzerinden hesap korunur.
+            var single = Calculate(deal, total, contributionBeforeOvo, adjustments);
+            return new(single, DistributeProportionally(list, single.FinalFee - adjustments));
+        }
         var tiers = DeserializeTiers(deal.CommissionTiersJson);
         // Kademeli oran tanımlıysa toplam üzerinden kademeli hesap korunur; kanal oranları uygulanmaz.
         if (!SupportsChannelRates(deal.DealType)
@@ -97,6 +113,43 @@ public static class DealCommissionCalculator
         }
         var result = new CommissionResult(baseRetainer, share, deal.MinimumMonthlyFee, adjustments, final,
             CommissionCalculator.EffectiveRate(final, total), CommissionCalculator.TieredBreakdown(total, tiers));
+        return new(result, shares);
+    }
+
+    /// <summary>
+    /// Kanal bazında büyüme payı: her kanalın bazı aşan kısmı kanalın oranıyla (yazılmamışsa
+    /// anlaşmanın büyüme payıyla) çarpılır. Sabit ücret varsa ciro ağırlığıyla kanallara eklenir.
+    /// </summary>
+    private static ChannelCommissionResult CalculateIncrementalChannels(Deal deal, List<ChannelRevenue> list,
+        IReadOnlyDictionary<Guid, decimal>? baselineOverrides, IReadOnlyDictionary<Guid, decimal>? rateOverrides,
+        decimal adjustments)
+    {
+        var total = list.Sum(x => x.CommissionableRevenue);
+        var channelFees = list.Select(x =>
+        {
+            var baseline = baselineOverrides is not null && baselineOverrides.TryGetValue(x.SalesChannelId, out var b) ? b : 0;
+            var rate = rateOverrides is not null && rateOverrides.TryGetValue(x.SalesChannelId, out var r) ? r : deal.IncrementalRate;
+            return (Channel: x, Rate: rate, Baseline: baseline, Fee: Money(Math.Max(x.CommissionableRevenue - baseline, 0) * rate));
+        }).ToList();
+        var share = channelFees.Sum(x => x.Fee);
+        var baseRetainer = deal.DealType == DealType.RetainerPlusIncrementalRevenueShare ? deal.MonthlyRetainer : 0;
+        var final = baseRetainer + share + adjustments;
+        var shares = new List<CommissionChannelShare>(list.Count);
+        if (final == 0)
+        {
+            shares.AddRange(channelFees.Select(x => new CommissionChannelShare(x.Channel.SalesChannelId, x.Channel.ChannelName, x.Channel.CommissionableRevenue, x.Rate, 0)));
+        }
+        else
+        {
+            var retainerParts = DistributeAmount(list, baseRetainer + adjustments);
+            var unrounded = channelFees.Select((x, i) => x.Fee + retainerParts[i]).ToList();
+            var rounded = unrounded.Select(Money).ToList();
+            var diff = final - rounded.Sum();
+            if (diff != 0 && rounded.Count > 0) rounded[IndexOfLargest(list)] += diff;
+            shares.AddRange(channelFees.Select((x, i) => new CommissionChannelShare(x.Channel.SalesChannelId, x.Channel.ChannelName, x.Channel.CommissionableRevenue, x.Rate, rounded[i])));
+        }
+        var result = new CommissionResult(baseRetainer, share, 0, adjustments, final,
+            CommissionCalculator.EffectiveRate(final, total), CommissionCalculator.TieredBreakdown(total, []));
         return new(result, shares);
     }
 
@@ -278,7 +331,9 @@ public static class DealRecommendationEngine
 
     /// <summary>
     /// Kanal başına önerilen pay: asgari ücret ciro ağırlığıyla kanallara dağıtılır, oran her
-    /// kanalda aynı çıkar. Kanal geliri olmayan, desteklenmeyen modelde veya eksik veride öneri üretilmez.
+    /// kanalda aynı çıkar. Büyüme payı modelinde baz her kanalın güncel cirosu olur; pay yalnız
+    /// bazı aşan büyümeden alınacağı için güncel ciroyla tahmini hakediş sıfırdır.
+    /// Kanal geliri olmayan, desteklenmeyen modelde veya eksik veride öneri üretilmez.
     /// </summary>
     public static IReadOnlyList<ChannelShareRecommendation> ChannelShareRecommendations(DealType deal, decimal minimumFee,
         IReadOnlyList<ChannelRevenueInput>? channels)
@@ -288,8 +343,13 @@ public static class DealRecommendationEngine
         var total = channels.Sum(x => x.MonthlyRevenue);
         if (total <= 0) return [];
         var rate = decimal.Round(minimumFee / total, 4, MidpointRounding.AwayFromZero);
+        var incremental = DealCommissionCalculator.SupportsChannelBaselines(deal);
+        // Büyüme modelinde baz her kanalın güncel cirosu olur; oran büyümeden alınacak paydır.
+        // Güncel ciro bazın üstünde olmadığı için tahmini hakediş sıfırdır; oran asgari
+        // ücret hedefiyle aynı düzeyde önerilir, senaryoda değiştirilebilir.
         return channels.Select(x => new ChannelShareRecommendation(x.SalesChannelId, x.ChannelName, x.MonthlyRevenue, rate,
-            decimal.Round(x.MonthlyRevenue * rate, 4, MidpointRounding.AwayFromZero))).ToList();
+            incremental ? 0 : decimal.Round(x.MonthlyRevenue * rate, 4, MidpointRounding.AwayFromZero),
+            incremental ? x.MonthlyRevenue : 0)).ToList();
     }
     private static List<string> Missing(BrandEconomics e)
     {

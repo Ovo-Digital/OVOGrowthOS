@@ -154,7 +154,7 @@ Yönetici, **Ayarlar → Kullanıcılar** alanından her çalışan için kişiy
 
 Riskli veya geri alınamaz bir işlem yaptığınızda (silme, arşivleme, anlaşmayı sonlandırma, yeniden davet gönderme, raporu yayından kaldırma gibi) tarayıcının küçük bildirim kutusu yerine uygulamanın kendi onay penceresi açılır. Pencerede **Vazgeç** ve işlemin adını taşıyan bir düğme bulunur; **Esc** tuşu da vazgeçmek için çalışır. Gerekçe, neden veya yeni bir değer girmeniz istenen yerlerde de aynı biçimde uygulamanın kendi penceresi açılır; boş bırakılamayacak alanlar varsa pencere sizi uyarır.
 
-Listelerde **yükleniyor**, **kayıt yok** ve **hata** durumları tüm ekranlarda aynı görünür. Geniş tablolar dar ekranlarda (telefonda) tablonun kendisi kaydırılarak taşmaz. Klavyeyle gezinirken **Tab** tuşu alanlar arasında sırayla ilerler ve seçili düğme veya bağlantı mavi bir çerçeveyle görünür.
+Listelerde **yükleniyor**, **kayıt yok** ve **hata** durumları tüm ekranlarda aynı görünür. Bir düğmeye bastığınızda işlem sürerken ekranın en üstünde ince bir yükleme çubuğu görünür; çubuk kaybolmadan aynı düğmeye tekrar basmayın, işleminiz kaybolmaz. Geniş tablolar dar ekranlarda (telefonda) tablonun kendisi kaydırılarak taşmaz. Klavyeyle gezinirken **Tab** tuşu alanlar arasında sırayla ilerler ve seçili düğme veya bağlantı mavi bir çerçeveyle görünür.
 
 ### Hazır örnek portföyü kullanma
 
@@ -534,7 +534,7 @@ Olası kararlar:
 - **Ek bilgi gerekli:** Kritik bilgiler eksik veya yeterince güvenilir değildir. Karar vermeden önce veri tamamlanmalıdır.
 - **Ret:** Finansal veya operasyonel riskler kabul edilebilir seviyenin üzerindedir.
 
-Ekranda ayrıca olumlu göstergeler, risk göstergeleri, eksik bilgiler ve gerekli koşullar yer alır. **Önerilen kanal payları** bölümünde her kanal için ayrı pay ve tahmini hakediş görünür (ör. Web sitesi %5, Pazaryeri %3); bu oranlar asgari ücret hedefinden türetilir ve senaryoda değiştirilebilir. Bir senaryo tercih edilmiş ve o senaryoda kanal payı yazılmışsa **Tercih edilen senaryodaki paylar** bölümü de görünür; iki değer farklıysa senaryodaki karar esas alınır.
+Ekranda ayrıca olumlu göstergeler, risk göstergeleri, eksik bilgiler ve gerekli koşullar yer alır. **Önerilen kanal payları** bölümünde her kanal için ayrı pay ve tahmini hakediş görünür (ör. Web sitesi %5, Pazaryeri %3); bu oranlar asgari ücret hedefinden türetilir ve senaryoda değiştirilebilir. Büyüme payı önerilen markada baz her kanalın güncel cirosudur (ör. Pazaryeri 7.000.000 üstü %5,4) ve güncel ciroyla henüz hakediş çıkmaz; pay büyümeden alınır. Bir senaryo tercih edilmiş ve o senaryoda kanal payı yazılmışsa **Tercih edilen senaryodaki paylar** bölümü de görünür; iki değer farklıysa senaryodaki karar esas alınır.
 
 ### Veri güven düzeyleri
 
@@ -597,7 +597,7 @@ Senaryo simülatörü “şu değer değişirse ne olur?” sorusuna cevap verir
 
 Değerler değiştirildikçe anlık sonuçlar yeniden hesaplanır.
 
-Markada etkin satış kanalı varsa **Kanallı gir** ile aylık ciro kanal satırlarına bölünebilir; aylık ciro satırların toplamı olur. Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satıra ayrı pay (%) yazılabilir (ör. Web sitesi %5, Pazaryeri %3); boş bırakılan satır senaryonun genel oranıyla hesaplanır ve sonuçta kanal bazında hakediş de görünür. Diğer modellerde kanal dağılımı yalnız ciro karşılaştırması içindir, hakediş toplam üzerinden hesaplanır. Kaydedilen senaryoların ciro satırında kanal dağılımı ve payları da görünür. Senaryo sonradan düzenlenemez; farklı bir dağılım için yeni senaryo açılır veya mevcut senaryo kopyalanır (kopyaya kanal satırları ve payları da taşınır). Anlaşma sayfasındaki kanal oranları ayrıca düzenlenebilir; kapanmış dönemlerin hakedişi değişmez.
+Markada etkin satış kanalı varsa **Kanallı gir** ile aylık ciro kanal satırlarına bölünebilir; aylık ciro satırların toplamı olur. Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satıra ayrı pay (%) yazılabilir (ör. Web sitesi %5, Pazaryeri %3); boş bırakılan satır senaryonun genel oranıyla hesaplanır ve sonuçta kanal bazında hakediş de görünür. Büyüme payı modellerinde her satıra ayrıca baz ciro yazılır; bazın üstündeki büyüme kanalın payıyla hesaplanır (ör. pazaryerinde 7.000.000 üstüne %2). Diğer modellerde kanal dağılımı yalnız ciro karşılaştırması içindir, hakediş toplam üzerinden hesaplanır. Kaydedilen senaryoların ciro satırında kanal dağılımı, payları ve bazları da görünür. Senaryo sonradan düzenlenemez; farklı bir dağılım için yeni senaryo açılır veya mevcut senaryo kopyalanır (kopyaya kanal satırları ve payları da taşınır). Anlaşma sayfasındaki kanal oranları ayrıca düzenlenebilir; kapanmış dönemlerin hakedişi değişmez.
 
 ### Sonuçlarda nelere bakılmalı?
 
@@ -684,7 +684,7 @@ Performans payı olmadan yalnızca sabit aylık ücret uygulanır.
 
 ### Kanal bazında gelir payı
 
-Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satış kanalına farklı bir gelir payı verilebilir. Örneğin web sitesi %5, Trendyol %3 ile çalışabilir. Oranı yazılmayan kanal, anlaşmanın genel oranıyla hesaplanır. Kademeli, büyüme farkı ve katkı kârı modellerinde kanal oranları kullanılmaz; ciro yine de kanal kırılımlı girilebilir ama hakediş toplam üzerinden hesaplanır. Kanal oranları yalnız ileride hesaplanacak dönemleri etkiler; kapanmış dönemlerin hakedişi değişmez.
+Sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde her satış kanalına farklı bir gelir payı verilebilir. Örneğin web sitesi %5, Trendyol %3 ile çalışabilir. Oranı yazılmayan kanal, anlaşmanın genel oranıyla hesaplanır. Büyüme payı modellerinde (büyüme farkı ve aylık hizmet bedeli + büyüme farkı) her kanala ayrıca baz ciro yazılır; örneğin pazaryerinde bugünkü 7.000.000 baz alınıp üstüne %2, webde 300.000 baz alınıp üstüne %5 alınabilir. Bazı aşmayan kanal o ay hakediş üretmez; bazı yazılmayan kanal baz 0 ile, oranı yazılmayan kanal anlaşmanın genel büyüme payıyla hesaplanır. Kademeli ve katkı kârı modellerinde kanal oranları kullanılmaz; ciro yine de kanal kırılımlı girilebilir ama hakediş toplam üzerinden hesaplanır. Kanal oranları yalnız ileride hesaplanacak dönemleri etkiler; kapanmış dönemlerin hakedişi değişmez.
 
 ---
 

@@ -80,6 +80,78 @@ public sealed class SalesChannelApiTests
     }
 
     [Fact]
+    public async Task Incremental_channel_baselines_end_to_end()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+
+        async Task<Guid> AddChannel(string name)
+        {
+            var response = await admin.PostAsJsonAsync($"/api/brands/{brand}/sales-channels", new { name });
+            response.EnsureSuccessStatusCode();
+            return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        }
+        var webId = await AddChannel("Web sitesi");
+        var marketId = await AddChannel("Pazaryeri");
+
+        Guid deal;
+        {
+            using var scope = f.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var d = new Deal { BrandId = brand, Name = "Büyüme anlaşması", Status = DealStatus.Active,
+                DealType = DealType.IncrementalRevenueShare, IncrementalRate = .02m, BaselineRevenue = 7_300_000m,
+                EstimatedMonthlyInternalCost = 10_000, Currency = "TRY" };
+            db.Add(d); await db.SaveChangesAsync(); deal = d.Id;
+        }
+
+        var rates = await admin.PutAsJsonAsync($"/api/deals/{deal}/channel-rates",
+            new { rates = new[] { new { salesChannelId = webId, revenueShareRate = 0.05m, baselineRevenue = 300000m }, new { salesChannelId = marketId, revenueShareRate = 0.02m, baselineRevenue = 7000000m } } });
+        Assert.Equal(HttpStatusCode.OK, rates.StatusCode);
+        var savedRates = await rates.Content.ReadFromJsonAsync<JsonElement>();
+        var byChannel = savedRates.EnumerateArray().ToDictionary(r => r.GetProperty("salesChannelId").GetGuid());
+        Assert.Equal(300000, byChannel[webId].GetProperty("baselineRevenue").GetDecimal());
+        Assert.Equal(7000000, byChannel[marketId].GetProperty("baselineRevenue").GetDecimal());
+
+        var calculated = await admin.PostAsJsonAsync("/api/performance/calculate", new
+        {
+            brandId = brand, dealId = deal, year = 2026, month = 9,
+            grossSales = 0, vat = 0, refunds = 0, cancellations = 0, chargebacks = 0, customerPaidShipping = 0, giftCardTopups = 0,
+            orders = 0, sessions = 0, newCustomers = 0, returningCustomers = 0, cogs = 0, paymentFees = 0,
+            fulfillmentCosts = 0, shippingSubsidy = 0, otherVariableCosts = 0, metaSpend = 0,
+            googleSpend = 0, tikTokSpend = 0, influencerSpend = 0, otherAdSpend = 0,
+            channels = new[]
+            {
+                new { salesChannelId = webId, grossSales = 500000, vat = 0, refunds = 0, cancellations = 0, chargebacks = 0, customerPaidShipping = 0, giftCardTopups = 0 },
+                new { salesChannelId = marketId, grossSales = 8000000, vat = 0, refunds = 0, cancellations = 0, chargebacks = 0, customerPaidShipping = 0, giftCardTopups = 0 },
+            },
+        });
+        calculated.EnsureSuccessStatusCode();
+        // (500.000-300.000) x %5 + (8.000.000-7.000.000) x %2 = 30.000.
+        Assert.Equal(30000, (await calculated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("ovoFee").GetDecimal());
+    }
+
+    [Fact]
+    public async Task Baseline_on_flat_model_is_rejected()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var created = await admin.PostAsJsonAsync($"/api/brands/{brand}/sales-channels", new { name = "Web sitesi" });
+        var webId = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        Guid deal;
+        {
+            using var scope = f.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var d = new Deal { BrandId = brand, Name = "Sabit anlaşma", Status = DealStatus.Active,
+                DealType = DealType.FlatRevenueShare, RevenueShareRate = .05m, Currency = "TRY" };
+            db.Add(d); await db.SaveChangesAsync(); deal = d.Id;
+        }
+        Assert.Equal(HttpStatusCode.Conflict, (await admin.PutAsJsonAsync($"/api/deals/{deal}/channel-rates",
+            new { rates = new[] { new { salesChannelId = webId, revenueShareRate = 0.05m, baselineRevenue = 100m } } })).StatusCode);
+    }
+
+    [Fact]
     public async Task Unknown_channel_is_rejected_and_unused_channel_can_be_deleted()
     {
         await using var f = new WorkflowApiFactory();

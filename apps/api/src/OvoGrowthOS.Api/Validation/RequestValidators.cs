@@ -99,7 +99,11 @@ public sealed class ScenarioRequestValidator : AbstractValidator<ScenarioRequest
         RuleFor(x => x.CommissionModel).Must((x, m) => x.RevenueChannels is null
                 || !x.RevenueChannels.Any(r => r.RevenueShareRate.HasValue)
                 || DealCommissionCalculator.SupportsChannelRates(m))
-            .WithMessage("Kanal başına farklı pay yalnız sabit ciro payı, aylık hizmet bedeli ve ciro payı ile asgari ücret ve ciro payı modellerinde kullanılır.");
+            .WithMessage("Kanal başına farklı pay yalnız sabit ciro payı, aylık hizmet bedeli ve ciro payı, asgari ücret ve ciro payı ile büyüme payı modellerinde kullanılır.");
+        RuleFor(x => x.CommissionModel).Must((x, m) => x.RevenueChannels is null
+                || !x.RevenueChannels.Any(r => r.BaselineRevenue > 0)
+                || DealCommissionCalculator.SupportsChannelBaselines(m))
+            .WithMessage("Kanal baz cirosu yalnız büyüme payı modellerinde kullanılır.");
     }
 }
 
@@ -109,6 +113,9 @@ public sealed class RevenueChannelRequestValidator : AbstractValidator<RevenueCh
     {
         RuleFor(x => x.SalesChannelId).NotEmpty().WithMessage("Satış kanalı seçimi zorunludur.");
         RuleFor(x => x.MonthlyRevenue).GreaterThanOrEqualTo(0).WithMessage("Kanal cirosu negatif olamaz.")
+            .LessThan(100000000000000m).WithMessage("Tutar izin verilen sınırı aşıyor.")
+            .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
+        RuleFor(x => x.BaselineRevenue).GreaterThanOrEqualTo(0).WithMessage("Kanal baz cirosu negatif olamaz.")
             .LessThan(100000000000000m).WithMessage("Tutar izin verilen sınırı aşıyor.")
             .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
         When(x => x.RevenueShareRate.HasValue, () => RuleFor(x => x.RevenueShareRate!.Value)
@@ -153,6 +160,9 @@ public sealed class DealChannelRateRequestValidator : AbstractValidator<DealChan
     {
         RuleFor(x => x.SalesChannelId).NotEmpty().WithMessage("Satış kanalı seçimi zorunludur.");
         this.Rate(x => x.RevenueShareRate, "Kanal gelir payı oranı");
+        RuleFor(x => x.BaselineRevenue).GreaterThanOrEqualTo(0).WithMessage("Kanal baz cirosu negatif olamaz.")
+            .LessThan(100000000000000m).WithMessage("Tutar izin verilen sınırı aşıyor.")
+            .PrecisionScale(18, 4, true).WithMessage("Tutar en fazla 14 tam sayı ve 4 ondalık basamak içerebilir.");
     }
 }
 

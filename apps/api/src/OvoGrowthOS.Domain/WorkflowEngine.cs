@@ -26,14 +26,16 @@ public static class ScenarioCalculator
         var rows = s.RevenueChannels?.ToList() ?? [];
         CommissionResult commission;
         IReadOnlyList<CommissionChannelShare> shares = [];
-        if (rows.Count > 0 && rows.Any(r => r.RevenueShareRate.HasValue)
+        if (rows.Count > 0 && (rows.Any(r => r.RevenueShareRate.HasValue) || rows.Any(r => r.BaselineRevenue > 0))
             && DealCommissionCalculator.SupportsChannelRates(s.CommissionModel))
         {
             var revenues = rows.Select(r => new ChannelRevenue(r.SalesChannelId, r.SalesChannel?.Name ?? "",
                 r.MonthlyRevenue * (1 - s.ReturnRate))).ToList();
             var overrides = rows.Where(r => r.RevenueShareRate.HasValue)
                 .ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate!.Value);
-            var channeled = DealCommissionCalculator.CalculateWithChannels(temporaryDeal, revenues, contributionBeforeOvo, overrides);
+            var baselines = rows.Where(r => r.BaselineRevenue > 0)
+                .ToDictionary(r => r.SalesChannelId, r => r.BaselineRevenue);
+            var channeled = DealCommissionCalculator.CalculateWithChannels(temporaryDeal, revenues, contributionBeforeOvo, overrides, baselines);
             commission = channeled.Result;
             shares = channeled.Shares;
         }
@@ -115,7 +117,8 @@ public static class MonthlyPerformanceCalculator
     public static CommissionResult CalculateWithChannels(MonthlyPerformance p, Deal deal,
         IReadOnlyList<MonthlyPerformanceChannel> channels,
         IReadOnlyDictionary<Guid, decimal>? rateOverrides = null,
-        IReadOnlyDictionary<Guid, string>? channelNames = null)
+        IReadOnlyDictionary<Guid, string>? channelNames = null,
+        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null)
     {
         var list = channels.ToList();
         if (list.Count == 0) return Calculate(p, deal);
@@ -139,7 +142,7 @@ public static class MonthlyPerformanceCalculator
             channelNames is not null && channelNames.TryGetValue(x.SalesChannelId, out var n) ? n
                 : x.SalesChannel?.Name ?? "",
             x.CommissionableRevenue)).ToList();
-        var withChannels = DealCommissionCalculator.CalculateWithChannels(deal, revenues, p.ContributionBeforeOvo, rateOverrides, adjustment);
+        var withChannels = DealCommissionCalculator.CalculateWithChannels(deal, revenues, p.ContributionBeforeOvo, rateOverrides, baselineOverrides, adjustment);
         var commission = withChannels.Result;
         var shares = withChannels.Shares.ToDictionary(x => x.SalesChannelId);
         foreach (var c in list)

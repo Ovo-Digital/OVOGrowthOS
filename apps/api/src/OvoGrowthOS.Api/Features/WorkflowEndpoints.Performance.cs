@@ -54,7 +54,7 @@ public static partial class WorkflowEndpoints
                 if (prepared.Error is not null) return prepared.Error;
                 p.Channels.AddRange(prepared.Lines);
                 MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels,
-                    deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names);
+                    deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(deal.ChannelRates));
             }
             else MonthlyPerformanceCalculator.Calculate(p, deal);
             return Results.Ok(p);
@@ -125,7 +125,8 @@ public static partial class WorkflowEndpoints
             if (prepared.Error is not null) return prepared.Error;
             p.Channels.AddRange(prepared.Lines);
             MonthlyPerformanceCalculator.CalculateWithChannels(p, deal ?? p.Deal!, p.Channels,
-                deal?.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names);
+                deal?.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names,
+                deal is null ? null : ChannelBaselines(deal.ChannelRates));
         }
         else MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
         return Results.Ok(p);
@@ -155,7 +156,7 @@ public static partial class WorkflowEndpoints
     {
         if (p.Channels.Count == 0) MonthlyPerformanceCalculator.Calculate(p, deal);
         else MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels.ToList(),
-            deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names);
+            deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(deal.ChannelRates));
     }
 
     /// <summary>İstek kanal içeriyorsa satırları eşitler ve yeniden hesaplar; içermiyorsa satırları kaldırır.</summary>
@@ -191,9 +192,9 @@ public static partial class WorkflowEndpoints
                 existing.CustomerPaidShipping = line.CustomerPaidShipping; existing.GiftCardTopups = line.GiftCardTopups;
             }
         }
-        var rates = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId)
-            .ToDictionaryAsync(r => r.SalesChannelId, r => r.RevenueShareRate);
-        MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(), rates, prepared.Names);
+        var terms = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId).ToListAsync();
+        MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(),
+            terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(terms));
         return null;
     }
 
@@ -283,17 +284,21 @@ public static partial class WorkflowEndpoints
         if (p.Channels.Count == 0) MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
         else
         {
-            var rates = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId)
-                .ToDictionaryAsync(r => r.SalesChannelId, r => r.RevenueShareRate);
+            var terms = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId).ToListAsync();
             var ids = p.Channels.Select(c => c.SalesChannelId).ToList();
             var names = await db.SalesChannels.AsNoTracking().Where(x => ids.Contains(x.Id))
                 .ToDictionaryAsync(x => x.Id, x => x.Name);
-            MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(), rates, names);
+            MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(),
+                terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(terms));
         }
         TouchPeriod(p);
         Audit(db, user, "CommissionAdjusted", "MonthlyPerformance", id, null, a, request.Reason);
         await db.SaveChangesAsync(); return Results.Ok(new { adjustment = a, p.OvoFee, p.CommissionBreakdownJson });
     }
+
+    /// <summary>Baz yazılmış kanal satırlarının baz sözlüğü; yazılmamış kanal için baz 0 alınır.</summary>
+    private static Dictionary<Guid, decimal> ChannelBaselines(IEnumerable<DealChannelRate> rows) =>
+        rows.Where(r => r.BaselineRevenue > 0).ToDictionary(r => r.SalesChannelId, r => r.BaselineRevenue);
 
     private static MonthlyPerformance ToPerformance(PerformanceRequest r)
     {

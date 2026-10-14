@@ -99,6 +99,40 @@ public sealed class ForecastChannelApiTests
     }
 
     [Fact]
+    public async Task Scenario_incremental_baselines_calculate_and_persist()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var channels = new[]
+        {
+            new { salesChannelId = web, monthlyRevenue = 500_000m, revenueShareRate = (decimal?).05m, baselineRevenue = 300_000m },
+            new { salesChannelId = trendyol, monthlyRevenue = 8_000_000m, revenueShareRate = (decimal?).02m, baselineRevenue = 7_000_000m },
+        };
+        var evaluationId = (await (await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand, null))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var payload = new Dictionary<string, object?>(ScenarioRatePayload(channels).GetType().GetProperties().ToDictionary(p => p.Name, p => p.GetValue(ScenarioRatePayload(channels))))
+        {
+            ["commissionModel"] = "IncrementalRevenueShare",
+            ["incrementalRate"] = 0.02m,
+            ["returnRate"] = 0m,
+        };
+        var calculated = await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios/calculate", payload);
+        calculated.EnsureSuccessStatusCode();
+        var calcBody = await calculated.Content.ReadFromJsonAsync<JsonElement>();
+        // (500.000-300.000) x %5 + (8.000.000-7.000.000) x %2 = 30.000.
+        Assert.Equal(30000, calcBody.GetProperty("ovoFee").GetDecimal());
+
+        var saved = await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios", payload);
+        Assert.Equal(HttpStatusCode.Created, saved.StatusCode);
+        var list = await admin.GetFromJsonAsync<JsonElement>($"/api/evaluations/{evaluationId}/scenarios");
+        var baselines = list[0].GetProperty("revenueChannels").EnumerateArray()
+            .ToDictionary(r => r.GetProperty("salesChannel").GetProperty("name").GetString()!, r => r.GetProperty("baselineRevenue").GetDecimal());
+        Assert.Equal(300000, baselines["Web sitesi"]);
+        Assert.Equal(7000000, baselines["Trendyol"]);
+    }
+
+    [Fact]
     public async Task Analysis_recommends_channel_shares_from_minimum_fee()
     {
         await using var f = new WorkflowApiFactory();
