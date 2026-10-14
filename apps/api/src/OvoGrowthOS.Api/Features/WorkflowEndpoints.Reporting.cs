@@ -6,6 +6,53 @@ namespace OvoGrowthOS.Api.Features;
 
 public static partial class WorkflowEndpoints
 {
+    // Rapor okumaları anlaşma anlık görüntülerini (snapshot) ve ham ciro alanlarını taşımaz;
+    // yalnız özet, tahsilat, sağlık ve stres hesaplarının kullandığı sütunlar seçilir.
+    private static IQueryable<MonthlyPerformance> ReportPerformances(AppDbContext db, Guid? brandId) =>
+        db.MonthlyPerformances.AsNoTracking().Where(x => !brandId.HasValue || x.BrandId == brandId)
+            .Select(x => new MonthlyPerformance
+            {
+                Id = x.Id, BrandId = x.BrandId, DealId = x.DealId, Year = x.Year, Month = x.Month,
+                Status = x.Status, GrossSales = x.GrossSales, GrossProfit = x.GrossProfit, Refunds = x.Refunds, Cancellations = x.Cancellations,
+                Chargebacks = x.Chargebacks, NetRevenue = x.NetRevenue, CommissionableRevenue = x.CommissionableRevenue,
+                ContributionBeforeOvo = x.ContributionBeforeOvo, OvoFee = x.OvoFee, OvoGrossProfit = x.OvoGrossProfit,
+                OvoInternalCost = x.OvoInternalCost, BrandContributionProfit = x.BrandContributionProfit,
+                TotalAdSpend = x.TotalAdSpend, Mer = x.Mer, ReturnRate = x.ReturnRate,
+                Brand = new Brand
+                {
+                    Id = x.BrandId, Name = x.Brand!.Name, Currency = x.Brand.Currency,
+                    Economics = x.Brand.Economics == null ? null : new BrandEconomics { BrandId = x.BrandId, StockCoverageDays = x.Brand.Economics.StockCoverageDays }
+                },
+                Deal = new Deal
+                {
+                    Id = x.DealId, BrandId = x.BrandId, Name = x.Deal!.Name, Status = x.Deal.Status, DealType = x.Deal.DealType,
+                    Currency = x.Deal.Currency, StartDate = x.Deal.StartDate, EndDate = x.Deal.EndDate,
+                    MonthlyRetainer = x.Deal.MonthlyRetainer, MinimumMonthlyFee = x.Deal.MinimumMonthlyFee,
+                    RevenueShareRate = x.Deal.RevenueShareRate, BaselineRevenue = x.Deal.BaselineRevenue,
+                    IncrementalRate = x.Deal.IncrementalRate, ProfitShareRate = x.Deal.ProfitShareRate,
+                    CommissionTiersJson = x.Deal.CommissionTiersJson, SetupInvestment = x.Deal.SetupInvestment,
+                    Conditions = x.Deal.Conditions.Select(c => new PartnershipCondition
+                        { Id = c.Id, DealId = c.DealId, EvaluationId = c.EvaluationId, Code = c.Code, Title = c.Title, Required = c.Required, Status = c.Status }).ToList()
+                },
+                Collection = x.Collection == null ? null : new CollectionAccount
+                {
+                    MonthlyPerformanceId = x.Id, ReceivableAmount = x.Collection.ReceivableAmount,
+                    LegacyPaidAmount = x.Collection.LegacyPaidAmount, Currency = x.Collection.Currency,
+                    InvoiceReference = x.Collection.InvoiceReference, DueOn = x.Collection.DueOn,
+                    Payments = x.Collection.Payments.Select(pm => new CollectionPayment
+                        { Id = pm.Id, MonthlyPerformanceId = pm.MonthlyPerformanceId, Amount = pm.Amount, PaidOn = pm.PaidOn, VoidedAt = pm.VoidedAt }).ToList()
+                }
+            });
+
+    private static IQueryable<Deal> ReportDeals(AppDbContext db, Guid? brandId) =>
+        db.Deals.AsNoTracking().Where(x => !brandId.HasValue || x.BrandId == brandId)
+            .Select(x => new Deal
+            {
+                Id = x.Id, BrandId = x.BrandId, Name = x.Name, Status = x.Status, DealType = x.DealType,
+                Currency = x.Currency, StartDate = x.StartDate, EndDate = x.EndDate, SetupInvestment = x.SetupInvestment,
+                Brand = new Brand { Id = x.BrandId, Name = x.Brand!.Name }
+            });
+
     private static async Task<IResult> ListCommissions(AppDbContext db, int page = 1, int pageSize = 20,
         string? search = null, CommissionStatus? status = null, string sort = "recent",
         int? year = null, int? month = null, ReportScope scope = ReportScope.All, Guid? brandId = null, string? currency = null, string collection = "all")
@@ -44,10 +91,8 @@ public static partial class WorkflowEndpoints
         currency = (currency ?? settings.DefaultCurrency).Trim().ToUpperInvariant();
         if (currency.Length != 3 || !currency.All(char.IsAsciiLetter))
             return (Results.BadRequest(new { error = "Geçerli bir para birimi seçin." }), [], default!, "", default);
-        var query = db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal)
-            .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
-            .Where(x => (!year.HasValue || x.Year == year && x.Month == month) &&
-                (!brandId.HasValue || x.BrandId == brandId) && x.Deal!.Currency.ToUpper() == currency);
+        var query = ReportPerformances(db, brandId)
+            .Where(x => (!year.HasValue || x.Year == year && x.Month == month) && x.Deal!.Currency.ToUpper() == currency);
         if (!string.IsNullOrWhiteSpace(search)) query = query.Where(x => EF.Functions.ILike(x.Brand!.Name, $"%{search.Trim()}%"));
         var rows = (await query.ToListAsync()).Where(x => PortfolioReporting.Matches(x.Status, scope) &&
             (!status.HasValue || PortfolioReporting.PaymentStage(x.Status) == status)).Where(x =>
@@ -137,15 +182,10 @@ public static partial class WorkflowEndpoints
         if (currency.Length != 3 || !currency.All(char.IsAsciiLetter))
             return Results.BadRequest(new { error = "Üç harfli bir para birimi seçin." });
 
-        var deals = await db.Deals.AsNoTracking().Include(x => x.Brand)
-            .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync();
+        var deals = await ReportDeals(db, brandId).ToListAsync();
         var currencies = deals.Select(x => x.Currency.ToUpperInvariant()).Append(currency).Distinct().Order().ToArray();
         deals = deals.Where(x => string.Equals(x.Currency, currency, StringComparison.OrdinalIgnoreCase)).ToList();
-        var allHistory = await db.MonthlyPerformances.AsNoTracking()
-            .Include(x => x.Brand)!.ThenInclude(x => x!.Economics)
-            .Include(x => x.Deal)!.ThenInclude(x => x!.Conditions)
-            .Include(x => x.Collection)!.ThenInclude(x => x!.Payments)
-            .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync();
+        var allHistory = await ReportPerformances(db, brandId).ToListAsync();
         var history = allHistory.Where(x => x.Deal is not null && string.Equals(x.Deal.Currency, currency, StringComparison.OrdinalIgnoreCase)).ToList();
         var periods = history.Select(x => new ReportPeriod(x.Year, x.Month)).Distinct()
             .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).ToList();
@@ -275,8 +315,7 @@ public static partial class WorkflowEndpoints
         if (currency.Length != 3 || !currency.All(char.IsAsciiLetter))
             return Results.BadRequest(new { error = "Üç harfli bir para birimi seçin." });
 
-        var history = (await db.MonthlyPerformances.AsNoTracking().Include(x => x.Brand).Include(x => x.Deal)
-                .Where(x => !brandId.HasValue || x.BrandId == brandId).ToListAsync())
+        var history = (await ReportPerformances(db, brandId).ToListAsync())
             .Where(x => string.Equals(x.Deal?.Currency ?? x.Brand?.Currency ?? "", currency, StringComparison.OrdinalIgnoreCase)).ToList();
         var periods = history.Select(x => new ReportPeriod(x.Year, x.Month)).Distinct()
             .OrderByDescending(x => x.Year).ThenByDescending(x => x.Month).ToList();

@@ -17,7 +17,7 @@ public static partial class WorkflowEndpoints
         var y = year ?? today.Year; var m = month ?? today.Month;
         if (y is < 2020 or > 2100 || m is < 1 or > 12)
             return Results.BadRequest(new { error = "Geçerli bir yıl ve ay seçin." });
-        var performances = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal)
+        var performances = await ReportPerformances(db, null)
             .Where(x => x.Year == y && x.Month == m
                 && (x.Status == MonthlyPerformanceStatus.Approved || x.Status == MonthlyPerformanceStatus.Locked
                     || x.Status == MonthlyPerformanceStatus.Invoiced || x.Status == MonthlyPerformanceStatus.Paid))

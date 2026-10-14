@@ -49,7 +49,7 @@ public static partial class WorkflowEndpoints
         if (hasTo && !StoreOrderPeriod.TryParse(to, out toPeriod)) return Results.BadRequest(new { error = "Bitiş dönemi 'YYYY-AA' biçiminde olmalı, örneğin 2026-12." });
         if (hasFrom && hasTo && (toPeriod.Year < fromPeriod.Year || toPeriod.Year == fromPeriod.Year && toPeriod.Month < fromPeriod.Month))
             return Results.BadRequest(new { error = "Bitiş dönemi başlangıç döneminden önce olamaz." });
-        var periods = await db.MonthlyPerformances.AsNoTracking().Include(x => x.Deal)
+        var periods = await ReportPerformances(db, null)
             .Where(x => !hasFrom || x.Year > fromPeriod.Year || x.Year == fromPeriod.Year && x.Month >= fromPeriod.Month)
             .Where(x => !hasTo || x.Year < toPeriod.Year || x.Year == toPeriod.Year && x.Month <= toPeriod.Month)
             .ToListAsync();

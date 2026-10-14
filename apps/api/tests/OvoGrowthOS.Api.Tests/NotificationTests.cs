@@ -155,6 +155,51 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task List_supports_kind_read_search_sort_and_paging()
+    {
+        await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(p, sender); using var c = await Client(f);
+        await TaskSeed(f); var now = DateTimeOffset.UtcNow.Date.AddHours(12); await Refresh(f, Admin, now); await Refresh(f, Admin, now);
+
+        var all = await c.GetFromJsonAsync<JsonElement>("/api/notifications?pageSize=100");
+        var total = all.GetProperty("total").GetInt32();
+        Assert.True(total >= 2, $"en az 2 bildirim bekleniyordu, {total} geldi");
+        Assert.Equal(1, all.GetProperty("page").GetInt32());
+        Assert.Equal(100, all.GetProperty("pageSize").GetInt32());
+        Assert.Equal(total, all.GetProperty("unreadCount").GetInt32());
+
+        var due = await c.GetFromJsonAsync<JsonElement>("/api/notifications?kind=TaskDue&pageSize=100");
+        Assert.True(due.GetProperty("total").GetInt32() >= 1);
+        foreach (var item in due.GetProperty("items").EnumerateArray())
+            Assert.Equal("TaskDue", item.GetProperty("kind").GetString());
+
+        var searched = await c.GetFromJsonAsync<JsonElement>("/api/notifications?search=son%20tarihi&pageSize=100");
+        Assert.True(searched.GetProperty("total").GetInt32() >= 1);
+        var none = await c.GetFromJsonAsync<JsonElement>("/api/notifications?search=olmayan-bildirim-xyz&pageSize=100");
+        Assert.Equal(0, none.GetProperty("total").GetInt32());
+        Assert.Equal(0, none.GetProperty("items").GetArrayLength());
+
+        var first = await c.GetFromJsonAsync<JsonElement>("/api/notifications?page=1&pageSize=1");
+        Assert.Equal(1, first.GetProperty("items").GetArrayLength());
+        if (total >= 2)
+        {
+            var second = await c.GetFromJsonAsync<JsonElement>("/api/notifications?page=2&pageSize=1");
+            Assert.NotEqual(first.GetProperty("items")[0].GetProperty("id").GetString(), second.GetProperty("items")[0].GetProperty("id").GetString());
+            var oldest = await c.GetFromJsonAsync<JsonElement>("/api/notifications?sort=oldest&pageSize=100");
+            var oldestDates = oldest.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("createdAt").GetDateTimeOffset()).ToList();
+            Assert.Equal(oldestDates.OrderBy(x => x), oldestDates);
+        }
+
+        var firstId = all.GetProperty("items")[0].GetProperty("id").GetString();
+        (await c.PostAsync($"/api/notifications/{firstId}/read", null)).EnsureSuccessStatusCode();
+        var read = await c.GetFromJsonAsync<JsonElement>("/api/notifications?read=read&pageSize=100");
+        Assert.Equal(1, read.GetProperty("total").GetInt32());
+        var unread = await c.GetFromJsonAsync<JsonElement>("/api/notifications?read=unread&pageSize=100");
+        Assert.Equal(total - 1, unread.GetProperty("total").GetInt32());
+        var refreshed = await c.GetFromJsonAsync<JsonElement>("/api/notifications?pageSize=100");
+        Assert.Equal(total - 1, refreshed.GetProperty("unreadCount").GetInt32());
+    }
+
+    [Fact]
     public async Task Daily_summary_starts_at_nine_in_Turkey_and_stale_claim_is_not_sent_again()
     {
         await using var p = new WorkflowApiFactory(); var sender = new AccountMailTests.Sender(); await using var f = Setup(p, sender); using var c = await Client(f);
