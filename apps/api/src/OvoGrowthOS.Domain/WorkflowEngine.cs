@@ -35,7 +35,8 @@ public static class ScenarioCalculator
                 .ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate!.Value);
             var baselines = rows.Where(r => r.BaselineRevenue > 0)
                 .ToDictionary(r => r.SalesChannelId, r => r.BaselineRevenue);
-            var channeled = DealCommissionCalculator.CalculateWithChannels(temporaryDeal, revenues, contributionBeforeOvo, overrides, baselines);
+            var totalShares = rows.Where(r => r.TotalRevenueShare).Select(r => r.SalesChannelId).ToList();
+            var channeled = DealCommissionCalculator.CalculateWithChannels(temporaryDeal, revenues, contributionBeforeOvo, overrides, baselines, totalShares);
             commission = channeled.Result;
             shares = channeled.Shares;
         }
@@ -118,7 +119,8 @@ public static class MonthlyPerformanceCalculator
         IReadOnlyList<MonthlyPerformanceChannel> channels,
         IReadOnlyDictionary<Guid, decimal>? rateOverrides = null,
         IReadOnlyDictionary<Guid, string>? channelNames = null,
-        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null)
+        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null,
+        IReadOnlyCollection<Guid>? totalShareChannels = null)
     {
         var list = channels.ToList();
         if (list.Count == 0) return Calculate(p, deal);
@@ -142,7 +144,7 @@ public static class MonthlyPerformanceCalculator
             channelNames is not null && channelNames.TryGetValue(x.SalesChannelId, out var n) ? n
                 : x.SalesChannel?.Name ?? "",
             x.CommissionableRevenue)).ToList();
-        var withChannels = DealCommissionCalculator.CalculateWithChannels(deal, revenues, p.ContributionBeforeOvo, rateOverrides, baselineOverrides, adjustment);
+        var withChannels = DealCommissionCalculator.CalculateWithChannels(deal, revenues, p.ContributionBeforeOvo, rateOverrides, baselineOverrides, totalShareChannels, adjustments: adjustment);
         var commission = withChannels.Result;
         var shares = withChannels.Shares.ToDictionary(x => x.SalesChannelId);
         foreach (var c in list)

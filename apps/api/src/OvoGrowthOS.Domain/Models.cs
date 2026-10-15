@@ -268,6 +268,8 @@ public sealed class SalesChannel
 /// Kaydı olmayan kanal için anlaşmanın genel gelir payı oranı geçerlidir.
 /// Büyüme payı modellerinde her kanalın baz cirosu ve büyüme payı ayrı tutulur;
 /// baz yazılmayan kanal için baz 0, oran yazılmayan kanal için anlaşmanın büyüme payı kullanılır.
+/// ToplamdanPay açık olan kanalda baz aşılınca pay büyümeden değil toplam cirodan alınır;
+/// baz aşılamazsa o kanal hakediş üretmez.
 /// </summary>
 public sealed class DealChannelRate
 {
@@ -278,6 +280,7 @@ public sealed class DealChannelRate
     public SalesChannel? SalesChannel { get; set; }
     public decimal RevenueShareRate { get; set; }
     public decimal BaselineRevenue { get; set; }
+    public bool TotalRevenueShare { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
@@ -331,7 +334,8 @@ public sealed class BrandRevenueChannel
 /// Kanal payı (RevenueShareRate) yazılan satır o oranla hesaplanır; boş bırakılan satırda
 /// senaryonun genel oranı kullanılır. Desteklenmeyen modelde kanal payları dikkate alınmaz.
 /// Büyüme payı modellerinde satırın baz cirosu (BaselineRevenue) aşan kısmı büyüme payıyla
-/// hesaplanır; baz yazılmayan satırda baz 0 alınır.
+/// hesaplanır; baz yazılmayan satırda baz 0 alınır. ToplamdanPay açık satırda baz aşılınca
+/// pay büyümeden değil toplam cirodan alınır; baz aşılamazsa satır hakediş üretmez.
 /// </summary>
 public sealed class ScenarioRevenueChannel
 {
@@ -343,6 +347,7 @@ public sealed class ScenarioRevenueChannel
     public decimal MonthlyRevenue { get; set; }
     public decimal? RevenueShareRate { get; set; }
     public decimal BaselineRevenue { get; set; }
+    public bool TotalRevenueShare { get; set; }
 }
 
 public sealed class MonthlyPerformance

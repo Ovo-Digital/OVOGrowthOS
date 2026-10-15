@@ -67,7 +67,7 @@ public static partial class WorkflowEndpoints
                 .SingleOrDefaultAsync(x => x.Id == id);
             if (deal is null) return Results.NotFound(new { error = "Anlaşma bulunamadı." });
             return Results.Ok(deal.ChannelRates.OrderBy(r => r.SalesChannel!.Name)
-                .Select(r => new { r.Id, r.DealId, r.SalesChannelId, ChannelName = r.SalesChannel!.Name, r.RevenueShareRate, r.BaselineRevenue, r.UpdatedAt }));
+                .Select(r => new { r.Id, r.DealId, r.SalesChannelId, ChannelName = r.SalesChannel!.Name, r.RevenueShareRate, r.BaselineRevenue, r.TotalRevenueShare, r.UpdatedAt }));
         });
         deals.MapPut("/", async (Guid id, DealChannelRatesRequest request, AppDbContext db, ClaimsPrincipal user) =>
         {
@@ -86,7 +86,9 @@ public static partial class WorkflowEndpoints
                 return Results.Conflict(new { error = "Kanal başına farklı oran yalnız sabit gelir payı, asgari ücret ve büyüme payı içeren anlaşma modellerinde kullanılır." });
             if (!DealCommissionCalculator.SupportsChannelBaselines(deal.DealType) && request.Rates.Any(x => x.BaselineRevenue > 0))
                 return Results.Conflict(new { error = "Kanal baz cirosu yalnız büyüme payı modellerinde kullanılır." });
-            var old = deal.ChannelRates.Select(r => new { r.SalesChannelId, r.RevenueShareRate, r.BaselineRevenue }).ToList();
+            if (!DealCommissionCalculator.SupportsChannelBaselines(deal.DealType) && request.Rates.Any(x => x.TotalRevenueShare))
+                return Results.Conflict(new { error = "Toplamdan pay seçeneği yalnız büyüme payı modellerinde kullanılır." });
+            var old = deal.ChannelRates.Select(r => new { r.SalesChannelId, r.RevenueShareRate, r.BaselineRevenue, r.TotalRevenueShare }).ToList();
             foreach (var removed in deal.ChannelRates.Where(r => !channelIds.Contains(r.SalesChannelId)).ToList())
             {
                 deal.ChannelRates.Remove(removed);
@@ -99,18 +101,18 @@ public static partial class WorkflowEndpoints
                 {
                     // Koleksiyon ve DbSet'e birlikte eklenir (hakediş düzeltmelerindeki desen);
                     // yalnız koleksiyona ekleme bazı sağlayıcılarda durumu yanlış işaretler.
-                    var rate = new DealChannelRate { DealId = id, SalesChannelId = item.SalesChannelId, RevenueShareRate = item.RevenueShareRate, BaselineRevenue = item.BaselineRevenue };
+                    var rate = new DealChannelRate { DealId = id, SalesChannelId = item.SalesChannelId, RevenueShareRate = item.RevenueShareRate, BaselineRevenue = item.BaselineRevenue, TotalRevenueShare = item.TotalRevenueShare };
                     deal.ChannelRates.Add(rate);
                     db.DealChannelRates.Add(rate);
                 }
-                else { existing.RevenueShareRate = item.RevenueShareRate; existing.BaselineRevenue = item.BaselineRevenue; existing.UpdatedAt = DateTimeOffset.UtcNow; }
+                else { existing.RevenueShareRate = item.RevenueShareRate; existing.BaselineRevenue = item.BaselineRevenue; existing.TotalRevenueShare = item.TotalRevenueShare; existing.UpdatedAt = DateTimeOffset.UtcNow; }
             }
             deal.UpdatedAt = DateTimeOffset.UtcNow;
             Audit(db, user, "DealChannelRatesChanged", "Deal", id, old, request.Rates);
             await db.SaveChangesAsync();
             return Results.Ok(await db.DealChannelRates.AsNoTracking().Include(r => r.SalesChannel)
                 .Where(r => r.DealId == id).OrderBy(r => r.SalesChannel!.Name)
-                .Select(r => new { r.Id, r.DealId, r.SalesChannelId, ChannelName = r.SalesChannel!.Name, r.RevenueShareRate, r.BaselineRevenue, r.UpdatedAt }).ToListAsync());
+                .Select(r => new { r.Id, r.DealId, r.SalesChannelId, ChannelName = r.SalesChannel!.Name, r.RevenueShareRate, r.BaselineRevenue, r.TotalRevenueShare, r.UpdatedAt }).ToListAsync());
         }).AddEndpointFilter<ValidationFilter<DealChannelRatesRequest>>().RequireAuthorization("OperationsWrite");
     }
 }

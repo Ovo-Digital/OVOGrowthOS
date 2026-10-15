@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/core';
 import type { SalesChannel } from '@/components/sales-channels';
 import { FieldHint } from '@/components/field-hint';
 
-type ChannelRate = { id: string; dealId: string; salesChannelId: string; channelName: string; revenueShareRate: number; baselineRevenue: number; updatedAt: string };
+type ChannelRate = { id: string; dealId: string; salesChannelId: string; channelName: string; revenueShareRate: number; baselineRevenue: number; totalRevenueShare: boolean; updatedAt: string };
 const flatModels = ['FlatRevenueShare', 'RetainerPlusRevenueShare', 'MinimumFeePlusRevenueShare'];
 const incrementalModels = ['IncrementalRevenueShare', 'RetainerPlusIncrementalRevenueShare'];
 
@@ -28,17 +28,18 @@ export function DealChannelRatesCard({ dealId, brandId, dealType, status, defaul
     e.preventDefault();
     if (busy) return;
     const f = new FormData(e.currentTarget);
-    const list: { salesChannelId: string; revenueShareRate: number; baselineRevenue: number }[] = [];
+    const list: { salesChannelId: string; revenueShareRate: number; baselineRevenue: number; totalRevenueShare: boolean }[] = [];
     try {
       for (const c of active) {
         const rawRate = String(f.get(`rate-${c.id}`) ?? '').trim().replace('%', '').replace(',', '.');
         const rawBase = String(f.get(`baseline-${c.id}`) ?? '').trim().replaceAll('.', '').replace(',', '.');
-        if (!rawRate && !rawBase) continue;
+        const totalShare = incremental && f.get(`total-${c.id}`) === 'on';
+        if (!rawRate && !rawBase && !totalShare) continue;
         const value = rawRate ? Number(rawRate) : generalIncremental * 100;
         if (!Number.isFinite(value) || value < 0 || value > 100) throw new Error(`"${c.name}" için %0–%100 arasında bir oran yazın.`);
         const base = rawBase ? Number(rawBase) : 0;
         if (!Number.isFinite(base) || base < 0) throw new Error(`"${c.name}" için baz ciro negatif olamaz.`);
-        list.push({ salesChannelId: c.id, revenueShareRate: Number((value / 100).toFixed(4)), baselineRevenue: base });
+        list.push({ salesChannelId: c.id, revenueShareRate: Number((value / 100).toFixed(4)), baselineRevenue: base, totalRevenueShare: totalShare });
       }
       setBusy(true);
       await api(`/api/deals/${dealId}/channel-rates`, { method: 'PUT', body: JSON.stringify({ rates: list }) });
@@ -50,7 +51,7 @@ export function DealChannelRatesCard({ dealId, brandId, dealType, status, defaul
     {!supported && <p className="mt-2 text-sm">Bu anlaşma modelinde kanal başına farklı oran kullanılmaz; oranlar yalnızca sabit gelir payı, asgari ücret ve büyüme payı içeren modellerde geçerlidir. Ciro yine de kanal kırılımlı girilebilir, hakediş toplam üzerinden hesaplanır.</p>}
     {supported && <>
       <p className="mt-2 text-sm">{incremental
-        ? 'Her kanalın bazı aşan büyümesi kanalın payıyla hesaplanır. Boş bırakılan kanal anlaşmanın genel büyüme payıyla, bazı yazılmayan kanal baz 0 ile hesaplanır.'
+        ? 'Her kanalın bazı aşan büyümesi kanalın payıyla hesaplanır. "Bazı aşınca toplamdan al" işaretli kanalda baz aşılınca pay büyümeden değil toplam cirodan alınır; baz aşılamazsa kanal hakediş üretmez. Boş bırakılan kanal anlaşmanın genel büyüme payıyla, bazı yazılmayan kanal baz 0 ile hesaplanır.'
         : `Boş bırakılan kanal anlaşmanın genel oranıyla (${percent(defaultRate)}) hesaplanır.`} Oran değişikliği yalnız ileride hesaplanacak dönemleri etkiler; kapanmış dönemler değişmez.</p>
       {channels.isPending || rates.isPending ? <p role="status" className="mt-3 text-sm">Oranlar yükleniyor…</p> :
         active.length === 0 ? <p className="mt-3 text-sm">Bu markada henüz etkin kanal yok. Önce <Link className="underline" href={`/brands/${brandId}`}>marka sayfasından</Link> satış kanalı ekleyin.</p> :
@@ -58,11 +59,12 @@ export function DealChannelRatesCard({ dealId, brandId, dealType, status, defaul
             const current = byChannel.get(c.id);
             return <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
               <span><strong>{c.name}</strong> <span className="text-[#6d7175]">· Geçerli: {incremental
-                ? `${current?.baselineRevenue ? `${money(current.baselineRevenue)} üstü ` : ''}%${((current?.revenueShareRate ?? generalIncremental) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}${current === undefined ? ' (genel pay)' : ''}`
+                ? `${current?.baselineRevenue ? `${money(current.baselineRevenue)} üstü ` : ''}%${((current?.revenueShareRate ?? generalIncremental) * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}${current?.totalRevenueShare ? ' (toplamdan)' : ''}${current === undefined ? ' (genel pay)' : ''}`
                 : `${percent(current?.revenueShareRate ?? defaultRate)}${current === undefined ? ' (genel oran)' : ''}`}</span></span>
-              {incremental ? <span className="flex flex-wrap gap-2">
+              {incremental ? <span className="flex flex-wrap items-end gap-2">
                 <label>Baz ciro<FieldHint text="Pay alınmayacak mevcut ciro. Boş bırakılırsa baz 0 alınır." /><input name={`baseline-${c.id}`} className="input ml-2 w-32" inputMode="decimal" autoComplete="off" disabled={!allowed} defaultValue={current?.baselineRevenue ? String(current.baselineRevenue) : ''} placeholder="Örn. 7000000" /></label>
                 <label>Büyüme payı (%)<FieldHint text="Bazı aşan büyümeden alınacak pay. Boş bırakılırsa anlaşmanın genel büyüme payı kullanılır." /><input name={`rate-${c.id}`} className="input ml-2 w-24" inputMode="decimal" autoComplete="off" disabled={!allowed} defaultValue={current ? String(current.revenueShareRate * 100).replace('.', ',') : ''} /></label>
+                <label className="flex items-center gap-1.5 text-xs">Bazı aşınca toplamdan al<FieldHint text="İşaretli kanalda baz aşılınca pay büyümeden değil toplam cirodan alınır." /><input name={`total-${c.id}`} type="checkbox" disabled={!allowed} defaultChecked={current?.totalRevenueShare === true} /></label>
               </span> :
               <label>Oran (%)<FieldHint text="Bu kanalın cirosundan alınacak pay. Boş bırakılırsa anlaşmanın genel oranı kullanılır." /><input name={`rate-${c.id}`} className="input ml-2 w-28" inputMode="decimal" autoComplete="off" disabled={!allowed} defaultValue={current === undefined ? '' : String(current.revenueShareRate * 100).replace('.', ',')} placeholder={String(defaultRate * 100).replace('.', ',')} /></label>}
             </div>;

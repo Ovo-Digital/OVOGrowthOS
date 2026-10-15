@@ -133,6 +133,37 @@ public sealed class ForecastChannelApiTests
     }
 
     [Fact]
+    public async Task Scenario_total_share_calculates_from_full_revenue()
+    {
+        await using var f = new WorkflowApiFactory();
+        var brand = await f.SeedAsync();
+        using var admin = CustomerPortalTests.Staff(f);
+        var (web, trendyol) = await SeedChannels(admin, brand);
+        var channels = new[]
+        {
+            new { salesChannelId = web, monthlyRevenue = 500_000m, revenueShareRate = (decimal?).05m, baselineRevenue = 300_000m, totalRevenueShare = false },
+            new { salesChannelId = trendyol, monthlyRevenue = 8_000_000m, revenueShareRate = (decimal?).02m, baselineRevenue = 7_000_000m, totalRevenueShare = true },
+        };
+        var evaluationId = (await (await admin.PostAsJsonAsync("/api/evaluations", DraftPayload(brand, null))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var payload = new Dictionary<string, object?>(ScenarioRatePayload(channels).GetType().GetProperties().ToDictionary(p => p.Name, p => p.GetValue(ScenarioRatePayload(channels))))
+        {
+            ["commissionModel"] = "IncrementalRevenueShare",
+            ["incrementalRate"] = 0.02m,
+            ["returnRate"] = 0m,
+        };
+        var calculated = await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios/calculate", payload);
+        calculated.EnsureSuccessStatusCode();
+        // Web büyümeden: (500.000-300.000) x %5 = 10.000; Trendyol toplamdan: 8.000.000 x %2 = 160.000.
+        Assert.Equal(170000, (await calculated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("ovoFee").GetDecimal());
+
+        var flatPayload = new Dictionary<string, object?>(ScenarioRatePayload(channels).GetType().GetProperties().ToDictionary(p => p.Name, p => p.GetValue(ScenarioRatePayload(channels))))
+        {
+            ["commissionModel"] = "FlatRevenueShare",
+        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"/api/evaluations/{evaluationId}/scenarios/calculate", flatPayload)).StatusCode);
+    }
+
+    [Fact]
     public async Task Analysis_recommends_channel_shares_from_minimum_fee()
     {
         await using var f = new WorkflowApiFactory();

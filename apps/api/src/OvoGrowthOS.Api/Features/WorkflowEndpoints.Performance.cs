@@ -54,7 +54,7 @@ public static partial class WorkflowEndpoints
                 if (prepared.Error is not null) return prepared.Error;
                 p.Channels.AddRange(prepared.Lines);
                 MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels,
-                    deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(deal.ChannelRates));
+                    deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(deal.ChannelRates), ChannelTotalShares(deal.ChannelRates));
             }
             else MonthlyPerformanceCalculator.Calculate(p, deal);
             return Results.Ok(p);
@@ -126,7 +126,7 @@ public static partial class WorkflowEndpoints
             p.Channels.AddRange(prepared.Lines);
             MonthlyPerformanceCalculator.CalculateWithChannels(p, deal ?? p.Deal!, p.Channels,
                 deal?.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names,
-                deal is null ? null : ChannelBaselines(deal.ChannelRates));
+                deal is null ? null : ChannelBaselines(deal.ChannelRates), deal is null ? null : ChannelTotalShares(deal.ChannelRates));
         }
         else MonthlyPerformanceCalculator.Calculate(p, p.Deal!);
         return Results.Ok(p);
@@ -156,7 +156,7 @@ public static partial class WorkflowEndpoints
     {
         if (p.Channels.Count == 0) MonthlyPerformanceCalculator.Calculate(p, deal);
         else MonthlyPerformanceCalculator.CalculateWithChannels(p, deal, p.Channels.ToList(),
-            deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(deal.ChannelRates));
+            deal.ChannelRates.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(deal.ChannelRates), ChannelTotalShares(deal.ChannelRates));
     }
 
     /// <summary>İstek kanal içeriyorsa satırları eşitler ve yeniden hesaplar; içermiyorsa satırları kaldırır.</summary>
@@ -194,7 +194,7 @@ public static partial class WorkflowEndpoints
         }
         var terms = await db.DealChannelRates.AsNoTracking().Where(r => r.DealId == p.DealId).ToListAsync();
         MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(),
-            terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(terms));
+            terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), prepared.Names, ChannelBaselines(terms), ChannelTotalShares(terms));
         return null;
     }
 
@@ -289,7 +289,7 @@ public static partial class WorkflowEndpoints
             var names = await db.SalesChannels.AsNoTracking().Where(x => ids.Contains(x.Id))
                 .ToDictionaryAsync(x => x.Id, x => x.Name);
             MonthlyPerformanceCalculator.CalculateWithChannels(p, p.Deal!, p.Channels.ToList(),
-                terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(terms));
+                terms.ToDictionary(r => r.SalesChannelId, r => r.RevenueShareRate), names, ChannelBaselines(terms), ChannelTotalShares(terms));
         }
         TouchPeriod(p);
         Audit(db, user, "CommissionAdjusted", "MonthlyPerformance", id, null, a, request.Reason);
@@ -299,6 +299,10 @@ public static partial class WorkflowEndpoints
     /// <summary>Baz yazılmış kanal satırlarının baz sözlüğü; yazılmamış kanal için baz 0 alınır.</summary>
     private static Dictionary<Guid, decimal> ChannelBaselines(IEnumerable<DealChannelRate> rows) =>
         rows.Where(r => r.BaselineRevenue > 0).ToDictionary(r => r.SalesChannelId, r => r.BaselineRevenue);
+
+    /// <summary>Toplamdan pay seçili kanal satırlarının kimlikleri.</summary>
+    private static HashSet<Guid> ChannelTotalShares(IEnumerable<DealChannelRate> rows) =>
+        rows.Where(r => r.TotalRevenueShare).Select(r => r.SalesChannelId).ToHashSet();
 
     private static MonthlyPerformance ToPerformance(PerformanceRequest r)
     {

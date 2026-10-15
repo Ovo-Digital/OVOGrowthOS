@@ -111,6 +111,27 @@ public sealed class FinancialEngineTests
             new Dictionary<Guid, decimal> { [web] = .05m, [market] = .02m }, baselines);
         Assert.Equal(40_000, x.Result.FinalFee);
     }
+    [Fact] public void Incremental_channel_total_share_applies_above_baseline()
+    {
+        var deal = Deal(DealType.IncrementalRevenueShare, incremental: .02m, baseline: 7_300_000);
+        var web = Guid.NewGuid(); var market = Guid.NewGuid();
+        var channels = new[] { new ChannelRevenue(web, "Web", 500_000), new ChannelRevenue(market, "Pazaryeri", 8_000_000) };
+        var rates = new Dictionary<Guid, decimal> { [web] = .05m, [market] = .02m };
+        var baselines = new Dictionary<Guid, decimal> { [web] = 300_000, [market] = 7_000_000 };
+        // Pazaryeri toplamdan: 8.000.000 x %2 = 160.000; web büyümeden: 200.000 x %5 = 10.000.
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0, rates, baselines, [market]);
+        Assert.Equal(170_000, x.Result.FinalFee);
+    }
+    [Fact] public void Incremental_channel_total_share_below_baseline_yields_nothing()
+    {
+        var deal = Deal(DealType.IncrementalRevenueShare, incremental: .02m);
+        var market = Guid.NewGuid();
+        var channels = new[] { new ChannelRevenue(market, "Pazaryeri", 6_000_000) };
+        var x = DealCommissionCalculator.CalculateWithChannels(deal, channels, 0,
+            new Dictionary<Guid, decimal> { [market] = .02m },
+            new Dictionary<Guid, decimal> { [market] = 7_000_000 }, [market]);
+        Assert.Equal(0, x.Result.FinalFee);
+    }
     [Fact] public void Tiered_channel_rates_stay_total_based()
     {
         var deal = Deal(DealType.TieredRevenueShare);

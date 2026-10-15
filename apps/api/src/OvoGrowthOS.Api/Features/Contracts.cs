@@ -11,7 +11,7 @@ public sealed record EvaluationDraftRequest(Guid BrandId, int CurrentStep, Evalu
     int NewCustomers, int ReturningCustomers, decimal VariableCostRate, int ProductMarketFit, int GrowthPotential,
     int OperationalReadiness, int CreativeCapability, int FounderCooperation, int DataMaturity,
     decimal InternalMonthlyCost, decimal SetupInvestment, List<RevenueChannelRequest>? RevenueChannels = null);
-public sealed record RevenueChannelRequest(Guid SalesChannelId, decimal MonthlyRevenue, decimal? RevenueShareRate = null, decimal BaselineRevenue = 0);
+public sealed record RevenueChannelRequest(Guid SalesChannelId, decimal MonthlyRevenue, decimal? RevenueShareRate = null, decimal BaselineRevenue = 0, bool TotalRevenueShare = false);
 
 public sealed record RuleSetRequest(string Name, string Description);
 public sealed record BrandUpdateRequest(string Name, string LegalName, string Website, string Country, string Currency,
@@ -30,7 +30,7 @@ public sealed record DealRequest(string Name, DealType DealType, int ContractMon
     DateOnly? BaselinePeriodStart, DateOnly? BaselinePeriodEnd, BaselineCalculationMethod BaselineCalculationMethod,
     decimal MonthlyRetainer, decimal MinimumMonthlyFee, decimal RevenueShareRate, decimal IncrementalRate,
     decimal ProfitShareRate, List<CommissionTier> CommissionTiers, decimal SetupInvestment, decimal EstimatedMonthlyInternalCost);
-public sealed record DealChannelRateRequest(Guid SalesChannelId, decimal RevenueShareRate, decimal BaselineRevenue = 0);
+public sealed record DealChannelRateRequest(Guid SalesChannelId, decimal RevenueShareRate, decimal BaselineRevenue = 0, bool TotalRevenueShare = false);
 public sealed record DealChannelRatesRequest(List<DealChannelRateRequest> Rates);
 public sealed record SalesChannelRequest(string Name, bool IsActive = true);
 public sealed record PerformanceChannelRequest(Guid SalesChannelId, decimal GrossSales, decimal Vat,

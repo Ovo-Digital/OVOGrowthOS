@@ -104,6 +104,10 @@ public sealed class ScenarioRequestValidator : AbstractValidator<ScenarioRequest
                 || !x.RevenueChannels.Any(r => r.BaselineRevenue > 0)
                 || DealCommissionCalculator.SupportsChannelBaselines(m))
             .WithMessage("Kanal baz cirosu yalnız büyüme payı modellerinde kullanılır.");
+        RuleFor(x => x.CommissionModel).Must((x, m) => x.RevenueChannels is null
+                || !x.RevenueChannels.Any(r => r.TotalRevenueShare)
+                || DealCommissionCalculator.SupportsChannelBaselines(m))
+            .WithMessage("Toplamdan pay seçeneği yalnız büyüme payı modellerinde kullanılır.");
     }
 }
 

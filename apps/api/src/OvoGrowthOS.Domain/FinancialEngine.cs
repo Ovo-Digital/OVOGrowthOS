@@ -54,15 +54,16 @@ public static class DealCommissionCalculator
     /// </summary>
     public static ChannelCommissionResult CalculateWithChannels(Deal deal, IReadOnlyList<ChannelRevenue> channels,
         decimal contributionBeforeOvo, IReadOnlyDictionary<Guid, decimal>? rateOverrides = null,
-        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null, decimal adjustments = 0)
+        IReadOnlyDictionary<Guid, decimal>? baselineOverrides = null,
+        IReadOnlyCollection<Guid>? totalShareChannels = null, decimal adjustments = 0)
     {
         var list = channels.ToList();
         var total = list.Sum(x => x.CommissionableRevenue);
         if (list.Count == 0)
             return new(Calculate(deal, total, contributionBeforeOvo, adjustments), []);
         if (SupportsChannelBaselines(deal.DealType)
-            && (rateOverrides?.Count > 0 || baselineOverrides?.Any(kv => kv.Value > 0) == true))
-            return CalculateIncrementalChannels(deal, list, baselineOverrides, rateOverrides, adjustments);
+            && (rateOverrides?.Count > 0 || baselineOverrides?.Any(kv => kv.Value > 0) == true || totalShareChannels?.Count > 0))
+            return CalculateIncrementalChannels(deal, list, baselineOverrides, rateOverrides, totalShareChannels, adjustments);
         if (SupportsChannelBaselines(deal.DealType))
         {
             // Kanal koşulu yazılmamış büyüme modelinde toplam üzerinden hesap korunur.
@@ -118,18 +119,24 @@ public static class DealCommissionCalculator
 
     /// <summary>
     /// Kanal bazında büyüme payı: her kanalın bazı aşan kısmı kanalın oranıyla (yazılmamışsa
-    /// anlaşmanın büyüme payıyla) çarpılır. Sabit ücret varsa ciro ağırlığıyla kanallara eklenir.
+    /// anlaşmanın büyüme payıyla) çarpılır. Toplamdan pay seçili kanalda baz aşılınca pay
+    /// büyümeden değil toplam cirodan alınır; baz aşılamazsa kanal hakediş üretmez.
+    /// Sabit ücret varsa ciro ağırlığıyla kanallara eklenir.
     /// </summary>
     private static ChannelCommissionResult CalculateIncrementalChannels(Deal deal, List<ChannelRevenue> list,
         IReadOnlyDictionary<Guid, decimal>? baselineOverrides, IReadOnlyDictionary<Guid, decimal>? rateOverrides,
-        decimal adjustments)
+        IReadOnlyCollection<Guid>? totalShareChannels, decimal adjustments)
     {
         var total = list.Sum(x => x.CommissionableRevenue);
         var channelFees = list.Select(x =>
         {
             var baseline = baselineOverrides is not null && baselineOverrides.TryGetValue(x.SalesChannelId, out var b) ? b : 0;
             var rate = rateOverrides is not null && rateOverrides.TryGetValue(x.SalesChannelId, out var r) ? r : deal.IncrementalRate;
-            return (Channel: x, Rate: rate, Baseline: baseline, Fee: Money(Math.Max(x.CommissionableRevenue - baseline, 0) * rate));
+            var totalShare = totalShareChannels is not null && totalShareChannels.Contains(x.SalesChannelId);
+            var fee = totalShare
+                ? (x.CommissionableRevenue > baseline ? Money(x.CommissionableRevenue * rate) : 0)
+                : Money(Math.Max(x.CommissionableRevenue - baseline, 0) * rate);
+            return (Channel: x, Rate: rate, Fee: fee);
         }).ToList();
         var share = channelFees.Sum(x => x.Fee);
         var baseRetainer = deal.DealType == DealType.RetainerPlusIncrementalRevenueShare ? deal.MonthlyRetainer : 0;

@@ -130,6 +130,7 @@ type ScenarioRow = {
         monthlyRevenue: number;
         revenueShareRate?: number | null;
         baselineRevenue?: number | null;
+        totalRevenueShare?: boolean | null;
         salesChannel?: { name: string } | null;
     }[];
 };
@@ -1151,12 +1152,13 @@ function Fields({
                                 .filter(
                                     (r) =>
                                         r.revenueShareRate != null ||
-                                        (r.baselineRevenue ?? 0) > 0,
+                                        (r.baselineRevenue ?? 0) > 0 ||
+                                        r.totalRevenueShare === true,
                                 )
                                 .map((r) => (
                                     <li
                                         key={r.salesChannelId}
-                                    >{`${r.salesChannel?.name ?? 'Kanal'}${(r.baselineRevenue ?? 0) > 0 ? ` · ${r.baselineRevenue!.toLocaleString('tr-TR')} üstü` : ''}${r.revenueShareRate != null ? ` · %${(r.revenueShareRate! * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : ''}`}</li>
+                                    >{`${r.salesChannel?.name ?? 'Kanal'}${(r.baselineRevenue ?? 0) > 0 ? ` · ${r.baselineRevenue!.toLocaleString('tr-TR')} üstü` : ''}${r.revenueShareRate != null ? ` · %${(r.revenueShareRate! * 100).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : ''}${r.totalRevenueShare ? ' (toplamdan)' : ''}`}</li>
                                 ))}
                         </ul>
                         {evaluationId && (

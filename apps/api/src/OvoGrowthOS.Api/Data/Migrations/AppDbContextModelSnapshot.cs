@@ -1189,6 +1189,9 @@ namespace OvoGrowthOS.Api.Data.Migrations
                     b.Property<Guid>("SalesChannelId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("TotalRevenueShare")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -2822,6 +2825,9 @@ namespace OvoGrowthOS.Api.Data.Migrations
 
                     b.Property<Guid>("ScenarioId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("TotalRevenueShare")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
